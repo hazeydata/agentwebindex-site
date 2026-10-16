@@ -9,7 +9,7 @@ async function board(){
   const money=x=>x&&x.v==null&&x.na_reason?`<span class="muted">${esc(x.na_reason)}</span>`:x&&x.display?esc(x.display)+(x.lower_bound?` <span class="flag" title="${esc(x.lower_bound_reason)}">lower bound</span>`:'')+(x.tier?` <span class="muted">(${esc(x.tier)})</span>`:''):'n/a';
   const status=()=>{if(!d)return'';const sk=d.skips||[],fl=d.flags||[];if(!sk.length&&!fl.length)return'';
     return `<h3>Run status ${esc(d.run_date||'')}</h3>`+(fl.length?'<ul>'+fl.map(f=>`<li class="flag">${esc(f.set)}: ${esc(f.flag)}</li>`).join('')+'</ul>':'')+
-      (sk.length?'<table><tr><th>Skipped</th><th>Status</th><th>Reason</th></tr>'+sk.map(k=>`<tr><td>${esc(k.set||[k.provider,k.category].filter(Boolean).join(' / ')||k.scope)}</td><td>${esc(k.status)}</td><td class="muted">${esc(k.reason)}</td></tr>`).join('')+'</table>':'')+status()};
+      (sk.length?'<table><tr><th>Skipped</th><th>Status</th><th>Reason</th></tr>'+sk.map(k=>`<tr><td>${esc(k.set||[k.provider,k.category].filter(Boolean).join(' / ')||k.scope)}</td><td>${esc(k.status)}</td><td class="muted">${esc(k.reason)}</td></tr>`).join('')+'</table>':'')};
   const fb=r=>(r.flags||[]).map(f=>` <span class="flag">${esc(f)}</span>`).join('');
   const draw=cat=>{
     const rows=(d&&d.has_results&&d.tables?d.tables[cat]:[]).filter(r=>!r.mock&&c(r.attempted));
