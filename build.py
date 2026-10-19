@@ -89,6 +89,26 @@ def price_exports():
                 w.writerow([r["provider"],r["name"],r["pricing_url"],r["fetched_at"],r["status"],r["changed"],r["text_sha256"],amt,r["error"] or ""])
     return len(rows)
 
+def bench_csv():
+    """dist/data/benchmarks/latest.csv: the latest week's table rows, values copied from latest.json (which traces to run logs)."""
+    src = R/"data/benchmarks/latest.json"
+    if not src.exists(): return 0
+    doc = json.loads(src.read_text()); v = lambda x: (x or {}).get("v") if isinstance(x, dict) else x
+    cols = ["category","provider","run_date","set","set_sha","flags","attempted","passed","failed","rate_limited_free_tier","success_rate","p50_latency_ms",
+            "entry_tier","entry_tier_cost_per_1k","entry_tier_cost_per_successful_1k","volume_tier","volume_tier_cost_per_1k","volume_tier_cost_per_successful_1k","free_quota_note"]
+    out = D/"data/benchmarks/latest.csv"; out.parent.mkdir(parents=True, exist_ok=True); n = 0
+    with open(out, "w", newline="") as fh:
+        w = csv.writer(fh); w.writerow(cols)
+        for cat, rows in (doc.get("tables") or {}).items():
+            for r in rows:
+                if r.get("mock") or v(r.get("attempted")) is None: continue
+                w.writerow([cat, r["provider"], r.get("run_date",""), r["set"], r.get("set_sha",""), "; ".join(r.get("flags") or []),
+                            v(r["attempted"]), v(r["passed"]), v(r["failed"]), v(r.get("rate_limited")) or 0, v(r["success_rate"]), v(r["p50_latency_ms"]),
+                            (r.get("entry_tier_cost_per_1k") or {}).get("tier") or "", v(r.get("entry_tier_cost_per_1k")), v(r.get("entry_tier_cost_per_successful_1k")),
+                            (r.get("volume_tier_cost_per_1k") or {}).get("tier") or "", v(r.get("volume_tier_cost_per_1k")), v(r.get("volume_tier_cost_per_successful_1k")),
+                            r.get("free_quota_note") or ""]); n += 1
+    return n
+
 shutil.rmtree(D,ignore_errors=True); D.mkdir()
 layout=(S/"_layout.html").read_text(); pages=[]
 for f in S.glob("*.html"):
@@ -101,10 +121,10 @@ for f in S.glob("*.html"):
     out=D/"index.html" if f.stem=="index" else D/f.stem/"index.html"; out.parent.mkdir(exist_ok=True)
     out.write_text(layout.replace("{{title}}",title).replace("{{head}}",page_head(title,desc,path)).replace("{{body}}",body))
 pages.sort(key=lambda p:(p!="/",p))
-(D/"robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
+(D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")
 (D/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+"".join(f"<url><loc>{SITE_URL}{p}</loc></url>\n" for p in pages)+"</urlset>\n")
 for a in ("style.css","app.js","favicon.svg"): shutil.copy(S/a,D/a)
-if (R/"data").exists(): shutil.copytree(R/"data",D/"data",ignore=lambda d,n:[x for x in n if x in ("cache","_upstream")])
-n=price_exports()
-(D/"llms.txt").write_text("# AgentWebIndex\nMachine-readable data: /data/benchmarks/latest.json, /data/prices.json, /data/prices.csv, /data/prices/<provider>.json\n")
-print("built",D,"price rows:",n)
+if (R/"data").exists(): shutil.copytree(R/"data",D/"data",ignore=lambda d,n:[x for x in n if x in ("cache","_upstream")],dirs_exist_ok=True)
+n=price_exports(); nb=bench_csv()
+(D/"llms.txt").write_text("# AgentWebIndex\nMachine-readable data: /data/benchmarks/latest.json, /data/benchmarks/latest.csv (CC BY 4.0), /data/prices.json, /data/prices.csv, /data/prices/<provider>.json\nPages: /, /prices/, /methodology/, /data/, /sponsors/, /disclosures/, /newsletter/\n")
+print("built",D,"price rows:",n,"benchmark csv rows:",nb)
