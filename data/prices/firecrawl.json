@@ -2,11 +2,11 @@
  "provider": "firecrawl",
  "name": "Firecrawl",
  "url": "https://www.firecrawl.dev/pricing",
- "fetched_at": "2026-10-15T23:32:29+00:00",
+ "fetched_at": "2026-10-18T09:25:01+00:00",
  "status": "ok",
  "http_status": 200,
- "text_sha256": "21d6cb58ff7930cd27bff407d7bc8e9ec808ed328b20f2faa460903e9878c839",
- "text_lines": 723,
+ "text_sha256": "8a382638333ac5472d587c5730d424aedb1615ab261ca7c1a7b716558ad08552",
+ "text_lines": 730,
  "prices_found": [
   "$ 0 /month",
   "$ 16 /month",
@@ -25,7 +25,25 @@
   "$83/month"
  ],
  "diff": {
-  "previous_fetched_at": null,
-  "changed": null
+  "previous_fetched_at": "2026-10-17T09:24:39+00:00",
+  "changed": true,
+  "prices_added": [],
+  "prices_removed": [],
+  "text_diff": [
+   "--- ",
+   "+++ ",
+   "@@ -12 +12 @@",
+   "-192.3K",
+   "+192.6K",
+   "@@ -124,0 +125,5 @@",
+   "+Also on",
+   "+AWS Marketplace",
+   "+and",
+   "+Google Cloud Marketplace",
+   "+.",
+   "@@ -654,0 +660,2 @@",
+   "+Can I buy Firecrawl through AWS Marketplace or Google Cloud Marketplace?",
+   "+Yes. Firecrawl is sold on AWS Marketplace and Google Cloud Marketplace, so the charges go on your AWS or Google Cloud bill. On Google Cloud, a private offer also draws down your Google Cloud spend commitment. Contact sales for a private offer with custom pricing and terms."
+  ]
  }
 }
