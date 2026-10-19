@@ -1,12 +1,12 @@
 <!--title:Methodology-->
 <!--desc:How AgentWebIndex benchmarks agent web search, scrape and browser APIs and computes cost per successful call.-->
 <h1>Methodology</h1>
-<p>Same inputs for every provider, list-price settings as documented, three runs averaged, raw results and harness code published, every run timestamped. One default configuration per provider plus at most one premium configuration, named as in its docs.</p>
+<p>Same inputs for every provider, list-price settings as documented, raw results and harness code published, every run timestamped. The plan is three runs averaged per week; run 1 (2026-10-15) was a single pass on the weekly news set only, because the other sets are not frozen yet. One default configuration per provider plus at most one premium configuration, named as in its docs.</p>
 <h2>Test sets (set-v1, frozen per quarter)</h2><ul>
 <li><b>Search:</b> 50 factual, news set of 25–50 fresh queries (24–72 h old, regenerated weekly).</li>
 <li><b>Scrape (150 URLs):</b> 50 static, 50 JS-heavy, 30 PDFs/docs, 20 hard (bot-protected, public).</li>
-<li><b>Browser (20 tasks):</b> scripted Playwright tasks over CDP.</li></ul>
-<h2>Metrics</h2><ul><li>Latency p50/p95 from a US-East GitHub runner</li><li>Success rate (2xx and content check passes)</li><li>Freshness</li><li>Cost per 1k and cost per 1k successful calls, at that day's checked price</li><li>Output size (tokens)</li></ul>
+<li><b>Browser (20 tasks):</b> scripted Playwright tasks over CDP (planned). Until that set is frozen, browser providers fetch the weekly news set's article URLs and pass when the page text contains the headline.</li></ul>
+<h2>Metrics</h2><ul><li>Latency p50 (p95 once sets are large enough), measured from the machine that ran the benchmark</li><li>Success rate (2xx and content check passes)</li><li>Freshness</li><li>Cost per 1k and cost per 1k successful calls, at that day's checked price</li><li>Output size (tokens)</li></ul>
 <h2>Cadence</h2><p>Price check daily; smoke run (10 items) daily; full benchmark weekly; new test set quarterly.</p>
 <h2>Cost columns</h2><p>Two columns per provider: <b>entry tier</b> (cheapest paid tier, list price) and <b>volume tier</b> (cheapest published volume tier), each per 1k calls attempted and per 1k successful calls (∞ when none pass). Free credits never lower a cost; the free quota is shown as a note. A tier whose price isn't on the vendor's page shows "n/a". Browser-hour prices whose per-session minimum or rounding isn't published are marked "lower bound" (≥).</p>
 <h2>Freshness</h2><p>fresh_hit@10 on the weekly news set, median lag (re-probes of misses at +6, +24 and +72 h) and the censored share, published with n, the week and the set sha256.</p>

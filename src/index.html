@@ -1,7 +1,15 @@
 <!--title:Leaderboard-->
 <!--desc:Leaderboard of agent web APIs (search, scrape, browser) built only from logged benchmark runs, with cited prices.-->
 <h1>Leaderboard</h1>
+<div id="how-to-read" class="note"><h3>How to read this</h3><ul>
+<li>Each row is one provider on one frozen test set, scored only from its run log. The run date is shown on every row.</li>
+<li><b>Search</b>: a query passes when the expected article URL is in the top 10 results (or a same-outlet result published within 72 h). <b>Browser</b>: the provider loads that same article URL and passes when the page text contains the headline.</li>
+<li><span class="flag">below minimum (n=X)</span> means that week's set has fewer than 25 questions. Treat those numbers as early and directional, not a ranking.</li>
+<li><span class="flag">rate-limited (free tier)</span> counts HTTP 429 replies from a provider's free plan. They are shown apart from quality fails and left out of the success rate.</li>
+<li><b>Not run yet</b>: no collector or key for that provider yet. Costs are list prices for the named tier; free tiers never lower a cost, and "n/a" means the price was not on the vendor's page.</li>
+<li>Rankings are never paid. Sponsors only appear in labelled slots (<a href="/sponsors/">sponsors</a>, <a href="/disclosures/">disclosures</a>).</li></ul></div>
 <div class="tabs" role="tablist"><button data-tab="search" class="on">Search</button><button data-tab="scrape">Scrape</button><button data-tab="browser">Browser</button></div>
 <div id="board" data-page="leaderboard"><p class="nodata">No data yet.</p></div>
 {{exclusions}}
+<aside id="sponsor-banner" class="sponsor"><b>Sponsored</b> · This slot is available. It never affects rankings. <a href="/sponsors/">Sponsor AWI</a></aside>
 {{newsletter_slot}}

@@ -6,3 +6,4 @@ table{border-collapse:collapse;width:100%;margin:1rem 0}td,th{border-bottom:1px 
 .nodata{padding:1rem;background:#fafafa;border:1px dashed #bbb}.muted{color:#666}.err{color:#a00}footer{margin:2rem 0;color:#666;font-size:.9em}
 .flag{background:#fff3cd;border:1px solid #e0c36a;padding:0 .3rem;border-radius:3px;font-size:.85em}
 .note{background:#f3f6ff;border:1px solid #b9c6ee;padding:.5rem 1rem;margin:1rem 0}
+.sponsor{border:1px dashed #999;padding:.5rem 1rem;margin:1rem 0;background:#fcfcfc;font-size:.95em}
