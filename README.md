@@ -12,7 +12,12 @@ sync job or a submodule can replace this later).
 ```
 python3 build.py
 python3 -m http.server 8765 -d dist
+./run_tests.sh
 ```
+The leaderboard, charts and run-status tables are rendered into the HTML at build time by `render.py` from
+`data/benchmarks/latest.json` and `data/_upstream/providers.json`; `src/app.js` only adds the theme toggle, tab keyboard
+handling, the stale marker (results older than 10 days) and the optional price-history table. `./run_tests.sh` builds and then
+checks the built `dist/`. Fonts are IBM Plex Sans and Mono, self-hosted under `/assets/fonts/` (SIL OFL 1.1, `src/fonts/OFL.txt`).
 Pages: leaderboard (search / scrape / browser tabs), price history (+ prices.csv / prices.json), methodology,
 disclosures, newsletter (beehiiv embed when `site.config.json` → `beehiiv_embed_url` is set, otherwise a disabled
 "Coming soon" form). It shows "No data yet" until real data exists.
