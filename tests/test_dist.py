@@ -216,6 +216,40 @@ class Dist(unittest.TestCase):
         missing = [u for u in old if not (D / u.lstrip("/")).is_file()]
         self.assertEqual(missing, [])
 
+    def test_internal_links_resolve(self):
+        seen, missing = 0, []
+        for p in D.rglob("*"):
+            if p.suffix not in (".html", ".css", ".js", ".txt", ".xml"):
+                continue
+            s = p.read_text()
+            refs = re.findall(r'(?:href|src)="(/[^"]*)"', s) + re.findall(r'url\("(/[^"]+)"\)', s)
+            refs += re.findall(r"j\('(/[^'$`]+)'\)", s)
+            refs += [u[len("https://agentwebindex.com"):] or "/" for u in re.findall(r"https://agentwebindex\.com(/[^\s<\"]*)", s)]
+            for u in refs:
+                if u.startswith("//"):
+                    continue
+                path = u.split("#", 1)[0].split("?", 1)[0]
+                f = D / path.lstrip("/")
+                if path.endswith("/"):
+                    f = f / "index.html"
+                seen += 1
+                if not f.is_file():
+                    missing.append((str(p.relative_to(D)), u))
+        self.assertGreater(seen, 50)
+        self.assertEqual(missing, [])
+
+    def test_data_json_parses(self):
+        for p in (D / "data").rglob("*.json"):
+            json.loads(p.read_text())
+        for p in (D / "data").rglob("*.jsonl"):
+            for line in p.read_text().splitlines():
+                if line.strip():
+                    json.loads(line)
+        idx = json.loads((D / "data/prices/index.json").read_text())
+        self.assertTrue(idx["providers"])
+        for x in idx["providers"]:
+            self.assertTrue((D / f"data/prices/{x['provider']}.json").is_file(), x["provider"])
+
     def test_beehiiv_embed(self):
         cfg = json.loads((R / "site.config.json").read_text())
         fid = cfg["beehiiv_embed_url"].rstrip("/").rsplit("/", 1)[1]
