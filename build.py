@@ -48,6 +48,21 @@ def price_label(t):
     if _money(t.get("plan_fee")): return f"{_money(t['plan_fee'])}/month" + (f", {t['included_units']:,} units included" if isinstance(t.get("included_units"),int) else "")
     return None
 
+def per_1k(c, cat, e):
+    num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool)
+    cpc = (c.get("credits_per_call") or {}).get(cat)
+    if not num(cpc): cpc = (c.get("credits_per_call_verified") or {}).get(cat)
+    if num(e.get("unit_price")): return _money(e["unit_price"] * 1000), None
+    if e.get("usd_per_hour") is not None: return None, "billed per browser-hour; a request's duration is not part of the price"
+    if num(e.get("usd_per_credit")):
+        return (_money(e["usd_per_credit"] * cpc * 1000), None) if num(cpc) else (None, "credits per request not published")
+    if num(e.get("plan_fee")):
+        if num(e.get("overage_per_unit")) and num(cpc): return _money(e["overage_per_unit"] * cpc * 1000) + " (overage rate)", None
+        return None, "plan fee; units per request not published" if num(e.get("overage_per_unit")) else "plan fee; overage rate not published"
+    return None, "price not captured"
+
+def lc(s): return re.sub(r"(?i)not captured", "not captured", s or "")
+
 def curated_prices(path):
     if not path.exists(): return '<p class="nodata">No data yet.</p>'
     doc = json.loads("\n".join(l for l in path.read_text().splitlines() if not l.lstrip().startswith("#")))
@@ -58,9 +73,11 @@ def curated_prices(path):
             if not isinstance(c, dict): continue
             e = (c.get("tiers") or {}).get("entry") or {}; lab = price_label(e); src = c.get("source_url") or c.get("pricing_url") or ""
             price = html.escape(lab) if lab else '<span class="muted">not captured</span>'
-            rows.append(f'<tr><td><a href="{html.escape(src)}">{html.escape(names.get(pid, pid))}</a></td><td data-label="Category">{html.escape(cat)}</td><td data-label="Entry tier">{html.escape(e.get("name") or "")}</td>'
-                        f'<td data-label="Price">{price}</td><td class="muted mono" data-label="Checked">{html.escape(str(c.get("checked_at") or ""))}</td></tr>')
-    return ('<table id="curated-prices" class="dt"><thead><tr><th>Provider</th><th>Category</th><th>Entry tier</th><th>Price</th><th>Checked</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table>'
+            nv, why = per_1k(c, cat, e)
+            norm = html.escape(nv) if nv else f'n/a <span class="muted">({html.escape(why)})</span>'
+            rows.append(f'<tr><td><a href="{html.escape(src)}">{html.escape(names.get(pid, pid))}</a></td><td data-label="Category">{html.escape(cat)}</td><td data-label="Entry tier">{html.escape(lc(e.get("name")))}</td>'
+                        f'<td data-label="Price">{price}</td><td data-label="Normalized $/1k requests" class="num">{norm}</td><td class="muted mono" data-label="Checked">{html.escape(str(c.get("checked_at") or ""))}</td></tr>')
+    return ('<table id="curated-prices" class="dt"><thead><tr><th>Provider</th><th>Category</th><th>Entry tier</th><th>Price</th><th>Normalized $/1k requests</th><th>Checked</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table>'
             '<p class="muted">Each price is read by hand from the linked vendor pricing page on the date shown.</p>')
 
 def history_slot():

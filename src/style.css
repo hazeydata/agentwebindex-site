@@ -190,7 +190,7 @@ main { display: block; padding-block: var(--space-6) var(--space-8); }
 .status-strip .wrap { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-5); justify-content: space-between; padding-block: var(--space-2); }
 .status-strip strong { color: var(--ink); font-weight: var(--fw-semibold); }
 .status-strip a { color: inherit; }
-.fresh-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--cat-browser); margin-right: 6px; vertical-align: 1px; }
+.fresh-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-2); margin-right: 6px; vertical-align: 1px; }
 .fresh-dot--stale { background: transparent; border: 1.5px solid var(--ink-2); }
 .banner { border: 1px solid var(--rule); background: var(--surface-2); border-radius: var(--radius); padding: var(--space-3) var(--space-4); font-size: var(--fs-md); display: flex; gap: var(--space-3); align-items: flex-start; }
 .banner svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
@@ -478,7 +478,13 @@ li.flag { display: list-item; border: 0; padding: 0; min-height: 0; white-space:
 .pt-val { fill: var(--ink); font-family: var(--font-mono); font-size: 12px; }
 .pt-nt { fill: none; stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 3 3; }
 .pt-nt-label { fill: var(--ink-2); font-family: var(--font-mono); font-size: 11px; }
-.pt-bar { stroke: var(--cat); stroke-width: 2; opacity: .45; }
+.pt-ci-line { stroke: var(--cat); stroke-width: 2; stroke-linecap: round; opacity: .4; }
+.fig-title { font-weight: var(--fw-semibold); }
+.fig-sub { display: block; }
+.row-notes summary { cursor: pointer; font-size: var(--fs-sm); color: var(--ink-2); min-height: 1.5rem; }
+.row-notes .note-text { margin-top: var(--space-2); }
+.lb .sub.ci { color: var(--ink-2); }
+.empty-cat { margin-top: var(--space-6); font-size: var(--fs-lg); }
 .run-status { margin-top: var(--space-7); }
 .run-status > * + * { margin-top: var(--space-4); }
 #beehiiv-embed, #signup { margin-top: var(--space-5); }

@@ -70,29 +70,41 @@ class Dist(unittest.TestCase):
         rows = rows_of(h, "search")
         tested = [r for r in rows if "is-untested" not in r]
         self.assertEqual([re.search(r'data-id="([^"]+)"', r).group(1) for r in tested], ["exa", "tavily", "apify"])
-        for pid, pc, ans, p50, rd in [("exa", "75.0%", "12/16 answered", "2980 ms", "2026-10-15"),
-                                      ("tavily", "50.0%", "8/16 answered", "1400 ms", "2026-10-15"),
-                                      ("apify", "12.5%", "2/16 answered (12 of the fails timed out)", "60452 ms", "2026-10-19")]:
+        for pid, pc, ans, p50, rd in [("exa", "12/16, 75%", "95% CI 50.5–89.8%", "2980 ms", "2026-10-15"),
+                                      ("tavily", "8/16, 50%", "95% CI 28.0–72.0%", "1400 ms", "2026-10-15"),
+                                      ("apify", "2/16, 13%", "95% CI 3.5–36.0%", "60452 ms", "2026-10-19")]:
             r = text(next(x for x in tested if f'data-id="{pid}"' in x))
-            for want in (pc, ans, p50, "n=16", "ToS-skipped 0", f"Run {rd}", "news_2026-42", "below minimum (n=16)"):
+            for want in (pc, ans, p50, "n=16", "ToS-skipped 0", f"Run {rd}", "news_2026-42"):
                 self.assertIn(want, r, (pid, want))
+            self.assertNotIn("below minimum", r)
+        cap = text(section(h, 'id="table-search"', "</caption>"))
+        self.assertEqual(cap.count("below minimum (n=16)"), 1)
+        self.assertIn("(12 of the fails timed out)", text(tested[2]))
+        tav = text(tested[1])
+        self.assertIn("$7.50 per 1k requests", tav)
+        self.assertIn("$15.00 per 1k successful requests", tav)
+        self.assertIn("$8.00 per 1k requests", tav)
+        for r in tested:
+            self.assertNotIn("Free quota", text(r.split("<details", 1)[0]))
+            self.assertIn("<details", r)
         self.assertIn("$7.00", text(tested[0]))
         self.assertIn("$9.33", text(tested[0]))
         self.assertIn("$7.50", text(tested[1]))
 
     def test_real_browser_rows(self):
         r = text(rows_of(page("/"), "browser")[0])
-        for want in ("Browserless", "68.8%", "11/16 answered", "2681 ms", "$1.25", "$1.82", "$0.70", "$1.02", "newsfetch_2026-42", "below minimum (n=16)"):
+        for want in ("Browserless", "11/16, 69%", "95% CI 44.4–85.8%", "2681 ms", "$1.25", "$1.82", "$0.70", "$1.02", "newsfetch_2026-42"):
             self.assertIn(want, r)
 
     def test_values_match_json(self):
         h = page("/")
         for cat, rows in BENCH["tables"].items():
+            if not rows:
+                continue
             got = {re.search(r'data-id="([^"]+)"', r).group(1): text(r) for r in rows_of(h, cat) if "is-untested" not in r}
             self.assertEqual(sorted(got), sorted(r["provider"] for r in rows if not r.get("mock")))
             for r in rows:
-                self.assertIn(f'{r["success_rate"]["v"] * 100:.1f}%', got[r["provider"]])
-                self.assertIn(r["answered_display"], got[r["provider"]])
+                self.assertIn(f'{r["passed"]["v"]}/{r["attempted"]["v"]}, {int(r["success_rate"]["v"] * 100 + 0.5)}%', got[r["provider"]])
 
     def test_untested_shows_not_tested_never_zero(self):
         h = page("/")
@@ -100,22 +112,55 @@ class Dist(unittest.TestCase):
         excluded = {x["provider"] for x in BENCH["exclusions"]}
         for cat in ("search", "scrape", "browser"):
             have = {r["provider"] for r in BENCH["tables"][cat]}
-            want = sorted(p["id"] for p in provs if cat in p["categories"] and p["id"] not in have | excluded)
+            want = [p for p in provs if cat in p["categories"] and p["id"] not in have | excluded]
+            panel = section(h, f'id="panel-{cat}"', 'class="lb-foot"')
+            if not have:
+                self.assertNotIn("<figure", panel)
+                self.assertNotIn("<table", panel)
+                self.assertIn(f'{cat.title()}: no providers tested yet this week ({len(want)} queued).', panel)
+                self.assertEqual(text(section(panel, f'id="queued-{cat}"', "</p>")).split(">", 1)[1], ", ".join(p["name"] for p in want))
+                continue
             un = [r for r in rows_of(h, cat) if "is-untested" in r]
-            self.assertEqual(sorted(re.search(r'data-id="([^"]+)"', r).group(1) for r in un), want, cat)
+            self.assertEqual(sorted(re.search(r'data-id="([^"]+)"', r).group(1) for r in un), sorted(p["id"] for p in want), cat)
             for r in un:
                 self.assertIn("Not tested", r)
                 self.assertNotRegex(text(r), r"\d%|\$\d")
             chart = section(h, f'id="chart-{cat}"', "</figure>")
-            self.assertNotIn(">0.0%<", chart)
-            plot = section(chart, "chart-card__plot", "chart-card__key")
-            self.assertEqual(plot.count(">not tested<"), 2 * len(want))
-        self.assertIn("No data yet for scrape.", h)
+            self.assertNotIn("(0%)", chart)
+            self.assertEqual(chart.count(">not tested<"), 2 * len(want))
+
+    def test_figures_no_legend_wilson_caption_title(self):
+        h = page("/")
+        figs = re.findall(r"<figure.*?</figure>", h, re.S)
+        self.assertEqual(len(figs), sum(1 for v in BENCH["tables"].values() if v))
+        for f in figs:
+            self.assertNotIn("chart-card__key", f)
+            self.assertNotIn("Not tested:", "".join(re.findall(r'<p class="chart-card__foot">.*?</p>', f)))
+            self.assertNotIn("pt-bar", f)
+            self.assertIn("Lines show 95% Wilson intervals; overlapping lines mean the order isn't settled.", html.unescape(f))
+            self.assertIn("queries each" if 'data-cat="search"' in f else "each", f)
+        s = html.unescape(section(h, 'id="chart-search"', "</figcaption>"))
+        self.assertIn("Exa answered 12 of 16 news queries, Tavily 8, Apify 2; at n=16 only the Exa–Apify gap is clear", s)
+        self.assertIn("Runs 2026-10-15 (Exa, Tavily), 2026-10-19 (Apify)", s)
+        self.assertIn("n = 16 queries each", s)
+        self.assertIn("Run 2026-10-19", html.unescape(section(h, 'id="chart-browser"', "</figcaption>")))
+        for lab in ("12/16 (75%)", "8/16 (50%)", "2/16 (13%)", "11/16 (69%)"):
+            self.assertIn(f">{lab}<", h)
+
+    def test_narrow_labels_fit(self):
+        h = page("/")
+        for svg in re.findall(r'<svg class="plot--narrow".*?</svg>', h, re.S):
+            W = float(re.search(r'viewBox="0 0 ([\d.]+)', svg).group(1))
+            for x, a, w in re.findall(r'class="pt-val" x="([\d.]+)" y="[\d.]+" text-anchor="(\w+)" data-w="(\d+)"', svg):
+                x, w = float(x), float(w)
+                lo = x if a == "start" else x - w if a == "end" else x - w / 2
+                self.assertGreaterEqual(lo, 92 - 10)
+                self.assertLessEqual(lo + w, W)
 
     def test_excluded_provider_not_in_tables(self):
         h = page("/")
         for cat in ("search", "scrape", "browser"):
-            self.assertNotIn('data-id="brave"', section(h, f'id="table-{cat}"', "</table>"))
+            self.assertNotIn('data-id="brave"', section(h, f'id="panel-{cat}"', 'class="lb-foot"'))
         self.assertIn('id="exclusions"', h)
         self.assertIn("Brave Search API", section(h, 'id="exclusions"', "</div>"))
 
@@ -172,7 +217,15 @@ class Dist(unittest.TestCase):
                 self.assertIn(text(chunk), text(page(f"/{name}/")), (name, chunk[:60]))
 
     def test_prices_page(self):
-        t = section(page("/prices/"), 'id="curated-prices"', "</table>")
+        p = page("/prices/")
+        t = section(p, 'id="curated-prices"', "</table>")
+        self.assertIn("Normalized $/1k requests", t)
+        rows = re.findall(r"<tr><td>.*?</tr>", t)
+        for r in rows:
+            cell = text(re.search(r'data-label="Normalized \$/1k requests"[^>]*>(.*?)</td>', r).group(1))
+            self.assertRegex(cell, r"^(\$[\d.]+( \(overage rate\))?|n/a \(.+\))$")
+        self.assertIn("$8", text([r for r in rows if "Tavily" in r][0]))
+        self.assertNotRegex(p, r"NOT CAPTURED|Not captured|Not Captured")
         self.assertGreater(t.count("<tr>"), 10)
         self.assertIn("Checked", t)
 
@@ -214,6 +267,29 @@ def themes():
     light = tokens(css[css.index(":root {"):css.index("}", css.index(":root {"))])
     dark = dict(light, **tokens(css[css.index(':root[data-theme="dark"]'):]))
     return {"light": light, "dark": dark}
+
+
+class Wilson(unittest.TestCase):
+    def test_reference_values(self):
+        import render
+        for k, n, lo, hi in ((12, 16, 50.5, 89.8), (8, 16, 28.0, 72.0), (2, 16, 3.5, 36.0), (11, 16, 44.4, 85.8)):
+            w = render.wilson(k, n)
+            self.assertEqual((round(w[0] * 100, 1), round(w[1] * 100, 1)), (lo, hi))
+
+    def test_finding_phrases(self):
+        import render
+        row = lambda name, k, n: {"_name": name, "set": "news_x", "passed": {"v": k}, "attempted": {"v": n}, "success_rate": {"v": k / n}}
+        self.assertEqual(render.finding("search", [row("A", 40, 40), row("B", 0, 40)]), "A answered 40 of 40 news queries, B 0; at n=40 every gap is clear")
+        self.assertEqual(render.finding("search", [row("A", 5, 10), row("B", 4, 10)]), "A answered 5 of 10 news queries, B 4; at n=10 no gap is clear")
+        self.assertEqual(render.finding("search", [row("A", 9, 10), row("B", 1, 20)]), "A answered 9 of 10 news queries, B 1 of 20; at n=10–20 every gap is clear")
+
+
+class Colours(unittest.TestCase):
+    def test_category_colours_only_via_data_cat(self):
+        css = (D / "style.css").read_text()
+        uses = [l.strip() for l in css.splitlines() if "var(--cat-" in l]
+        for l in uses:
+            self.assertRegex(l, r'^(--cat: var\(--cat-search\);|\[data-cat="(search|scrape|browser)"\]\s*\{ --cat: var\(--cat-\2\); \}|\.diagram \.d-search)', l)
 
 
 class Contrast(unittest.TestCase):
