@@ -182,8 +182,34 @@ class Dist(unittest.TestCase):
 
     def test_freshness_table(self):
         t = text(section(page("/"), 'id="freshness"', "</table>"))
-        for want in ("exa", "93.8%", "tavily", "50.0%", "3e516ca796e2"):
+        for want in ("Exa", "15/16 (94%)", "1/16 (6%)", "Tavily", "8/16 (50%)", "3e516ca796e2", "Fresh in top 10"):
             self.assertIn(want, t)
+        self.assertNotIn("fresh_hit@10", t)
+        self.assertNotIn("exa", t.replace("Exa", ""))
+
+    def test_run_status_plain_words(self):
+        import render
+        rs = section(page("/"), 'id="run-status"', "</section>")
+        pub = sorted({r["set"] for v in BENCH["tables"].values() for r in v})
+        p = text(section(rs, 'id="sets-published"', "</p>"))
+        for s in pub:
+            self.assertIn(s, p)
+        skips = section(rs, 'id="skips"', "</table>")
+        for k in BENCH["skips"]:
+            self.assertIn(f'title="{k["status"]}">{html.escape(render.status_words(k["status"]))}<', skips)
+            self.assertNotIn(f'>{k["status"]}<', skips)
+        self.assertEqual(render.status_words("new_code_here"), "New code here")
+
+    def test_freshness_counts(self):
+        import render
+        self.assertEqual(render.count_pct({"v": 0.9375}, 16), "15/16 (94%)")
+        self.assertEqual(render.count_pct({"v": 0.3}, 16), "30%")
+        self.assertEqual(render.count_pct(None, 16), "n/a")
+
+    def test_narrow_labels_one_placement(self):
+        h = page("/")
+        for svg in re.findall(r'<svg class="plot--narrow".*?</svg>', h, re.S):
+            self.assertEqual(set(re.findall(r'class="pt-val"[^>]*text-anchor="(\w+)"', svg)), {"middle"})
 
     def test_urls_preserved(self):
         old = (R / "tests/urls_baseline.txt").read_text().split()
@@ -223,7 +249,10 @@ class Dist(unittest.TestCase):
         rows = re.findall(r"<tr><td>.*?</tr>", t)
         for r in rows:
             cell = text(re.search(r'data-label="Normalized \$/1k requests"[^>]*>(.*?)</td>', r).group(1))
-            self.assertRegex(cell, r"^(\$[\d.]+( \(overage rate\))?|n/a \(.+\))$")
+            self.assertRegex(cell, r"^(\$[\d.]+( \(overage rate[^)]*\))?|n/a \(.+\))$")
+        pricing = json.loads("\n".join(l for l in (R / "data/_upstream/pricing.yaml").read_text().splitlines() if not l.lstrip().startswith("#")))
+        inc = pricing["providers"]["firecrawl"]["search"]["tiers"]["entry"]["included_units"]
+        self.assertIn(f"overage rate after the plan's {inc:,} included units", text([r for r in rows if "Firecrawl" in r][0]))
         self.assertIn("$8", text([r for r in rows if "Tavily" in r][0]))
         self.assertNotRegex(p, r"NOT CAPTURED|Not captured|Not Captured")
         self.assertGreater(t.count("<tr>"), 10)

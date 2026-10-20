@@ -57,7 +57,9 @@ def per_1k(c, cat, e):
     if num(e.get("usd_per_credit")):
         return (_money(e["usd_per_credit"] * cpc * 1000), None) if num(cpc) else (None, "credits per request not published")
     if num(e.get("plan_fee")):
-        if num(e.get("overage_per_unit")) and num(cpc): return _money(e["overage_per_unit"] * cpc * 1000) + " (overage rate)", None
+        if num(e.get("overage_per_unit")) and num(cpc):
+            inc = f" after the plan's {e['included_units']:,} included units" if num(e.get("included_units")) else ""
+            return _money(e["overage_per_unit"] * cpc * 1000) + f" (overage rate{inc})", None
         return None, "plan fee; units per request not published" if num(e.get("overage_per_unit")) else "plan fee; overage rate not published"
     return None, "price not captured"
 

@@ -160,7 +160,7 @@ def badge(name, pid):
 def plot(cat, label, rows, nt, W, narrow):
     L = 92 if narrow else 170
     R = 12 if narrow else 40
-    rh = 34
+    rh = 40 if narrow else 34
     top = 26
     H = top + rh * (len(rows) + len(nt)) + 34
     X = lambda f: L + f * (W - L - R)
@@ -183,7 +183,9 @@ def plot(cat, label, rows, nt, W, narrow):
         part = " pt--partial" if r.get("partial") else ""
         lab = frac(r)
         lw = len(lab) * cw
-        if X(w[1]) + 8 + lw <= W - 2:
+        if narrow:
+            lx, anchor = min(max(X(f), L + lw / 2), W - 2 - lw / 2), "middle"
+        elif X(w[1]) + 8 + lw <= W - 2:
             lx, anchor = X(w[1]) + 8, "start"
         elif X(w[0]) - 8 - lw >= L:
             lx, anchor = X(w[0]) - 8, "end"
@@ -254,19 +256,41 @@ def table(cat, label, unit, rows, nt, n):
     return f'<table class="lb" data-cat="{cat}" id="table-{cat}">{cap}{th}<tbody>{"".join(body)}</tbody></table>'
 
 
-def freshness(d):
+STATUS_WORDS = {
+    "excluded_tos_benchmarking": "Excluded: terms forbid benchmarking",
+    "not_implemented": "Not implemented yet",
+    "skipped_invalid_set": "Skipped: test set missing",
+    "skipped_no_key": "Skipped: no API key",
+    "skipped_not_month1": "Skipped: not on this month's free-tier list",
+}
+
+
+def status_words(code):
+    return STATUS_WORDS.get(code) or str(code or "").replace("_", " ").capitalize()
+
+
+def count_pct(share, n):
+    s = v(share)
+    if s is None:
+        return "n/a"
+    p = int(s * 100 + 0.5)
+    x = s * n if isinstance(n, int) else None
+    return f"{round(x)}/{n} ({p}%)" if x is not None and abs(x - round(x)) < 1e-9 else f"{p}%"
+
+
+def freshness(d, names=None):
     fr = d.get("freshness") or []
     if not fr:
         return ""
     rows = "".join(
-        f'<tr><td>{e(f["provider"])}</td><td data-label="Week">{e(f.get("week") or "")} {flags(f)}</td><td class="r num" data-label="n">{f.get("n")}</td>'
-        f'<td class="r num" data-label="fresh_hit@10">{pct(f.get("fresh_hit_at_10"))}</td>'
+        f'<tr><td>{e((names or {}).get(f["provider"], f["provider"]))}</td><td data-label="Week">{e(f.get("week") or "")} {flags(f)}</td><td class="r num" data-label="n">{f.get("n")}</td>'
+        f'<td class="r num" data-label="Fresh in top 10">{count_pct(f.get("fresh_hit_at_10"), f.get("n"))}</td>'
         f'<td class="r num" data-label="median lag h">{"n/a" if v(f.get("median_lag_h")) is None else f"{v(f.get("median_lag_h")):.1f}"}</td>'
-        f'<td class="r num" data-label="censored">{pct(f.get("censored_share"))}</td><td class="mono" data-label="set sha">{e((f.get("set_sha") or "")[:12])}</td></tr>'
+        f'<td class="r num" data-label="censored">{count_pct(f.get("censored_share"), f.get("n"))}</td><td class="mono" data-label="set sha">{e((f.get("set_sha") or "")[:12])}</td></tr>'
         for f in fr)
-    notes = "".join(f'<li class="muted">{e(n["provider"])}: {e(n["note"])}</li>' for n in d.get("freshness_notes") or [])
+    notes = "".join(f'<li class="muted">{e((names or {}).get(n["provider"], n["provider"]))}: {e(n["note"])}</li>' for n in d.get("freshness_notes") or [])
     return ('<h3 class="section-title">Freshness (weekly news set)</h3><table class="dt" id="freshness"><thead><tr><th>Provider</th><th>Week</th><th class="r">n</th>'
-            '<th class="r">fresh_hit@10</th><th class="r">median lag h</th><th class="r">censored</th><th>set sha</th></tr></thead><tbody>'
+            '<th class="r">Fresh in top 10</th><th class="r">median lag h</th><th class="r">censored</th><th>set sha</th></tr></thead><tbody>'
             + rows + "</tbody></table>" + (f'<ul class="mt-4">{notes}</ul>' if notes else ""))
 
 
@@ -275,10 +299,13 @@ def run_status(d):
     sk = d.get("skips") or []
     sv = d.get("sets_valid") or []
     nr = d.get("not_run_yet") or []
+    pub = sorted({r["set"] for rows in (d.get("tables") or {}).values() for r in rows if not r.get("mock")})
     out = [f'<section class="run-status" id="run-status" aria-labelledby="run-status-h"><h2 id="run-status-h">Run status {e(d.get("run_date") or "")}</h2>',
            f'<p class="muted">Generated <span class="mono">{e(d.get("generated_at") or "")}</span> from run logs. '
            f'<span data-stale-note data-generated="{e(d.get("generated_at") or "")}"></span></p>',
-           f'<p id="sets-valid"><b>Valid sets this run:</b> {", ".join(f"<code>{e(s)}</code>" for s in sv) if sv else "none"}</p>']
+           f'<p id="sets-valid"><b>Valid sets this run:</b> {", ".join(f"<code>{e(s)}</code>" for s in sv) if sv else "none"}</p>',
+           f'<p id="sets-published"><b>Published tables use:</b> {", ".join(f"<code>{e(s)}</code>" for s in pub) if pub else "no set"}'
+           + (f'. {"These are" if len(pub) > 1 else "This is"} not among this run\'s valid sets, so the tables show the latest set with results.' if pub and not set(pub) & set(sv) else "") + '</p>']
     if fl:
         out.append('<ul id="run-flags">' + "".join(f'<li class="flag">{e(f["set"])}: {e(f["flag"])}</li>' for f in fl) + "</ul>")
     if nr:
@@ -286,7 +313,7 @@ def run_status(d):
     if sk:
         out.append('<table class="dt" id="skips"><caption>Skipped</caption><thead><tr><th>Skipped</th><th>Status</th><th>Reason</th></tr></thead><tbody>'
                    + "".join(f'<tr><td>{e(k.get("set") or " / ".join(x for x in (k.get("provider"), k.get("category")) if x) or k.get("scope"))}</td>'
-                             f'<td data-label="Status" class="mono">{e(k.get("status"))}</td><td data-label="Reason" class="muted wide">{e(k.get("reason"))}</td></tr>' for k in sk)
+                             f'<td data-label="Status" title="{e(k.get("status"))}">{e(status_words(k.get("status")))}</td><td data-label="Reason" class="muted wide">{e(status_words(k["reason"]) if k.get("reason") in STATUS_WORDS else k.get("reason"))}</td></tr>' for k in sk)
                    + "</tbody></table>")
     out.append("</section>")
     return "".join(out)
@@ -328,7 +355,7 @@ def leaderboard(bench_path, providers_path):
                     f'<p class="muted" id="queued-{cat}">{e(", ".join(x for _, x, _ in nt))}</p>')
         panel = (f'<div class="tabpanel" role="tabpanel" id="panel-{cat}" aria-labelledby="tab-{cat}" data-cat="{cat}" tabindex="0">'
                  f'<h2 class="visually-hidden">{label}</h2>{body}'
-                 + (freshness(d) if cat == "search" and d else "")
+                 + (freshness(d, nm) if cat == "search" and d else "")
                  + '<p class="lb-foot"><a href="/methodology/">Method</a> · <a href="/data/benchmarks/latest.csv">CSV</a> · <a href="/data/benchmarks/latest.json">JSON</a> · <a href="/disclosures/">Disclosures</a></p></div>')
         panels.append(panel)
     head = (f'<p class="muted mt-4">Run date{"s" if len((d or {}).get("run_dates") or []) > 1 else ""} {e(", ".join((d or {}).get("run_dates") or [(d or {}).get("run_date") or ""]))}. '
