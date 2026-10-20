@@ -4,6 +4,7 @@ Site repo build: reads ONLY the vendored data/ copy (refresh with ./sync_data.sh
 src/*.html wrapped in _layout.html -> dist/<page>/index.html; data/ (minus data/cache) -> dist/data;
 generates dist/data/prices.csv + prices.json from data/prices/history/*.jsonl; reads site.config.json."""
 import csv, html, json, re, shutil
+import render
 from pathlib import Path
 R=Path(__file__).resolve().parent; S=R/"src"; D=R/"dist"
 cfg=json.loads((R/"site.config.json").read_text()) if (R/"site.config.json").exists() else {}
@@ -57,9 +58,9 @@ def curated_prices(path):
             if not isinstance(c, dict): continue
             e = (c.get("tiers") or {}).get("entry") or {}; lab = price_label(e); src = c.get("source_url") or c.get("pricing_url") or ""
             price = html.escape(lab) if lab else '<span class="muted">not captured</span>'
-            rows.append(f'<tr><td><a href="{html.escape(src)}">{html.escape(names.get(pid, pid))}</a></td><td>{html.escape(cat)}</td><td>{html.escape(e.get("name") or "")}</td>'
-                        f'<td>{price}</td><td class="muted">{html.escape(str(c.get("checked_at") or ""))}</td></tr>')
-    return ('<table id="curated-prices"><tr><th>Provider</th><th>Category</th><th>Entry tier</th><th>Price</th><th>Checked</th></tr>' + "".join(rows) + '</table>'
+            rows.append(f'<tr><td><a href="{html.escape(src)}">{html.escape(names.get(pid, pid))}</a></td><td data-label="Category">{html.escape(cat)}</td><td data-label="Entry tier">{html.escape(e.get("name") or "")}</td>'
+                        f'<td data-label="Price">{price}</td><td class="muted mono" data-label="Checked">{html.escape(str(c.get("checked_at") or ""))}</td></tr>')
+    return ('<table id="curated-prices" class="dt"><thead><tr><th>Provider</th><th>Category</th><th>Entry tier</th><th>Price</th><th>Checked</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table>'
             '<p class="muted">Each price is read by hand from the linked vendor pricing page on the date shown.</p>')
 
 def history_slot():
@@ -111,19 +112,26 @@ def bench_csv():
 
 shutil.rmtree(D,ignore_errors=True); D.mkdir()
 layout=(S/"_layout.html").read_text(); pages=[]
+NAV=[("/","Leaderboard"),("/prices/","Prices"),("/methodology/","Methodology"),("/data/","Data"),("/disclosures/","Disclosures"),("/newsletter/","Newsletter"),("/sponsors/","Sponsors")]
+BENCH=R/"data/benchmarks/latest.json"; status=render.status_strip(BENCH)
 for f in S.glob("*.html"):
     if f.name.startswith("_"): continue
     body=(f.read_text().replace("{{newsletter_slot}}",newsletter_slot()).replace("{{exclusions}}",exclusion_note())
-          .replace("{{curated_prices}}",curated_prices(PRICING)).replace("{{price_history}}",history_slot()))
+          .replace("{{curated_prices}}",curated_prices(PRICING)).replace("{{price_history}}",history_slot())
+          .replace("{{leaderboard}}",render.leaderboard(BENCH,PROVIDERS) if "{{leaderboard}}" in f.read_text() else ""))
     m=re.match(r"<!--title:(.*?)-->",body); title=m.group(1) if m else f.stem
     dm=re.search(r"<!--desc:(.*?)-->",body); desc=dm.group(1) if dm else "AgentWebIndex: cited prices and benchmarks for agent web APIs."; body=re.sub(r"<!--desc:.*?-->\n?","",body)
+    body=re.sub(r"<!--title:.*?-->\n?","",body)
     path="/" if f.stem=="index" else f"/{f.stem}/"; pages.append(path)
+    if f.stem!="index": body=f'<div class="prose">{body}</div>'
+    nav="".join(f'<li><a href="{u}"{' aria-current="page"' if u==path else ""}>{n}</a></li>' for u,n in NAV)
     out=D/"index.html" if f.stem=="index" else D/f.stem/"index.html"; out.parent.mkdir(exist_ok=True)
-    out.write_text(layout.replace("{{title}}",title).replace("{{head}}",page_head(title,desc,path)).replace("{{body}}",body))
+    out.write_text(layout.replace("{{title}}",title).replace("{{head}}",page_head(title,desc,path)).replace("{{status}}",status).replace("{{nav}}",nav).replace("{{body}}",body))
 pages.sort(key=lambda p:(p!="/",p))
 (D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")
 (D/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+"".join(f"<url><loc>{SITE_URL}{p}</loc></url>\n" for p in pages)+"</urlset>\n")
 for a in ("style.css","app.js","favicon.svg"): shutil.copy(S/a,D/a)
+shutil.copytree(S/"fonts",D/"assets"/"fonts")
 if (R/"data").exists(): shutil.copytree(R/"data",D/"data",ignore=lambda d,n:[x for x in n if x in ("cache","_upstream")],dirs_exist_ok=True)
 n=price_exports(); nb=bench_csv()
 (D/"llms.txt").write_text("# AgentWebIndex\nMachine-readable data: /data/benchmarks/latest.json, /data/benchmarks/latest.csv (CC BY 4.0), /data/prices.json, /data/prices.csv, /data/prices/<provider>.json\nPages: /, /prices/, /methodology/, /data/, /sponsors/, /disclosures/, /newsletter/\n")

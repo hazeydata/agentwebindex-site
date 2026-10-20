@@ -1,27 +1,24 @@
 const NODATA='<p class="nodata">No data yet.</p>';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function j(u){try{const r=await fetch(u,{cache:'no-store'});return r.ok?await r.json():null}catch{return null}}
-async function board(){
-  const el=document.getElementById('board');if(!el)return;
-  const d=await j('/data/benchmarks/latest.json');
-  const c=x=>x&&x.v!=null?x:null;
-  const pct=x=>c(x)?(x.v*100).toFixed(1)+'%':'n/a';
-  const money=x=>x&&x.v==null&&x.na_reason?`<span class="muted">${esc(x.na_reason)}</span>`:x&&x.display?esc(x.display)+(x.lower_bound?` <span class="flag" title="${esc(x.lower_bound_reason)}">lower bound</span>`:'')+(x.tier?` <span class="muted">(${esc(x.tier)})</span>`:''):'n/a';
-  const status=()=>{if(!d)return'';const sk=d.skips||[],fl=d.flags||[];if(!sk.length&&!fl.length)return'';
-    return `<h3>Run status ${esc(d.run_date||'')}</h3>`+(fl.length?'<ul>'+fl.map(f=>`<li class="flag">${esc(f.set)}: ${esc(f.flag)}</li>`).join('')+'</ul>':'')+
-      (sk.length?'<table><tr><th>Skipped</th><th>Status</th><th>Reason</th></tr>'+sk.map(k=>`<tr><td>${esc(k.set||[k.provider,k.category].filter(Boolean).join(' / ')||k.scope)}</td><td>${esc(k.status)}</td><td class="muted">${esc(k.reason)}</td></tr>`).join('')+'</table>':'')};
-  const notrun=()=>d&&d.not_run_yet&&d.not_run_yet.length?'<h3>Not run yet</h3><ul>'+d.not_run_yet.map(n=>`<li>${esc(n.provider)} (${esc(n.categories.join(', '))}): not run yet</li>`).join('')+'</ul>':'';
-  const fb=r=>(r.flags||[]).map(f=>` <span class="flag">${esc(f)}</span>`).join('');
-  const draw=cat=>{
-    const rows=(d&&d.has_results&&d.tables?d.tables[cat]:[]).filter(r=>!r.mock&&c(r.attempted));
-    if(!rows.length){el.innerHTML=NODATA.replace('yet.',`yet for ${cat}.`)+(d?`<p class="muted">Last run ${esc(d.generated_at)}: no provider produced results.</p>`+status():'');return}
-    rows.sort((a,b)=>b.success_rate.v-a.success_rate.v);
-    el.innerHTML=`<p class="muted">Run date${(d.run_dates||[]).length>1?'s':''} ${esc((d.run_dates||[d.run_date]).join(', '))}. Generated ${esc(d.generated_at)} from run logs. Free tier is a note, never a cost.</p><table><tr><th>Provider</th><th>Run date</th><th>Set</th><th>Success</th><th>n</th><th>ToS-skipped</th><th>p50 ms</th><th>Entry tier $/1k</th><th>Entry $/1k successful</th><th>Volume tier $/1k</th><th>Volume $/1k successful</th><th>Free quota</th></tr>`+
-      rows.map(r=>`<tr><td>${esc(r.provider)}</td><td>${esc(r.run_date||'')}</td><td>${esc(r.set)}${fb(r)}</td><td>${pct(r.success_rate)} <span class="muted">${esc(r.answered_display||'')}</span>${c(r.rate_limited)?` <span class="flag" title="${esc(r.rate_limited.note)}">${r.rate_limited.v} ${esc(r.rate_limited.label)}</span><div class="muted">${esc(r.rate_limited.note)}</div>`:''}</td><td>${r.attempted.v}</td><td>${r.skipped_tos.count}</td><td>${c(r.p50_latency_ms)?r.p50_latency_ms.v.toFixed(0):'n/a'}</td><td>${money(r.entry_tier_cost_per_1k)}</td><td>${money(r.entry_tier_cost_per_successful_1k)}</td><td>${money(r.volume_tier_cost_per_1k)}</td><td>${money(r.volume_tier_cost_per_successful_1k)}</td><td class="muted">${esc(r.free_quota_note)}${r.cost_units_note?`<div>${esc(r.cost_units_note)}</div>`:''}</td></tr>`).join('')+'</table>'+
-      (cat==='search'&&d.freshness&&d.freshness.length?'<h3>Freshness (weekly news set)</h3><table><tr><th>Provider</th><th>Week</th><th>n</th><th>fresh_hit@10</th><th>median lag h</th><th>censored</th><th>set sha</th></tr>'+d.freshness.map(f=>`<tr><td>${esc(f.provider)}</td><td>${esc(f.week)}${fb(f)}</td><td>${f.n}</td><td>${pct(f.fresh_hit_at_10)}</td><td>${c(f.median_lag_h)?f.median_lag_h.v.toFixed(1):'n/a'}</td><td>${pct(f.censored_share)}</td><td class="muted">${esc((f.set_sha||'').slice(0,12))}</td></tr>`).join('')+'</table>'+((d.freshness_notes||[]).length?'<ul>'+d.freshness_notes.map(n=>`<li class="muted">${esc(n.provider)}: ${esc(n.note)}</li>`).join('')+'</ul>':''):'')+notrun()+status()};
-  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');draw(b.dataset.tab)});
-  draw('search');
-}
+const STALE_AFTER_DAYS=10;
+function theme(){const b=document.querySelector('[data-theme-toggle]');if(!b)return;const order=['auto','light','dark'],lab={auto:'Theme: match system',light:'Theme: light',dark:'Theme: dark'};
+  const cur=()=>document.documentElement.getAttribute('data-theme')||'auto';
+  const paint=m=>{b.dataset.mode=m;b.setAttribute('aria-label',lab[m]+' (change)');b.title=lab[m]};paint(cur());
+  b.addEventListener('click',()=>{const n=order[(order.indexOf(cur())+1)%3];if(n==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',n);
+    try{n==='auto'?localStorage.removeItem('awi-theme'):localStorage.setItem('awi-theme',n)}catch{}paint(n)})}
+function tabs(){const root=document.querySelector('[data-tabs]');if(!root)return;const ts=[...root.querySelectorAll('[role="tab"]')];
+  const sel=(t,focus)=>{ts.forEach(x=>{const on=x===t;x.setAttribute('aria-selected',on?'true':'false');x.tabIndex=on?0:-1;const p=document.getElementById(x.getAttribute('aria-controls'));if(p)p.hidden=!on});
+    if(focus)t.focus();if(history.replaceState)history.replaceState(null,'','#'+t.dataset.tab)};
+  ts.forEach((t,i)=>{t.addEventListener('click',()=>sel(t));t.addEventListener('keydown',ev=>{let j=null;
+    if(ev.key==='ArrowRight')j=(i+1)%ts.length;else if(ev.key==='ArrowLeft')j=(i-1+ts.length)%ts.length;else if(ev.key==='Home')j=0;else if(ev.key==='End')j=ts.length-1;
+    if(j!=null){ev.preventDefault();sel(ts[j],true)}})});
+  const h=location.hash.slice(1),first=ts.find(t=>t.dataset.tab===h);
+  ts.forEach(t=>{const p=document.getElementById(t.getAttribute('aria-controls'));if(p)p.hidden=t!==(first||ts[0])});
+  if(first)sel(first)}
+function stale(now){const out=[];document.querySelectorAll('[data-stale-note]').forEach(el=>{const g=Date.parse(el.dataset.generated);if(isNaN(g))return;
+  const days=Math.floor(((now||Date.now())-g)/864e5);if(days>STALE_AFTER_DAYS){el.textContent=` · stale: results are ${days} days old`;out.push(days);
+    document.querySelectorAll('[data-fresh-dot]').forEach(d=>d.classList.add('fresh-dot--stale'))}});return out}
 async function prices(){
   const el=document.getElementById('prices');if(!el)return;
   const idx=await j('/data/prices/index.json');
@@ -32,4 +29,4 @@ async function prices(){
     h+=`<tr><td><a href="${esc(s.url)}">${esc(s.name||p.provider)}</a></td><td class="${p.status==='ok'?'':'err'}">${esc(p.status)}${s.error?': '+esc(s.error):''}</td><td>${amts.length?esc(amts.slice(0,12).join(', '))+(amts.length>12?` … (+${amts.length-12})`:''):'<span class="muted">no data yet</span>'}</td><td>${s.diff&&s.diff.changed!=null?(s.diff.changed?'yes':'no'):'<span class="muted">first snapshot</span>'}</td></tr>`}
   el.innerHTML=h+'</table>';
 }
-board();prices();
+theme();tabs();stale();prices();
