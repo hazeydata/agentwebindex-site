@@ -1,4 +1,4 @@
-import html, json, math
+import html, json, math, re
 from pathlib import Path
 
 e = html.escape
@@ -91,6 +91,36 @@ def finding(cat, rows):
     return head + (", " + rest if rest else "") + "; " + tail
 
 
+def week_of(r):
+    """(year, week) from the set name's trailing YYYY-WW (e.g. news_2026-43), else (0, 0)."""
+    m = re.search(r"(\d{4})-(\d{1,2})$", str(r.get("set") or ""))
+    return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+
+
+def latest_per_provider(rows):
+    """Keep one row per provider: its latest week (by set week, then run_date), never file order."""
+    best = {}
+    for r in rows:
+        k = (week_of(r), str(r.get("run_date") or ""))
+        if r["provider"] not in best or k > best[r["provider"]][0]:
+            best[r["provider"]] = (k, r)
+    return [r for _, r in best.values()]
+
+
+def shown_rows(d, cat):
+    """The rows a category's table renders: published, non-mock, latest week per provider."""
+    if not d or not d.get("has_results"):
+        return []
+    return latest_per_provider([r for r in (d.get("tables") or {}).get(cat, [])
+                                if not r.get("mock") and v(r.get("attempted")) is not None])
+
+
+def week_label(rows):
+    sets = sorted({r["set"] for r in rows}, key=lambda s: week_of({"set": s}))
+    wks = sorted({"%d-%02d" % week_of(r) for r in rows if week_of(r) != (0, 0)})
+    return ("Week " + ", ".join(wks) + " · " if wks else "") + "set " + ", ".join(sets)
+
+
 def run_dates(rows):
     by = {}
     for r in rows:
@@ -168,7 +198,7 @@ def plot(cat, label, rows, nt, W, narrow):
     desc = finding(cat, rows) + ". " + "; ".join(f"{r['_name']} {frac(r)}, {ci_text(r)}" for r in rows) + "."
     if nt:
         desc += " Not tested: " + ", ".join(n for _, n, _ in nt) + "."
-    g = [f'<title id="{pid}-t">{e(finding(cat, rows))}</title><desc id="{pid}-d">{e(desc)}</desc>']
+    g = [f'<title id="{pid}-t">{e(week_label(rows))}: {e(finding(cat, rows))}</title><desc id="{pid}-d">{e(desc)}</desc>']
     for f in (0, .25, .5, .75, 1):
         x = X(f)
         g.append(f'<line class="ax-grid" x1="{x:.1f}" x2="{x:.1f}" y1="{top - 6}" y2="{H - 30}"/>'
@@ -299,7 +329,7 @@ def run_status(d):
     sk = d.get("skips") or []
     sv = d.get("sets_valid") or []
     nr = d.get("not_run_yet") or []
-    pub = sorted({r["set"] for rows in (d.get("tables") or {}).values() for r in rows if not r.get("mock")})
+    pub = sorted({r["set"] for cat in (d.get("tables") or {}) for r in shown_rows(d, cat)})
     out = [f'<section class="run-status" id="run-status" aria-labelledby="run-status-h"><h2 id="run-status-h">Run status {e(d.get("run_date") or "")}</h2>',
            f'<p class="muted">Generated <span class="mono">{e(d.get("generated_at") or "")}</span> from run logs. '
            f'<span data-stale-note data-generated="{e(d.get("generated_at") or "")}"></span></p>',
@@ -328,6 +358,7 @@ def leaderboard(bench_path, providers_path):
     for n, (cat, label, unit) in enumerate(CATS, 1):
         rows = [dict(r, _name=nm.get(r["provider"], r["provider"])) for r in ((d or {}).get("tables") or {}).get(cat, [])
                 if d and d.get("has_results") and not r.get("mock") and v(r.get("attempted")) is not None]
+        rows = latest_per_provider(rows)
         rows.sort(key=lambda r: -(v(r["success_rate"]) or 0))
         nt = untested(d or {}, cat, {r["provider"] for r in rows}, provs)
         sel = n == 1
@@ -339,7 +370,7 @@ def leaderboard(bench_path, providers_path):
         meta = ((f"n = {ns[0]} {unit} each" if len(set(ns)) == 1 else f"n = {', '.join(map(str, ns))} {unit}") + " · " + ", ".join(sets)) if rows else ""
         if rows:
             fig = (f'<figure class="chart-card" data-cat="{cat}" id="chart-{cat}"><figcaption class="chart-card__head"><span><strong>Fig. {n}</strong> '
-                   f'<span class="fig-title">{e(finding(cat, rows))}</span><span class="sub fig-sub">{e(label)} · {e(run_dates(rows))}</span></span>'
+                   f'<span class="fig-week" data-sets="{e(" ".join(sorted({r["set"] for r in rows})))}">{e(week_label(rows))}</span> <span class="fig-title">{e(finding(cat, rows))}</span><span class="sub fig-sub">{e(label)} · {e(run_dates(rows))}</span></span>'
                    f'<span class="chart-card__meta">{e(meta)}</span></figcaption><div class="chart-card__plot">'
                    + plot(cat, label, rows, nt, 720, False) + plot(cat, label, rows, nt, 340, True) + "</div>"
                    "<p class=\"chart-card__foot\">Lines show 95% Wilson intervals; overlapping lines mean the order isn't settled.</p></figure>")
