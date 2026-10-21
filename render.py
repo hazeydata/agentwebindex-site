@@ -107,6 +107,14 @@ def latest_per_provider(rows):
     return [r for _, r in best.values()]
 
 
+def shown_rows(d, cat):
+    """The rows a category's table renders: published, non-mock, latest week per provider."""
+    if not d or not d.get("has_results"):
+        return []
+    return latest_per_provider([r for r in (d.get("tables") or {}).get(cat, [])
+                                if not r.get("mock") and v(r.get("attempted")) is not None])
+
+
 def week_label(rows):
     sets = sorted({r["set"] for r in rows}, key=lambda s: week_of({"set": s}))
     wks = sorted({"%d-%02d" % week_of(r) for r in rows if week_of(r) != (0, 0)})
@@ -321,7 +329,7 @@ def run_status(d):
     sk = d.get("skips") or []
     sv = d.get("sets_valid") or []
     nr = d.get("not_run_yet") or []
-    pub = sorted({r["set"] for rows in (d.get("tables") or {}).values() for r in rows if not r.get("mock")})
+    pub = sorted({r["set"] for cat in (d.get("tables") or {}) for r in shown_rows(d, cat)})
     out = [f'<section class="run-status" id="run-status" aria-labelledby="run-status-h"><h2 id="run-status-h">Run status {e(d.get("run_date") or "")}</h2>',
            f'<p class="muted">Generated <span class="mono">{e(d.get("generated_at") or "")}</span> from run logs. '
            f'<span data-stale-note data-generated="{e(d.get("generated_at") or "")}"></span></p>',

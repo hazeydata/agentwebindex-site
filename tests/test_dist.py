@@ -17,6 +17,18 @@ def latest(cat):
     return sorted(render.latest_per_provider(rows), key=lambda r: -(r["success_rate"]["v"] or 0))
 
 
+def real_values():
+    """Every exact value string the page computes from real rows (fractions, percents, CI bounds)."""
+    out = []
+    for cat in BENCH["tables"]:
+        for r in latest(cat):
+            out += [render.frac(r), render.frac(r, ", "), render.ci_text(r), f"{int(r['success_rate']['v'] * 100 + 0.5)}%"]
+            w = render.ci(r)
+            if w:
+                out += [f"{w[0] * 100:.1f}%", f"{w[1] * 100:.1f}%"]
+    return out
+
+
 def real_strings():
     out = []
     for cat in BENCH["tables"]:
@@ -54,8 +66,8 @@ class Dist(unittest.TestCase):
     def test_no_pack_sample_values(self):
         vals = json.loads((R / "tests/pack_sample_values.json").read_text())["values"]
         self.assertGreater(len(vals), 100)
-        real = " ".join(real_strings())
-        vals = [v for v in vals if v not in real]  # a real computed value may coincide with a sample number
+        real = set(real_values())
+        vals = [v for v in vals if v not in real]  # exact match: a real computed value may equal a sample number
         hits = [(v, str(p.relative_to(D))) for p in files() for v in vals if v in p.read_text(errors="ignore")]
         self.assertEqual(hits, [])
 
@@ -204,6 +216,16 @@ class Dist(unittest.TestCase):
         self.assertIn("Fresh in top 10", t)
         self.assertNotIn("fresh_hit@10", t)
 
+    def test_sets_published_only_shown_sets(self):
+        p = text(section(page("/"), 'id="sets-published"', "</p>"))
+        shown = sorted({r["set"] for cat in BENCH["tables"] for r in latest(cat)})
+        listed = re.findall(r"[a-z]+_\d{4}-\d+", p)
+        self.assertEqual(sorted(listed), shown)
+        old = {r["set"] for v in BENCH["tables"].values() for r in v} - set(shown)
+        self.assertTrue(old)  # the data carries older weeks, so this check is meaningful
+        for s in old:
+            self.assertNotIn(s, p)
+
     def test_latest_providers_exactly_once(self):
         h = page("/")
         seen = 0
@@ -258,7 +280,7 @@ class Dist(unittest.TestCase):
     def test_run_status_plain_words(self):
         import render
         rs = section(page("/"), 'id="run-status"', "</section>")
-        pub = sorted({r["set"] for v in BENCH["tables"].values() for r in v})
+        pub = sorted({r["set"] for cat in BENCH["tables"] for r in latest(cat)})
         p = text(section(rs, 'id="sets-published"', "</p>"))
         for s in pub:
             self.assertIn(s, p)
@@ -439,6 +461,27 @@ class TwoWeeks(unittest.TestCase):
         self.assertNotIn("2026-42", head)
         self.assertIn("Exa answered 37 of 40 news queries, Tavily 29;", head)
         self.assertNotIn("of 16", h)
+
+
+class WeekOrder(unittest.TestCase):
+    @staticmethod
+    def row(p, s, d, k=1):
+        return {"provider": p, "set": s, "run_date": d, "passed": {"v": k}}
+
+    def test_same_week_later_run_date_wins(self):
+        rows = [self.row("exa", "news_2026-43", "2026-10-22", 2), self.row("exa", "news_2026-43", "2026-10-20", 1)]
+        for order in (rows, rows[::-1]):
+            got = render.latest_per_provider(order)
+            self.assertEqual(len(got), 1)
+            self.assertEqual(got[0]["run_date"], "2026-10-22")
+
+    def test_week_compared_numerically(self):
+        self.assertEqual(render.week_of({"set": "news_2026-9"}), (2026, 9))
+        self.assertGreater(render.week_of({"set": "news_2026-10"}), render.week_of({"set": "news_2026-9"}))
+        rows = [self.row("exa", "news_2026-10", "2026-03-02"), self.row("exa", "news_2026-9", "2026-03-09")]
+        for order in (rows, rows[::-1]):
+            self.assertEqual(render.latest_per_provider(order)[0]["set"], "news_2026-10")
+        self.assertEqual(render.week_label(rows[:1]), "Week 2026-10 · set news_2026-10")
 
 
 class Colours(unittest.TestCase):
