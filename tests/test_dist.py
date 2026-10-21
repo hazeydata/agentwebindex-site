@@ -62,6 +62,16 @@ def text(s):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", s))).strip()
 
 
+def _fresh_row(p, wk, n, rd):
+    return {"provider": p, "set": f"news_{wk}", "week": wk, "run_date": rd, "n": n, "flags": [f"short week (n={n})"],
+            "fresh_hit_at_10": {"v": 0.5}, "median_lag_h": {"v": 1.0}, "censored_share": {"v": 0.0}, "set_sha": "ab" * 32}
+
+
+FRESH_NEWEST_FIRST = [_fresh_row("exa", "2026-10", 40, "2026-03-09"), _fresh_row("exa", "2026-9", 16, "2026-03-02"),
+                      _fresh_row("tavily", "2026-9", 16, "2026-03-02")]
+FRESH_OLDEST_FIRST = [FRESH_NEWEST_FIRST[1], FRESH_NEWEST_FIRST[2], FRESH_NEWEST_FIRST[0]]
+
+
 class Dist(unittest.TestCase):
     def test_no_pack_sample_values(self):
         vals = json.loads((R / "tests/pack_sample_values.json").read_text())["values"]
@@ -291,11 +301,13 @@ class Dist(unittest.TestCase):
         self.assertEqual(render.status_words("new_code_here"), "New code here")
 
     def test_freshness_latest_week_per_provider(self):
-        def f(p, wk, n, rd):
-            return {"provider": p, "set": f"news_{wk}", "week": wk, "run_date": rd, "n": n, "flags": [f"short week (n={n})"],
-                    "fresh_hit_at_10": {"v": 0.5}, "median_lag_h": {"v": 1.0}, "censored_share": {"v": 0.0}, "set_sha": "ab" * 32}
-        d = {"has_results": True, "freshness": [f("exa", "2026-10", 40, "2026-03-09"), f("exa", "2026-9", 16, "2026-03-02"),
-                                                 f("tavily", "2026-9", 16, "2026-03-02")],
+        self._check_freshness_fixture(FRESH_NEWEST_FIRST)
+
+    def test_freshness_latest_week_file_order_reversed(self):
+        self._check_freshness_fixture(FRESH_OLDEST_FIRST)  # newest exa week listed last: file order must not decide
+
+    def _check_freshness_fixture(self, fr):
+        d = {"has_results": True, "freshness": fr,
              "tables": {"search": [{"provider": "tavily", "set": "news_2026-10", "run_date": "2026-03-09", "attempted": {"v": 40}}]}}
         h = render.freshness(d, {"exa": "Exa", "tavily": "Tavily"})
         rows = re.findall(r'<tr data-id="([^"]+)">(.*?)</tr>', h, re.S)
