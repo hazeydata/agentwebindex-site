@@ -73,6 +73,25 @@ FRESH_OLDEST_FIRST = [FRESH_NEWEST_FIRST[1], FRESH_NEWEST_FIRST[2], FRESH_NEWEST
 
 
 class Dist(unittest.TestCase):
+    def _live_html(self, s, p):
+        pos = 0
+        comments = []
+        while (i := s.find("<!--", pos)) != -1:
+            j = s.find("-->", i + 4)
+            if j == -1:
+                self.fail(f"unterminated HTML comment in {p}")
+            comments.append(s[i + 4:j])
+            pos = j + 3
+        for m in re.finditer(r"(?i)<noscript", s):
+            if not re.search(r"(?i)</noscript>", s[m.end():]):
+                self.fail(f"unterminated <noscript> in {p}")
+        no_comments = re.sub(r"(?s)<!--.*?-->", "", s)
+        noscripts = re.findall(r"(?is)<noscript\b.*?</noscript>", no_comments)
+        for body in comments + noscripts:
+            if re.search(r"(?i)goatcounter|gc\.zgo\.at", body):
+                self.fail(f"GoatCounter reference inside a comment or <noscript> in {p}")
+        return re.sub(r"(?is)<noscript\b.*?</noscript>", "", no_comments)
+
     def test_no_pack_sample_values(self):
         vals = json.loads((R / "tests/pack_sample_values.json").read_text())["values"]
         self.assertGreater(len(vals), 100)
@@ -96,13 +115,14 @@ class Dist(unittest.TestCase):
             self.assertNotRegex(s, r"@import", p)
             self.assertNotRegex(s, r"url\(\s*['\"]?(https?:)?//", p)
             self.assertNotRegex(s, r"(?i)fonts\.(googleapis|gstatic)|cdnjs|jsdelivr|unpkg|typekit|fontawesome", p)
-            for tag, attrs in re.findall(r"<(link|script|img|source)\b([^>]*)>", s):
+            live = self._live_html(s, p) if p.suffix == ".html" else s
+            for tag, attrs in re.findall(r"<(link|script|img|source)\b([^>]*)>", live):
                 if tag == "link" and 'rel="canonical"' in attrs:
                     continue
                 for url in re.findall(r"(?<![\w-])(?:href|src)=\"([^\"]*)\"", attrs):
                     if url.startswith(("http:", "https:", "//")):
                         self.assertIn(url, allowed, (p, tag, url))
-            for val in re.findall(r"\bdata-goatcounter=\"([^\"]*)\"", s):
+            for val in re.findall(r"\bdata-goatcounter=\"([^\"]*)\"", live):
                 self.assertEqual(val, "https://openmillage.goatcounter.com/count", p)
 
     def test_fonts_self_hosted_with_license(self):
@@ -426,7 +446,7 @@ class Dist(unittest.TestCase):
         pages = list(D.rglob("*.html"))
         self.assertTrue(pages)
         for p in pages:
-            s = p.read_text()
+            s = self._live_html(p.read_text(), p)
             self.assertEqual(s.count(config), 1, p)
             self.assertEqual(s.count(counter), 1, p)
             head = s[:s.index("</head>")]
