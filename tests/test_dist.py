@@ -88,7 +88,7 @@ class Dist(unittest.TestCase):
             self.assertNotIn('"sample": true', p.read_text(errors="ignore"), p)
 
     def test_no_external_fonts_or_cdn(self):
-        allowed = {"https://subscribe-forms.beehiiv.com/v3/loader.js", "//gc.zgo.at/count.js"}
+        allowed = {"https://subscribe-forms.beehiiv.com/v3/loader.js", "https://gc.zgo.at/count.js"}
         for p in D.rglob("*"):
             if p.suffix not in (".html", ".css", ".js"):
                 continue
@@ -96,11 +96,14 @@ class Dist(unittest.TestCase):
             self.assertNotRegex(s, r"@import", p)
             self.assertNotRegex(s, r"url\(\s*['\"]?(https?:)?//", p)
             self.assertNotRegex(s, r"(?i)fonts\.(googleapis|gstatic)|cdnjs|jsdelivr|unpkg|typekit|fontawesome", p)
-            for tag, url in re.findall(r"<(link|script|img|source)\b[^>]*?(?:href|src)=\"([^\"]+)\"", s):
-                if tag == "link" and re.search(r'rel="canonical"', s[s.find(url) - 200:s.find(url)]):
+            for tag, attrs in re.findall(r"<(link|script|img|source)\b([^>]*)>", s):
+                if tag == "link" and 'rel="canonical"' in attrs:
                     continue
-                if url.startswith(("http:", "https:", "//")):
-                    self.assertIn(url, allowed, (p, tag, url))
+                for url in re.findall(r"(?<![\w-])(?:href|src)=\"([^\"]*)\"", attrs):
+                    if url.startswith(("http:", "https:", "//")):
+                        self.assertIn(url, allowed, (p, tag, url))
+            for val in re.findall(r"\bdata-goatcounter=\"([^\"]*)\"", s):
+                self.assertEqual(val, "https://openmillage.goatcounter.com/count", p)
 
     def test_fonts_self_hosted_with_license(self):
         css = (D / "style.css").read_text()
@@ -419,7 +422,7 @@ class Dist(unittest.TestCase):
 
     def test_goatcounter_snippet_in_head_once_per_page(self):
         config = "<script>window.goatcounter = {path: function(p){return '/awi' + p}}</script>"
-        counter = '<script data-goatcounter="https://openmillage.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>'
+        counter = '<script data-goatcounter="https://openmillage.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>'
         pages = list(D.rglob("*.html"))
         self.assertTrue(pages)
         for p in pages:
