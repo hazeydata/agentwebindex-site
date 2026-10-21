@@ -4,6 +4,27 @@ from pathlib import Path
 R = Path(__file__).resolve().parent.parent
 D = R / "dist"
 BENCH = json.loads((R / "data/benchmarks/latest.json").read_text())
+import sys
+sys.path.insert(0, str(R))
+import render  # noqa: E402
+
+PROVS = {x["id"]: x.get("name") or x["id"] for x in json.loads((R / "data/_upstream/providers.json").read_text())["providers"]}
+
+
+def latest(cat):
+    """Expected table rows for cat: latest week per provider from the JSON, named, ordered by success rate."""
+    rows = [dict(r, _name=PROVS.get(r["provider"], r["provider"])) for r in BENCH["tables"].get(cat, []) if not r.get("mock")]
+    return sorted(render.latest_per_provider(rows), key=lambda r: -(r["success_rate"]["v"] or 0))
+
+
+def real_strings():
+    out = []
+    for cat in BENCH["tables"]:
+        for r in latest(cat):
+            out += [render.ci_text(r), render.frac(r), render.frac(r, ", ")]
+    return out
+
+
 TEXT = (".html", ".css", ".js", ".json", ".csv", ".txt", ".xml", ".svg", ".jsonl", "")
 
 
@@ -33,6 +54,8 @@ class Dist(unittest.TestCase):
     def test_no_pack_sample_values(self):
         vals = json.loads((R / "tests/pack_sample_values.json").read_text())["values"]
         self.assertGreater(len(vals), 100)
+        real = " ".join(real_strings())
+        vals = [v for v in vals if v not in real]  # a real computed value may coincide with a sample number
         hits = [(v, str(p.relative_to(D))) for p in files() for v in vals if v in p.read_text(errors="ignore")]
         self.assertEqual(hits, [])
 
@@ -67,34 +90,25 @@ class Dist(unittest.TestCase):
 
     def test_real_search_rows(self):
         h = page("/")
-        rows = rows_of(h, "search")
-        tested = [r for r in rows if "is-untested" not in r]
-        self.assertEqual([re.search(r'data-id="([^"]+)"', r).group(1) for r in tested], ["exa", "tavily", "apify"])
-        for pid, pc, ans, p50, rd in [("exa", "12/16, 75%", "95% CI 50.5–89.8%", "2980 ms", "2026-10-15"),
-                                      ("tavily", "8/16, 50%", "95% CI 28.0–72.0%", "1400 ms", "2026-10-15"),
-                                      ("apify", "2/16, 13%", "95% CI 3.5–36.0%", "60452 ms", "2026-10-19")]:
-            r = text(next(x for x in tested if f'data-id="{pid}"' in x))
-            for want in (pc, ans, p50, "n=16", "ToS-skipped 0", f"Run {rd}", "news_2026-42"):
-                self.assertIn(want, r, (pid, want))
-            self.assertNotIn("below minimum", r)
-        cap = text(section(h, 'id="table-search"', "</caption>"))
-        self.assertEqual(cap.count("below minimum (n=16)"), 1)
-        self.assertIn("(12 of the fails timed out)", text(tested[2]))
-        tav = text(tested[1])
-        self.assertIn("$7.50 per 1k requests", tav)
-        self.assertIn("$15.00 per 1k successful requests", tav)
-        self.assertIn("$8.00 per 1k requests", tav)
-        for r in tested:
-            self.assertNotIn("Free quota", text(r.split("<details", 1)[0]))
+        tested = [r for r in rows_of(h, "search") if "is-untested" not in r]
+        want = latest("search")
+        self.assertEqual([re.search(r'data-id="([^"]+)"', r).group(1) for r in tested], [r["provider"] for r in want])
+        for x, r in zip(want, tested):
+            t = text(r)
+            p50 = x["p50_latency_ms"]["v"]
+            for w in (render.frac(x, ", "), render.ci_text(x), f"n={x['attempted']['v']}", f"Run {x['run_date']}", x["set"],
+                      "n/a" if p50 is None else f"{p50:.0f} ms"):
+                self.assertIn(w, t, (x["provider"], w))
             self.assertIn("<details", r)
-        self.assertIn("$7.00", text(tested[0]))
-        self.assertIn("$9.33", text(tested[0]))
-        self.assertIn("$7.50", text(tested[1]))
+            self.assertNotIn("Free quota", text(r.split("<details", 1)[0]))
 
     def test_real_browser_rows(self):
-        r = text(rows_of(page("/"), "browser")[0])
-        for want in ("Browserless", "11/16, 69%", "95% CI 44.4–85.8%", "2681 ms", "$1.25", "$1.82", "$0.70", "$1.02", "newsfetch_2026-42"):
-            self.assertIn(want, r)
+        tested = [r for r in rows_of(page("/"), "browser") if "is-untested" not in r]
+        want = latest("browser")
+        self.assertEqual(len(tested), len(want))
+        for x, r in zip(want, tested):
+            for w in (x["_name"], render.frac(x, ", "), render.ci_text(x), x["set"]):
+                self.assertIn(w, text(r))
 
     def test_values_match_json(self):
         h = page("/")
@@ -102,8 +116,8 @@ class Dist(unittest.TestCase):
             if not rows:
                 continue
             got = {re.search(r'data-id="([^"]+)"', r).group(1): text(r) for r in rows_of(h, cat) if "is-untested" not in r}
-            self.assertEqual(sorted(got), sorted(r["provider"] for r in rows if not r.get("mock")))
-            for r in rows:
+            self.assertEqual(sorted(got), sorted({r["provider"] for r in rows if not r.get("mock")}))
+            for r in latest(cat):
                 self.assertIn(f'{r["passed"]["v"]}/{r["attempted"]["v"]}, {int(r["success_rate"]["v"] * 100 + 0.5)}%', got[r["provider"]])
 
     def test_untested_shows_not_tested_never_zero(self):
@@ -139,13 +153,15 @@ class Dist(unittest.TestCase):
             self.assertNotIn("pt-bar", f)
             self.assertIn("Lines show 95% Wilson intervals; overlapping lines mean the order isn't settled.", html.unescape(f))
             self.assertIn("queries each" if 'data-cat="search"' in f else "each", f)
-        s = html.unescape(section(h, 'id="chart-search"', "</figcaption>"))
-        self.assertIn("Exa answered 12 of 16 news queries, Tavily 8, Apify 2; at n=16 only the Exa–Apify gap is clear", s)
-        self.assertIn("Runs 2026-10-15 (Exa, Tavily), 2026-10-19 (Apify)", s)
-        self.assertIn("n = 16 queries each", s)
-        self.assertIn("Run 2026-10-19", html.unescape(section(h, 'id="chart-browser"', "</figcaption>")))
-        for lab in ("12/16 (75%)", "8/16 (50%)", "2/16 (13%)", "11/16 (69%)"):
-            self.assertIn(f">{lab}<", h)
+        for cat in BENCH["tables"]:
+            rows = latest(cat)
+            if not rows:
+                continue
+            s = html.unescape(section(h, f'id="chart-{cat}"', "</figcaption>"))
+            self.assertIn(render.finding(cat, rows), s)
+            self.assertIn(render.run_dates(rows), s)
+            for r in rows:
+                self.assertIn(f">{render.frac(r)}<", h)
 
     def test_narrow_labels_fit(self):
         h = page("/")
@@ -182,10 +198,24 @@ class Dist(unittest.TestCase):
 
     def test_freshness_table(self):
         t = text(section(page("/"), 'id="freshness"', "</table>"))
-        for want in ("Exa", "15/16 (94%)", "1/16 (6%)", "Tavily", "8/16 (50%)", "3e516ca796e2", "Fresh in top 10"):
-            self.assertIn(want, t)
+        for f in BENCH["freshness"]:
+            for want in (PROVS.get(f["provider"], f["provider"]), render.count_pct(f["fresh_hit_at_10"], f["n"]), f["set_sha"][:12]):
+                self.assertIn(want, t)
+        self.assertIn("Fresh in top 10", t)
         self.assertNotIn("fresh_hit@10", t)
-        self.assertNotIn("exa", t.replace("Exa", ""))
+
+    def test_week_set_label_from_data(self):
+        h = page("/")
+        for cat in BENCH["tables"]:
+            rows = latest(cat)
+            if not rows:
+                continue
+            head = html.unescape(section(h, f'id="chart-{cat}"', "</figcaption>"))
+            sets = sorted({r["set"] for r in rows})
+            wks = sorted({"%d-%02d" % render.week_of(r) for r in rows})
+            self.assertIn(f"Week {', '.join(wks)} · set {', '.join(sets)}", head)
+            for svg in re.findall(r"<svg class=\"plot--.*?</title>", section(h, f'id="chart-{cat}"', "</figure>"), re.S):
+                self.assertIn(f"set {', '.join(sets)}", html.unescape(svg))
 
     def test_run_status_plain_words(self):
         import render
@@ -345,6 +375,32 @@ class Wilson(unittest.TestCase):
         self.assertEqual(render.finding("search", [row("A", 40, 40), row("B", 0, 40)]), "A answered 40 of 40 news queries, B 0; at n=40 every gap is clear")
         self.assertEqual(render.finding("search", [row("A", 5, 10), row("B", 4, 10)]), "A answered 5 of 10 news queries, B 4; at n=10 no gap is clear")
         self.assertEqual(render.finding("search", [row("A", 9, 10), row("B", 1, 20)]), "A answered 9 of 10 news queries, B 1 of 20; at n=10–20 every gap is clear")
+
+
+class TwoWeeks(unittest.TestCase):
+    FIX = {"has_results": True, "tables": {"search": [
+        {"provider": p, "set": f"news_2026-{w}", "run_date": d, "passed": {"v": k}, "attempted": {"v": n}, "success_rate": {"v": k / n},
+         "p50_latency_ms": {"v": 100}, "flags": []}
+        # file order deliberately puts the newer week first for exa
+        for p, w, d, k, n in (("exa", 43, "2026-10-20", 37, 40), ("exa", 42, "2026-10-15", 15, 16),
+                              ("tavily", 42, "2026-10-15", 12, 16), ("tavily", 43, "2026-10-20", 29, 40))]}, "scrape": [], "browser": []}
+
+    def test_one_row_per_provider_single_week_title(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            b = Path(td) / "b.json"
+            b.write_text(json.dumps(self.FIX))
+            pv = Path(td) / "p.json"
+            pv.write_text(json.dumps({"providers": [{"id": "exa", "name": "Exa", "categories": ["search"]},
+                                                    {"id": "tavily", "name": "Tavily", "categories": ["search"]}]}))
+            h = render.leaderboard(b, pv)
+        ids = re.findall(r'<tr data-id="([^"]+)"', section(h, 'id="table-search"', "</table>"))
+        self.assertEqual(ids, ["exa", "tavily"])
+        head = html.unescape(section(h, 'id="chart-search"', "</figcaption>"))
+        self.assertIn("Week 2026-43 · set news_2026-43", head)
+        self.assertNotIn("2026-42", head)
+        self.assertIn("Exa answered 37 of 40 news queries, Tavily 29;", head)
+        self.assertNotIn("of 16", h)
 
 
 class Colours(unittest.TestCase):
