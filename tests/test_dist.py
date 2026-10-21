@@ -204,6 +204,44 @@ class Dist(unittest.TestCase):
         self.assertIn("Fresh in top 10", t)
         self.assertNotIn("fresh_hit@10", t)
 
+    def test_latest_providers_exactly_once(self):
+        h = page("/")
+        seen = 0
+        for cat in BENCH["tables"]:
+            want = latest(cat)
+            if not want:
+                continue
+            ids = [re.search(r'data-id="([^"]+)"', r).group(1) for r in rows_of(h, cat) if "is-untested" not in r]
+            self.assertEqual(sorted(ids), sorted(r["provider"] for r in want), cat)
+            self.assertEqual(len(ids), len(set(ids)), cat)
+            chart = section(h, f'id="chart-{cat}"', "</figure>")
+            for kind in ("wide", "narrow"):
+                svg = re.search(rf'<svg class="plot--{kind}".*?</svg>', chart, re.S).group(0)
+                labs = [html.unescape(x) for x in re.findall(r'<text class="pt-label" [^>]*>([^<]*)</text>', svg)]
+                self.assertEqual(len(labs), len(want), (cat, kind, labs))
+                for r in want:
+                    nm = r["_name"] if kind == "wide" or len(r["_name"]) <= 12 else r["_name"][:11] + "…"
+                    self.assertEqual(labs.count(nm), 1, (cat, kind, nm))
+                    self.assertEqual(svg.count(f">{render.frac(r)}<"), 1, (cat, kind, r["provider"]))
+            seen += len(want)
+        self.assertEqual(seen, sum(len({r["provider"] for r in v if not r.get("mock")}) for v in BENCH["tables"].values()))
+
+    def test_browserless_own_set_label(self):
+        h = page("/")
+        bl = [r for r in latest("browser") if r["provider"] == "browserless"]
+        self.assertEqual(len(bl), 1)
+        bl = bl[0]
+        self.assertEqual((bl["passed"]["v"], bl["attempted"]["v"]), (37, 40))
+        head = html.unescape(section(h, 'id="chart-browser"', "</figcaption>"))
+        self.assertIn(f"set {bl['set']}", head)
+        self.assertIn(f"{bl['_name']} loaded 37 of 40", head)
+        row = text(next(r for r in rows_of(h, "browser") if 'data-id="browserless"' in r))
+        self.assertIn(f"set {bl['set']}", row)
+        self.assertIn("37/40", row)
+        others = {r["set"] for c in BENCH["tables"] if c != "browser" for r in latest(c)}
+        for s in others - {bl["set"]}:
+            self.assertNotIn(s, head)
+
     def test_week_set_label_from_data(self):
         h = page("/")
         for cat in BENCH["tables"]:
