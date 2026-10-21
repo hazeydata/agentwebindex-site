@@ -4,7 +4,7 @@ Static site for AgentWebIndex (plain HTML/JS plus a small Python generator; no d
 ## Data: vendored copy (chosen as the simplest option)
 The build reads **only** `data/` in this repo: a vendored copy of the `agentwebindex` repo's `data/`, plus
 `data/_upstream/providers.json` and `data/_upstream/tos_matrix.yaml` (provider names and the
-Brave terms exclusion note). Refresh it with `./sync_data.sh <agentwebindex-sha>` (exports `data/` at that exact commit via `git archive` and records the sha in `data/_upstream/SOURCE`), then commit. Nothing is fetched
+Brave terms exclusion note). Refresh it with `./sync_data.sh <full 40-character agentwebindex sha>` (branches, refs and short shas are rejected; exports `data/` at that exact commit via `git archive` and records the sha in `data/_upstream/SOURCE`), then commit. Nothing is fetched
 at build time. Trade-off: the site only updates when the vendored copy is refreshed and committed (a scheduled
 sync job or a submodule can replace this later).
 
