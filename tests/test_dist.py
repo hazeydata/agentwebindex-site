@@ -290,6 +290,29 @@ class Dist(unittest.TestCase):
             self.assertNotIn(f'>{k["status"]}<', skips)
         self.assertEqual(render.status_words("new_code_here"), "New code here")
 
+    def test_freshness_latest_week_per_provider(self):
+        def f(p, wk, n, rd):
+            return {"provider": p, "set": f"news_{wk}", "week": wk, "run_date": rd, "n": n, "flags": [f"short week (n={n})"],
+                    "fresh_hit_at_10": {"v": 0.5}, "median_lag_h": {"v": 1.0}, "censored_share": {"v": 0.0}, "set_sha": "ab" * 32}
+        d = {"has_results": True, "freshness": [f("exa", "2026-10", 40, "2026-03-09"), f("exa", "2026-9", 16, "2026-03-02"),
+                                                 f("tavily", "2026-9", 16, "2026-03-02")],
+             "tables": {"search": [{"provider": "tavily", "set": "news_2026-10", "run_date": "2026-03-09", "attempted": {"v": 40}}]}}
+        h = render.freshness(d, {"exa": "Exa", "tavily": "Tavily"})
+        rows = re.findall(r'<tr data-id="([^"]+)">(.*?)</tr>', h, re.S)
+        self.assertEqual([p for p, _ in rows], ["exa", "tavily"])  # one row per provider
+        exa, tav = text(rows[0][1]), text(rows[1][1])
+        self.assertIn("Week 2026-10 · set news_2026-10", exa)  # 10 > 9 numerically, not as strings
+        self.assertIn("short week (n=40)", exa)
+        self.assertNotIn("n=16", exa)
+        self.assertIn("Week 2026-09 · set news_2026-9 · results table is week 2026-10", tav)
+
+    def test_freshness_rows_once_on_page(self):
+        t = section(page("/"), 'id="freshness"', "</table>")
+        ids = re.findall(r'<tr data-id="([^"]+)"', t)
+        self.assertEqual(sorted(ids), sorted({f["provider"] for f in BENCH["freshness"]}))
+        for f in render.latest_per_provider(BENCH["freshness"]):
+            self.assertIn(render.week_label([f]), text(t))
+
     def test_freshness_counts(self):
         import render
         self.assertEqual(render.count_pct({"v": 0.9375}, 16), "15/16 (94%)")
