@@ -88,7 +88,7 @@ class Dist(unittest.TestCase):
             self.assertNotIn('"sample": true', p.read_text(errors="ignore"), p)
 
     def test_no_external_fonts_or_cdn(self):
-        allowed = {"https://subscribe-forms.beehiiv.com/v3/loader.js"}
+        allowed = {"https://subscribe-forms.beehiiv.com/v3/loader.js", "//gc.zgo.at/count.js"}
         for p in D.rglob("*"):
             if p.suffix not in (".html", ".css", ".js"):
                 continue
@@ -416,6 +416,21 @@ class Dist(unittest.TestCase):
         self.assertNotRegex(p, r"NOT CAPTURED|Not captured|Not Captured")
         self.assertGreater(t.count("<tr>"), 10)
         self.assertIn("Checked", t)
+
+    def test_goatcounter_snippet_in_head_once_per_page(self):
+        config = "<script>window.goatcounter = {path: function(p){return '/awi' + p}}</script>"
+        counter = '<script data-goatcounter="https://openmillage.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>'
+        pages = list(D.rglob("*.html"))
+        self.assertTrue(pages)
+        for p in pages:
+            s = p.read_text()
+            self.assertEqual(s.count(config), 1, p)
+            self.assertEqual(s.count(counter), 1, p)
+            head = s[:s.index("</head>")]
+            self.assertIn(config, head, p)
+            self.assertIn(counter, head, p)
+            self.assertLess(s.index(config), s.index(counter), p)
+            self.assertIn("return '/awi' + p", s, p)
 
     def test_nav_and_landmarks(self):
         for p in ("/", "/prices/", "/methodology/", "/disclosures/", "/newsletter/", "/data/", "/sponsors/"):
