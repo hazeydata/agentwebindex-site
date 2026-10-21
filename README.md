@@ -8,6 +8,8 @@ Brave terms exclusion note). Refresh it with `./sync_data.sh <full 40-character 
 at build time. Trade-off: the site only updates when the vendored copy is refreshed and committed (a scheduled
 sync job or a submodule can replace this later).
 
+Tests: `./run_tests.sh` runs `tests/run_dist.py`, which requires exactly `EXPECTED` tests in `tests/test_dist.py` and exactly 4 canaries; when you add or remove a test, bump `EXPECTED` in `tests/run_dist.py` by hand.
+
 ## Run locally
 ```
 python3 build.py

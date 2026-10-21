@@ -309,11 +309,19 @@ def count_pct(share, n):
 
 
 def freshness(d, names=None):
-    fr = d.get("freshness") or []
+    fr = sorted(latest_per_provider(d.get("freshness") or []), key=lambda f: str(f["provider"]))
     if not fr:
         return ""
+    res = {r["provider"]: r for r in shown_rows(d, "search")}
+
+    def wk(f):
+        lab = week_label([f])
+        r = res.get(f["provider"])
+        if r and week_of(r) > week_of(f):
+            lab += " · results table is week %d-%02d" % week_of(r)
+        return lab
     rows = "".join(
-        f'<tr><td>{e((names or {}).get(f["provider"], f["provider"]))}</td><td data-label="Week">{e(f.get("week") or "")} {flags(f)}</td><td class="r num" data-label="n">{f.get("n")}</td>'
+        f'<tr data-id="{e(f["provider"])}"><td>{e((names or {}).get(f["provider"], f["provider"]))}</td><td data-label="Week">{e(wk(f))} {flags(f)}</td><td class="r num" data-label="n">{f.get("n")}</td>'
         f'<td class="r num" data-label="Fresh in top 10">{count_pct(f.get("fresh_hit_at_10"), f.get("n"))}</td>'
         f'<td class="r num" data-label="median lag h">{"n/a" if v(f.get("median_lag_h")) is None else f"{v(f.get("median_lag_h")):.1f}"}</td>'
         f'<td class="r num" data-label="censored">{count_pct(f.get("censored_share"), f.get("n"))}</td><td class="mono" data-label="set sha">{e((f.get("set_sha") or "")[:12])}</td></tr>'
