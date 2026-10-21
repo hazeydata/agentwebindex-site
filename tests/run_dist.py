@@ -23,7 +23,10 @@ CANARIES = {
     "first_in_file_wins": (LPP_KEEP, 'if r["provider"] not in best:', LPP | {
         "test_browserless_own_set_label", "test_freshness_latest_week_file_order_reversed"}),
     "last_in_file_wins": (LPP_KEEP, "if True:", LPP | {"test_freshness_latest_week_per_provider"}),
+    # a real pack sample value rendered into every category panel must be caught as a leak
+    "pack_sample_leak": ('<p class="lb-foot">', '<p class="lb-foot">$0.80 per 1,000 pages · ', {"test_no_pack_sample_values"}),
 }
+EXPECTED_CANARIES = 4  # emptying or trimming CANARIES fails the runner
 
 
 def real_run():
@@ -64,6 +67,8 @@ def canary(name, old, new, must_fail):
 
 def main():
     errs = real_run()
+    if len(CANARIES) != EXPECTED_CANARIES:
+        errs.append(f"{len(CANARIES)} canaries defined; expected exactly {EXPECTED_CANARIES}")
     for name, (old, new, must) in CANARIES.items():
         errs += canary(name, old, new, must)
     for m in errs:
