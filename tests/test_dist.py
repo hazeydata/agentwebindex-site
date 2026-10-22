@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, str(R))
 import render  # noqa: E402
 
+EXCL_PUBLIC = ("provider", "reason", "quote", "terms_url", "checked_at")  # published exclusion fields, in order
 PROVS = {x["id"]: x.get("name") or x["id"] for x in json.loads((R / "data/_upstream/providers.json").read_text())["providers"]}
 
 
@@ -409,7 +410,7 @@ class Dist(unittest.TestCase):
 
     def test_no_internal_exclusion_fields(self):
         """Only allowlisted exclusion fields reach any built output; internal notes (ToS "note") never do."""
-        public = {"provider", "reason", "quote", "terms_url", "checked_at"}
+        public = set(EXCL_PUBLIC)
         internal = [x[k] for x in BENCH["exclusions"] for k in x if k not in public and isinstance(x[k], str)]
         self.assertTrue(internal, "fixture lost its internal note; this test would be hollow")
         needles = ["needs legal review", "treated as forbidden"] + internal + [html.escape(t) for t in internal]
@@ -419,8 +420,30 @@ class Dist(unittest.TestCase):
             t = f.read_text()
             for n in needles:
                 self.assertNotIn(n, t, f"{n!r} leaked into {f.relative_to(D)}")
-        for x in json.loads((D / "data/benchmarks/latest.json").read_text())["exclusions"]:
-            self.assertLessEqual(set(x), public)
+        pub = json.loads((D / "data/benchmarks/latest.json").read_text())["exclusions"]
+        self.assertEqual(pub, [{k: x[k] for k in EXCL_PUBLIC if k in x} for x in BENCH["exclusions"]])
+        for x in pub:
+            for k, v in x.items():
+                self.assertIsInstance(v, str, f"exclusion field {k!r} must be a plain string")
+
+    def test_unknown_exclusion_key_never_published(self):
+        """Allowlist, not denylist: an unknown internal key added to a tmp copy of the data never reaches dist."""
+        import shutil, subprocess, sys, tempfile
+        marker = "AWI-INTERNAL-MARKER-q7zk"
+        with tempfile.TemporaryDirectory(prefix="awi-excl.") as t:
+            w = Path(t) / "w"
+            shutil.copytree(R, w, ignore=shutil.ignore_patterns(".git", "dist", "__pycache__"))
+            p = w / "data/benchmarks/latest.json"
+            d = json.loads(p.read_text())
+            d["exclusions"][0]["internal_x"] = marker
+            p.write_text(json.dumps(d, indent=1))
+            b = subprocess.run([sys.executable, "build.py"], cwd=w, capture_output=True, text=True)
+            self.assertEqual(b.returncode, 0, b.stderr[-300:])
+            for f in (w / "dist").rglob("*"):
+                if f.is_file() and f.suffix in (".html", ".txt", ".json", ".csv", ".xml"):
+                    t2 = f.read_text()
+                    self.assertNotIn(marker, t2, f"marker leaked into {f.name}")
+                    self.assertNotIn("internal_x", t2, f"key leaked into {f.name}")
 
     def test_downloads(self):
         rows = list(csv.reader((D / "data/benchmarks/latest.csv").read_text().splitlines()))
