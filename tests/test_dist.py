@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, str(R))
 import render  # noqa: E402
 
+EXCL_PUBLIC = ("provider", "reason", "quote", "terms_url", "checked_at")  # published exclusion fields, in order
 PROVS = {x["id"]: x.get("name") or x["id"] for x in json.loads((R / "data/_upstream/providers.json").read_text())["providers"]}
 
 
@@ -407,10 +408,45 @@ class Dist(unittest.TestCase):
             self.assertIn('src="https://subscribe-forms.beehiiv.com/v3/loader.js"', s)
             self.assertIn(f'<noscript><a href="{cfg["beehiiv_embed_url"]}">', s)
 
+    def test_no_internal_exclusion_fields(self):
+        """Only allowlisted exclusion fields reach any built output; internal notes (ToS "note") never do."""
+        public = set(EXCL_PUBLIC)
+        internal = [x[k] for x in BENCH["exclusions"] for k in x if k not in public and isinstance(x[k], str)]
+        self.assertTrue(internal, "fixture lost its internal note; this test would be hollow")
+        needles = ["needs legal review", "treated as forbidden"] + internal + [html.escape(t) for t in internal]
+        files = [f for f in D.rglob("*") if f.is_file() and f.suffix in (".html", ".txt", ".json", ".csv", ".xml")]
+        self.assertTrue(any(f.name == "llms.txt" for f in files))
+        for f in files:
+            t = f.read_text()
+            for n in needles:
+                self.assertNotIn(n, t, f"{n!r} leaked into {f.relative_to(D)}")
+        pub = json.loads((D / "data/benchmarks/latest.json").read_text())["exclusions"]
+        self.assertEqual(pub, [{k: x[k] for k in EXCL_PUBLIC if k in x} for x in BENCH["exclusions"]])
+
+    def test_unknown_exclusion_key_never_published(self):
+        """Allowlist, not denylist: an unknown internal key added to a tmp copy of the data never reaches dist."""
+        import shutil, subprocess, sys, tempfile
+        marker = "AWI-INTERNAL-MARKER-q7zk"
+        with tempfile.TemporaryDirectory(prefix="awi-excl.") as t:
+            w = Path(t) / "w"
+            shutil.copytree(R, w, ignore=shutil.ignore_patterns(".git", "dist", "__pycache__"))
+            p = w / "data/benchmarks/latest.json"
+            d = json.loads(p.read_text())
+            d["exclusions"][0]["internal_x"] = marker
+            p.write_text(json.dumps(d, indent=1))
+            b = subprocess.run([sys.executable, "build.py"], cwd=w, capture_output=True, text=True)
+            self.assertEqual(b.returncode, 0, b.stderr[-300:])
+            for f in (w / "dist").rglob("*"):
+                if f.is_file() and f.suffix in (".html", ".txt", ".json", ".csv", ".xml"):
+                    t2 = f.read_text()
+                    self.assertNotIn(marker, t2, f"marker leaked into {f.name}")
+                    self.assertNotIn("internal_x", t2, f"key leaked into {f.name}")
+
     def test_downloads(self):
         rows = list(csv.reader((D / "data/benchmarks/latest.csv").read_text().splitlines()))
         self.assertEqual(len(rows) - 1, sum(len(v) for v in BENCH["tables"].values()))
-        self.assertEqual(json.loads((D / "data/benchmarks/latest.json").read_text()), BENCH)
+        pub = json.loads((D / "data/benchmarks/latest.json").read_text())
+        self.assertEqual({k: v for k, v in pub.items() if k != "exclusions"}, {k: v for k, v in BENCH.items() if k != "exclusions"})
         self.assertGreater(len(json.loads((D / "data/prices.json").read_text())["rows"]), 0)
         self.assertTrue((D / "data/prices.csv").read_text().startswith("provider,name,pricing_url"))
         d = page("/data/")

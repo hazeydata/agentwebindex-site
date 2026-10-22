@@ -8,7 +8,7 @@
 import os, re, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
-EXPECTED = 40  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
+EXPECTED = 42  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
 
 R = Path(__file__).resolve().parent.parent
 LPP_KEEP = 'if r["provider"] not in best or k > best[r["provider"]][0]:'
@@ -25,8 +25,11 @@ CANARIES = {
     "last_in_file_wins": (LPP_KEEP, "if True:", LPP | {"test_freshness_latest_week_per_provider"}),
     # a real pack sample value rendered into every category panel must be caught as a leak
     "pack_sample_leak": ('<p class="lb-foot">', '<p class="lb-foot">$0.80 per 1,000 pages · ', {"test_no_pack_sample_values"}),
+    # published exclusions must use the allowlist; a denylist of just "note" leaks any other internal key
+    "exclusion_denylist": ("{k:x[k] for k in EXCLUSION_PUBLIC if k in x}", '{k:v for k,v in x.items() if k!="note"}',
+                           {"test_unknown_exclusion_key_never_published"}, "build.py"),
 }
-EXPECTED_CANARIES = 4  # emptying or trimming CANARIES fails the runner
+EXPECTED_CANARIES = 5  # emptying or trimming CANARIES fails the runner
 
 
 def real_run():
@@ -43,14 +46,14 @@ def real_run():
     return errs
 
 
-def canary(name, old, new, must_fail):
-    src = (R / "render.py").read_text()
+def canary(name, old, new, must_fail, fn="render.py"):
+    src = (R / fn).read_text()
     if src.count(old) != 1:
-        return [f"canary {name}: anchor not found once in render.py (update CANARIES with the code)"]
+        return [f"canary {name}: anchor not found once in {fn} (update CANARIES with the code)"]
     with tempfile.TemporaryDirectory(prefix="awi-canary.") as t:
         w = Path(t) / "w"
         shutil.copytree(R, w, ignore=shutil.ignore_patterns(".git", "dist", "__pycache__"))
-        (w / "render.py").write_text(src.replace(old, new))
+        (w / fn).write_text(src.replace(old, new))
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
         b = subprocess.run([sys.executable, "build.py"], cwd=w, env=env, capture_output=True, text=True)
         if b.returncode:
@@ -69,8 +72,8 @@ def main():
     errs = real_run()
     if len(CANARIES) != EXPECTED_CANARIES:
         errs.append(f"{len(CANARIES)} canaries defined; expected exactly {EXPECTED_CANARIES}")
-    for name, (old, new, must) in CANARIES.items():
-        errs += canary(name, old, new, must)
+    for name, (old, new, must, *fn) in CANARIES.items():
+        errs += canary(name, old, new, must, *fn)
     for m in errs:
         print("META FAIL:", m, file=sys.stderr)
     return 1 if errs else 0
