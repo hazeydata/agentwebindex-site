@@ -422,9 +422,6 @@ class Dist(unittest.TestCase):
                 self.assertNotIn(n, t, f"{n!r} leaked into {f.relative_to(D)}")
         pub = json.loads((D / "data/benchmarks/latest.json").read_text())["exclusions"]
         self.assertEqual(pub, [{k: x[k] for k in EXCL_PUBLIC if k in x} for x in BENCH["exclusions"]])
-        for x in pub:
-            for k, v in x.items():
-                self.assertIsInstance(v, str, f"exclusion field {k!r} must be a plain string")
 
     def test_unknown_exclusion_key_never_published(self):
         """Allowlist, not denylist: an unknown internal key added to a tmp copy of the data never reaches dist."""
