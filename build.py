@@ -11,6 +11,7 @@ cfg=json.loads((R/"site.config.json").read_text()) if (R/"site.config.json").exi
 SITE_URL=(cfg.get("site_url") or "https://agentwebindex.com").rstrip("/")
 UP=R/"data"/"_upstream"   # vendored copies of agentwebindex collectors/providers.json, bench/tos_matrix.yaml, bench/pricing.yaml (see sync_data.sh)
 PROVIDERS=UP/"providers.json"; PRICING=UP/"pricing.yaml"
+EXCLUSION_PUBLIC=("provider","reason","quote","terms_url","checked_at")  # allowlist: only these exclusion fields are published
 
 def newsletter_slot():
     url=(cfg.get("beehiiv_embed_url") or "").strip()
@@ -36,7 +37,7 @@ def exclusion_note():
     li = "".join(f'<li><b>{html.escape(names.get(pid, pid))}</b> is excluded from benchmark tables: its terms forbid benchmarking ('
                  f'{html.escape(t["benchmarking"].get("quote") or "")}; <a href="{html.escape(t.get("terms_url") or "")}">terms</a>, checked {html.escape(str(t.get("checked_at")))}). '
                  f'It still appears on the <a href="/prices/">prices</a> page.'
-                 + (f' <span class="muted">Note: {html.escape(t["note"])}</span>' if t.get("note") else "") + '</li>' for pid, t in items)
+                 '</li>' for pid, t in items)   # internal fields (e.g. "note") are never rendered
     return f'<div id="exclusions" class="note"><h3>Excluded providers</h3><ul>{li}</ul></div>'
 
 def _money(x): return f"${x:,.4f}".rstrip("0").rstrip(".") if isinstance(x,(int,float)) else None
@@ -152,6 +153,13 @@ pages.sort(key=lambda p:(p!="/",p))
 for a in ("style.css","app.js","favicon.svg"): shutil.copy(S/a,D/a)
 shutil.copytree(S/"fonts",D/"assets"/"fonts")
 if (R/"data").exists(): shutil.copytree(R/"data",D/"data",ignore=lambda d,n:[x for x in n if x in ("cache","_upstream")],dirs_exist_ok=True)
+def public_bench():
+    """Published latest.json: exclusions reduced to EXCLUSION_PUBLIC; the vendored data/ copy is left unchanged."""
+    p=D/"data/benchmarks/latest.json"
+    if not p.exists(): return
+    d=json.loads(p.read_text()); d["exclusions"]=[{k:x[k] for k in EXCLUSION_PUBLIC if k in x} for x in d.get("exclusions") or []]
+    p.write_text(json.dumps(d,indent=1))
+public_bench()
 n=price_exports(); nb=bench_csv()
 (D/"llms.txt").write_text("# AgentWebIndex\nMachine-readable data: /data/benchmarks/latest.json, /data/benchmarks/latest.csv (CC BY 4.0), /data/prices.json, /data/prices.csv, /data/prices/<provider>.json\nPages: /, /prices/, /methodology/, /data/, /sponsors/, /disclosures/, /newsletter/\n")
 print("built",D,"price rows:",n,"benchmark csv rows:",nb)

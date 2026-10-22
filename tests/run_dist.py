@@ -8,7 +8,7 @@
 import os, re, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
-EXPECTED = 40  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
+EXPECTED = 41  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
 
 R = Path(__file__).resolve().parent.parent
 LPP_KEEP = 'if r["provider"] not in best or k > best[r["provider"]][0]:'
