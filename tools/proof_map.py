@@ -37,7 +37,7 @@ ROWS = [
     ("AC30", [("d", "test_no_draft_or_pending_case_sensitive")]),
     ("R3", [("s", "test_tavily_date_is_phase0")]),
     ("R4", [("d", "test_build_fails_if_pin_is_pre_phase0_sha"), ("d", "test_build_fails_if_tavily_input_dated_before_phase0"),
-            ("d", "test_real_repo_at_8ab7ccc_builds_and_check_is_ok"), ("d", "test_build_fails_if_vendored_data_sha_differs_from_pin"),
+            ("d", "test_real_repo_at_303efdf4_builds_and_check_is_ok"), ("d", "test_build_fails_if_vendored_data_sha_differs_from_pin"),
             ("d", "test_pin_check_function_cases"), ("s", "test_data_pin_moved")]),
     ("R7 (no 'cheapest tier covering 100k' claim)", [("d", "test_no_cheapest_tier_100k_claim_anywhere"), ("d", "test_prices_shows_only_tavily_entry_tier")]),
     ("AC2", [("s", "test_tavily_price_matches_pricing_yaml")]),

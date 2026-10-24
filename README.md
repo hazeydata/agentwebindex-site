@@ -25,7 +25,7 @@ SVG bytes differ from their sha256; (R8) `data` is the pre-Phase-0 sha `6b8bd87d
 Re-pin data: `./sync_data.sh <full 40-hex agentwebindex sha> [repo-url-or-path] [recorded-url]` (re-vendors `data/`, writes `data/_upstream/SOURCE`, and regenerates
 `tests/data_pin_manifest.json` through `tools/data_manifest.py`), then edit `pins.json` `data` to the same sha. `data/_upstream/SOURCE` always records a URL, never a local path: with a local clone as the second
 argument it records the third argument, else `$AWI_RECORD_URL`, else `https://github.com/hazeydata/agentwebindex.git`. A sha that is on no branch
-(a PR head) is fetched by sha. Current pin: data `8ab7ccc` (agentwebindex#25, Tavily re-verified 2026-10-24).
+(a PR head) is fetched by sha. Current pin: data `303efdf4` (agentwebindex main, merge commit of #25 whose head 8ab7ccc re-verified Tavily 2026-10-24).
 Re-pin copy/charts: replace `content/copy.md`, `content/chart-alt.md` or `src/charts/*` and update the sha256 values in `pins.json`.
 Never hand-edit `data/`.
 - `content/chart-alt.md` holds only the `## Alt text` section of Her?'s `QUERIES.md` (agentwebindex-meta 2c28c0a, `cycles/2026-10-24-page-redo/her/QUERIES.md`),
@@ -56,7 +56,7 @@ python3 -m tests.test_ship
   tap targets >=44px at 390px; screenshots go to a temp /tmp/awi-shots.* dir that is deleted on exit unless AWI_KEEP_SHOTS=1, which keeps it and prints the path; prints SKIP without Chrome).
 - `tests/test_ship.py`: SHIP gates, run separately, all must pass: `test_no_placeholders` (no `[[LINDSAY-PLACEHOLDER]]` in dist), Tavily price equals
   pricing.yaml, `test_tavily_date_is_phase0` (R3: rendered Tavily date == 2026-10-24) and `test_data_pin_moved` (R4/R8: pin is not 6b8bd87, no Tavily input before `phase0_date`).
-- `tests/agent_surface_baseline.json`: hashes of the agent surfaces main's code (60a8f4b) builds from the pinned data (regenerated at 8ab7ccc by building
+- `tests/agent_surface_baseline.json`: hashes of the agent surfaces main's code (60a8f4b) builds from the pinned data (regenerated at 8ab7ccc and carried to 303efdf4, whose data files are identical, by building
   main's code on the new data). Against the 6b8bd87 baseline the only change is `data/benchmarks/latest.json` (three Tavily `cost_units_note` check dates,
   2026-10-19 to 2026-10-24); the site's `llms.txt` differs from main's only by the added `/tell-us/` entry.
 

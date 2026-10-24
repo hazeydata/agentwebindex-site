@@ -1,6 +1,6 @@
 {
  "_doc": "sha256 of the agent surfaces built by main (60a8f4b code) from the vendored data at data_sha. Generated once from the pre-redo build; regenerate by hand only by building main's code against the same data. Compared by tests/test_dist.py::test_agent_surfaces_unchanged only while pins.json data == data_sha.",
- "data_sha": "8ab7ccc6f5efa4ca585c95028c4e0d85c4f2973b",
+ "data_sha": "303efdf4fa955e81697a92906d32d6ac125e3882",
  "files": {
   "data/LICENSE": "2a4f9ada335b547c0bdc3457e138eb21f77ff59a2191f60bb7e370ab4cfc047a",
   "data/benchmarks/latest.csv": "b77656688e2adfd5895c58563eaf0377598e9c3e570e6683a5e734115b6471c7",

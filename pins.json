@@ -1,6 +1,6 @@
 {
  "_doc": "Single source of truth for pinned inputs. To move a pin, edit ONE line here and re-vendor (see README 'Pins').",
- "data": "8ab7ccc6f5efa4ca585c95028c4e0d85c4f2973b",
+ "data": "303efdf4fa955e81697a92906d32d6ac125e3882",
  "phase0_date": "2026-10-24",
  "copy": "2df3410e",
  "copy_sha256": "49bf759f16fd5419b04a61f799147897f670694c78de0fa987788c4210fefa0d",

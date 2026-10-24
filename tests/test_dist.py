@@ -400,8 +400,8 @@ class Pins(unittest.TestCase):
         self.assertEqual(missing, [])
         self.assertIn(f"tests/test_dist.py:{proof_map.defs('tests/test_dist.py')['test_nav_top_exactly_four_links']}", text)
 
-    def test_real_repo_at_8ab7ccc_builds_and_check_is_ok(self):  # R8 pass case
-        self.assertEqual(PINS["data"], "8ab7ccc6f5efa4ca585c95028c4e0d85c4f2973b")
+    def test_real_repo_at_303efdf4_builds_and_check_is_ok(self):  # R8 pass case
+        self.assertEqual(PINS["data"], "303efdf4fa955e81697a92906d32d6ac125e3882")
         self.assertEqual(pinmod.source_sha(R), PINS["data"])
         self.assertEqual(pinmod.check(R), [])
         with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:

@@ -1,6 +1,6 @@
 """SHIP gates (not part of run_tests.sh; run: python3 -m tests.test_ship after ./run_tests.sh built dist/).
 
-Any failure blocks SHIP. The Tavily data PR (hazeydata/agentwebindex#25, 8ab7ccc) is pinned in pins.json, so R3 (rendered
+Any failure blocks SHIP. The Tavily data PR (hazeydata/agentwebindex#25, merged as 303efdf4) is pinned in pins.json, so R3 (rendered
 Tavily date == Phase 0 date) and R4/R8 (data pin is not 6b8bd87, no Tavily input before phase0_date) are ordinary gates now.
 """
 import json, re, sys, unittest
