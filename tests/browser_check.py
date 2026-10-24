@@ -220,7 +220,7 @@ def check_charts(cdp, base, errs):
 
 
 def check_fonts(cdp, base, errs):
-    """R9.2: per chart, ONE non-title chart <text> styled Inter resolves to Inter (computed style + document.fonts) and Chrome renders it with Inter only (no fallback). Chart titles are Space Grotesk 600 and are not checked here."""
+    """R9.2: per chart, ONE non-title chart <text> styled Inter resolves to Inter (computed style + document.fonts) and Chrome renders that element in Inter with no fallback font. Chart titles are Space Grotesk 600 and are not checked here."""
     cdp.call("DOM.enable")
     cdp.call("CSS.enable")
     n = 0
