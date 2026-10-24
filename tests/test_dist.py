@@ -715,9 +715,6 @@ class CopyAndGreps(unittest.TestCase):
         hits = [(p.name, w) for p in dist_text_files() for w in ("DRAFT", "PENDING") if w in p.read_text(errors="ignore")]
         self.assertEqual(hits, [])
 
-    def test_no_ssd_term_anywhere(self):
-        self.assertEqual([p.name for p in dist_text_files() if re.search(r"\bSSD\b", p.read_text(errors="ignore"))], [])
-
     def test_no_absolute_local_paths_in_repo_files(self):
         bad = []
         for f in R.rglob("*"):

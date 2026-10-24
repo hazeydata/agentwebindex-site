@@ -127,7 +127,7 @@ for (const id of %s) { const fig = document.getElementById(id);
     return {src: i.getAttribute('src'), currentSrc: i.currentSrc, display: cs.display, visible: cs.display !== 'none' && i.offsetParent !== null && r.width > 0,
             top: r.top + scrollY, bottom: r.bottom + scrollY, left: r.left, right: r.right, width: r.width, nw: i.naturalWidth}; }); }
 return JSON.stringify(out); })()"""
-REVEAL = """(() => { for (const i of document.querySelectorAll('.chart img')) { if (getComputedStyle(i).display !== 'none') i.scrollIntoView({block: 'center'}); } return 1; })()"""
+REVEAL = """(() => { for (const i of document.querySelectorAll('.chart img')) { if (getComputedStyle(i).display !== 'none' && !(i.complete && i.naturalWidth > 0)) { i.scrollIntoView({block: 'center'}); return 0; } } return 1; })()"""
 READ = """(() => { const sel = 'nav.top a, .site-footer a, button, summary, .btn';
 const small = [...document.querySelectorAll(sel)].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.height < 43.99; }).map(e => e.tagName + ' ' + (e.textContent || '').trim().slice(0, 30) + ' h=' + e.getBoundingClientRect().height.toFixed(1));
 return JSON.stringify({scrollWidth: document.documentElement.scrollWidth, bodyScrollWidth: document.body.scrollWidth, font: parseFloat(getComputedStyle(document.body).fontSize), small}); })()"""
@@ -145,7 +145,7 @@ def open_page(cdp, base, path, width, height, scheme, theme=None):
 
 def measure_charts(cdp):
     cdp.js(REVEAL)
-    for _ in range(40):
+    for _ in range(120):   # up to ~30 s: a loaded box can be slow to decode the SVGs
         data = json.loads(cdp.js(MEASURE % json.dumps(list(CHARTS))))
         if all(i["nw"] > 0 for imgs in data.values() for i in imgs if i["visible"]):
             return data

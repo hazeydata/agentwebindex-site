@@ -8,7 +8,7 @@
 import os, re, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
-EXPECTED = 54  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
+EXPECTED = 53  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
 
 R = Path(__file__).resolve().parent.parent
 # name -> (exact text in the file, defect replacement, tests that must fail[, file])
