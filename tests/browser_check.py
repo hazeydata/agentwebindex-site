@@ -2,8 +2,8 @@
 
 Serves dist/ from a local HTTP server on a free port, starts Chrome with one throwaway --user-data-dir, and drives it
 over the DevTools protocol with a minimal websocket client. Chrome, its profile directory and the server are always
-cleaned up (try/finally). Screenshots (390 and 1440 wide, every page) go to a temp directory OUTSIDE the repo; its path
-is printed for the human readability check. Prints SKIP and exits 0 when Chrome is not installed.
+cleaned up (try/finally). Screenshots (390 and 1440 wide, every page) go to a temp directory OUTSIDE the repo, which is
+deleted on exit; with AWI_KEEP_SHOTS=1 it is kept and its path is printed for the human readability check. Prints SKIP and exits 0 when Chrome is not installed.
 
 Run after `python3 build.py`:  python3 -m tests.browser_check
 """
@@ -220,7 +220,7 @@ def check_charts(cdp, base, errs):
 
 
 def check_fonts(cdp, base, errs):
-    """R9.2: chart <text> resolves to Inter (computed style + document.fonts) and Chrome renders it with Inter only (no fallback)."""
+    """R9.2: per chart, ONE non-title chart <text> styled Inter resolves to Inter (computed style + document.fonts) and Chrome renders it with Inter only (no fallback). Chart titles are Space Grotesk 600 and are not checked here."""
     cdp.call("DOM.enable")
     cdp.call("CSS.enable")
     n = 0
@@ -337,7 +337,7 @@ def main():
         ng = check_rename_geometry(cdp, base, errs)
         check_readability(cdp, base, shots, errs)
         print(f"browser_check: {n} chart/viewport/scheme combinations checked; readability checked on {len(PAGES)} pages x 2 schemes at 390px")
-        print(f"browser_check: chart text font Inter-only in {nf} chart/viewport/scheme cases; id-rename text+geometry equal in {ng}")
+        print(f"browser_check: one non-title Inter chart text element rendered with Inter (no fallback) in {nf} chart/viewport/scheme cases; id-rename text+geometry equal in {ng}")
         if os.environ.get("AWI_KEEP_SHOTS") == "1":
             print(f"browser_check: screenshots (390 and 1440) for a human readability check: {shots}")
     finally:
