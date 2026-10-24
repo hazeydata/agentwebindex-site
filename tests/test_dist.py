@@ -313,6 +313,8 @@ class Pins(unittest.TestCase):
         self.assertNotRegex(json.dumps(man), "/work" + "space|/home/")
 
     def test_pin_check_function_cases(self):  # R8
+        saved = os.environ.pop("AWI_DATA_REPO", None)   # the data-repo cross-check has its own test; these cases use fake shas
+        self.addCleanup(lambda: saved is not None and os.environ.__setitem__("AWI_DATA_REPO", saved))
         base = dict(PINS)
         self.assertEqual(pinmod.check(R, pins=base), [])
         self.assertEqual(pinmod.STALE_DATA_SHA, "6b8bd87d778b3fe0fe049f9274796ab498928cc5")
@@ -375,6 +377,28 @@ class Pins(unittest.TestCase):
             self.assertIn("before the Phase 0 date 2026-10-24", b.stderr)
             self.assertNotIn("pre-Phase-0", b.stderr)
             self.assertFalse((w / "dist/index.html").exists())
+
+    def test_vendored_pricing_cross_checked_against_data_repo(self):  # R8 optional: needs AWI_DATA_REPO
+        repo = os.environ.get("AWI_DATA_REPO")
+        self.assertEqual(pinmod.check(R), [])
+        with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:
+            w = Path(t) / "w"
+            copy_repo(w)
+            p = w / "data/_upstream/pricing.yaml"
+            p.write_text(p.read_text() + "# drift\n")
+            errs = pinmod.check(w)
+            if not repo:   # without the data repo the cross-check is off (documented in the README)
+                self.assertFalse(any("differs from bench/pricing.yaml" in e for e in errs), errs)
+                return
+            self.assertTrue(any("differs from bench/pricing.yaml" in e for e in errs), errs)
+            self.assertNotEqual(build_in(w).returncode, 0)
+
+    def test_proof_map_names_only_existing_tests(self):  # S15: PR body map is generated from test names
+        sys.path.insert(0, str(R / "tools"))
+        import proof_map
+        text, missing = proof_map.render()
+        self.assertEqual(missing, [])
+        self.assertIn(f"tests/test_dist.py:{proof_map.defs('tests/test_dist.py')['test_nav_top_exactly_four_links']}", text)
 
     def test_real_repo_at_8ab7ccc_builds_and_check_is_ok(self):  # R8 pass case
         self.assertEqual(PINS["data"], "8ab7ccc6f5efa4ca585c95028c4e0d85c4f2973b")
@@ -528,7 +552,12 @@ class Shell(unittest.TestCase):
         self.assertGreaterEqual(len(urls), 6)
         for u in urls:
             self.assertTrue((D / u.lstrip("/")).exists(), u)
-        self.assertIn("SIL Open Font License, Version 1.1", (D / "assets/fonts/OFL.txt").read_text())
+        for n, who in (("Inter", "Inter Project Authors"), ("SpaceGrotesk", "Space Grotesk Project Authors"), ("IBMPlexMono", "2017 IBM Corp")):
+            txt = (D / f"assets/fonts/OFL-{n}.txt").read_text()
+            self.assertIn("SIL Open Font License, Version 1.1", txt)
+            self.assertIn(who, txt.splitlines()[0])
+        self.assertFalse((D / "assets/fonts/OFL.txt").exists())
+        self.assertNotIn("IBMPlexSans", "".join(p.read_text() for p in (D / "assets/fonts").glob("*.txt")))
         self.assertNotIn("truetype", css)
         self.assertEqual(sorted(re.findall(r"/assets/fonts/([\w.-]+)\"", css)), sorted(p.name for p in (D / "assets/fonts").glob("*.woff2")))   # no unused font files
 

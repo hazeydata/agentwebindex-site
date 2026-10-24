@@ -5,7 +5,7 @@ Phase 0 guard (R8): the build reads bench/pricing.yaml at the pinned data sha (t
 pins.json "data") and fails if the pin is STALE_DATA_SHA, or if any Tavily input date (every checked_at / verified_date anywhere under
 providers.tavily) is before pins.json "phase0_date".
 """
-import hashlib, json, re
+import hashlib, json, os, re, subprocess
 from pathlib import Path
 
 STALE_DATA_SHA = "6b8bd87d778b3fe0fe049f9274796ab498928cc5"   # pre-Phase-0 data pin; never buildable
@@ -67,6 +67,13 @@ def check(root, pins=None, vendored_sha=None):
             errs.append(f"pricing.yaml {path} is {val!r}, not a YYYY-MM-DD date")
         elif val < pins["phase0_date"]:
             errs.append(f'pricing.yaml {path} is {val}, before the Phase 0 date {pins["phase0_date"]}; pin a data sha with the Tavily re-verification')
+    repo = os.environ.get("AWI_DATA_REPO")
+    if repo:   # optional cross-check: vendored pricing.yaml must be the bytes of bench/pricing.yaml at the pin in the data repo
+        r = subprocess.run(["git", "-C", repo, "show", f'{pins["data"]}:bench/pricing.yaml'], capture_output=True)
+        if r.returncode != 0:
+            errs.append(f'AWI_DATA_REPO: cannot read bench/pricing.yaml at {pins["data"][:12]}')
+        elif r.stdout != (root / "data/_upstream/pricing.yaml").read_bytes():
+            errs.append(f'data/_upstream/pricing.yaml differs from bench/pricing.yaml at {pins["data"][:12]} in AWI_DATA_REPO; run ./sync_data.sh {pins["data"]}')
     if vendored != pins["data"]:
         errs.append(f'data/_upstream/SOURCE sha {vendored} != pins.json data {pins["data"]}; run ./sync_data.sh {pins["data"]}')
     if sha256(root / "content/copy.md") != pins["copy_sha256"]:

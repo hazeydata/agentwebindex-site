@@ -5,7 +5,7 @@ and src/charts (vendored at the commits pinned in pins.json).
 Guards first: pins.check() fails the build (non-zero exit) on the pre-Phase-0 data pin, a Tavily input date in the pinned pricing.yaml before pins.json phase0_date (R8),
 or when the vendored data, copy or chart SVG bytes differ from pins.json.
 src/*.html (slot templates filled by render.py) wrapped in src/_layout.html -> dist/<page>/index.html;
-chart SVGs (byte-identical) -> dist/assets/charts, src/fonts (woff2 + OFL.txt) -> dist/assets/fonts; data/ (minus data/cache and data/_upstream) -> dist/data;
+chart SVGs (byte-identical) -> dist/assets/charts, src/fonts (woff2 + OFL-*.txt) -> dist/assets/fonts; data/ (minus data/cache and data/_upstream) -> dist/data;
 generates dist/data/prices.csv + prices.json from data/prices/history/*.jsonl and dist/data/benchmarks/latest.csv;
 llms.txt, robots.txt, sitemap.xml; reads site.config.json."""
 import csv, html, json, re, shutil, sys

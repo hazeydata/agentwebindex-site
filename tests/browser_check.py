@@ -244,7 +244,8 @@ def main():
         n = check_charts(cdp, base, errs)
         check_readability(cdp, base, shots, errs)
         print(f"browser_check: {n} chart/viewport/scheme combinations checked; readability checked on {len(PAGES)} pages x 2 schemes at 390px")
-        print(f"browser_check: screenshots (390 and 1440) for a human readability check: {shots}")
+        if os.environ.get("AWI_KEEP_SHOTS") == "1":
+            print(f"browser_check: screenshots (390 and 1440) for a human readability check: {shots}")
     finally:
         if ws:
             ws.close()
@@ -260,6 +261,8 @@ def main():
         srv.shutdown()
         srv.server_close()
         shutil.rmtree(prof, ignore_errors=True)
+        if os.environ.get("AWI_KEEP_SHOTS") != "1":
+            shutil.rmtree(shots, ignore_errors=True)
     for m in errs:
         print("BROWSER FAIL:", m, file=sys.stderr)
     return 1 if errs else 0
