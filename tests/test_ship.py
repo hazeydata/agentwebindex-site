@@ -1,7 +1,7 @@
 """SHIP gates (not part of run_tests.sh; run: python3 -m tests.test_ship after ./run_tests.sh built dist/).
 
 Any failure blocks SHIP. The Tavily data PR (hazeydata/agentwebindex#25, 8ab7ccc) is pinned in pins.json, so R3 (rendered
-Tavily date == Phase 0 date) and R4 (data pin moved, phase0_landed) are ordinary gates now.
+Tavily date == Phase 0 date) and R4/R8 (data pin is not 6b8bd87, no Tavily input before phase0_date) are ordinary gates now.
 """
 import json, re, sys, unittest
 from decimal import Decimal
@@ -59,11 +59,12 @@ class Ship(unittest.TestCase):
         row = next(r for r in LATEST["tables"]["search"] if r["provider"] == "tavily" and r["run_date"] == LATEST["run_date"])
         self.assertEqual(Decimal(str(row["entry_tier_cost_per_1k"]["v"])), per_credit * cpc * 1000)   # latest.json cost input == pricing.yaml
 
-    def test_data_pin_moved(self):  # R4/AC2
-        self.assertTrue(PINS["phase0_landed"], "phase0_landed is false: the Tavily data PR has not landed")
-        self.assertNotEqual(PINS["data"], PINS["data_stale_after_phase0"], "data pin is still the pre-Phase-0 sha")
+    def test_data_pin_moved(self):  # R4/R8/AC2
+        self.assertNotEqual(PINS["data"], pinmod.STALE_DATA_SHA, "data pin is still the pre-Phase-0 sha")
+        dates = pinmod.tavily_dates(R / "data/_upstream/pricing.yaml")
+        self.assertTrue(dates)
+        self.assertEqual([(k, v) for k, v in dates if v < PINS["phase0_date"]], [], "Tavily input dated before the Phase 0 date")
         self.assertEqual(pinmod.check(R), [])
-
 
 def main():
     res = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Ship))

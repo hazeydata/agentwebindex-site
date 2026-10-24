@@ -1,8 +1,6 @@
 {
  "_doc": "Single source of truth for pinned inputs. To move a pin, edit ONE line here and re-vendor (see README 'Pins').",
  "data": "8ab7ccc6f5efa4ca585c95028c4e0d85c4f2973b",
- "data_stale_after_phase0": "6b8bd87d778b3fe0fe049f9274796ab498928cc5",
- "phase0_landed": true,
  "phase0_date": "2026-10-24",
  "copy": "2df3410e",
  "copy_sha256": "49bf759f16fd5419b04a61f799147897f670694c78de0fa987788c4210fefa0d",
@@ -42,22 +40,6 @@
   "awi-pass-rate-720-light.svg": {
    "her_original": "her/her-pass-rate-720-light.svg",
    "sha256": "d2d0c24b809b72921657574cd13f1f50a6ae90896e8df1cc7ea6d4704da436f1"
-  },
-  "fonts/Inter-400.ttf": {
-   "her_original": "her/fonts/Inter-400.ttf",
-   "sha256": "6d11488d1b4f583c800d6b21eeb981b71e65f2b44285de6a30c206a22dd9c78a"
-  },
-  "fonts/Inter-600.ttf": {
-   "her_original": "her/fonts/Inter-600.ttf",
-   "sha256": "ab89f928401c7d2c1023ded8375811dc2569d85672157d25409be0d9c273f6bc"
-  },
-  "fonts/Inter-700.ttf": {
-   "her_original": "her/fonts/Inter-700.ttf",
-   "sha256": "05307c35ef58d311ffa09ceb59fe4129c7dd588efb8ebf24a9f08302780ca49e"
-  },
-  "fonts/SpaceGrotesk-600.ttf": {
-   "her_original": "her/fonts/SpaceGrotesk-600.ttf",
-   "sha256": "3b18f06e3ddd6c412972709099a0966d8cc2357f648c3a8be1919b141e67a493"
   }
  },
  "layout": "76b8b23"

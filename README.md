@@ -17,15 +17,15 @@ Sponsors, Newsletter, Tell us and the "For agents" links (latest.json, prices, l
 
 ## Pins (`pins.json`)
 One file records every pinned input: `data` (agentwebindex sha, ONE line), `copy` + `copy_sha256` (content/copy.md), `charts` +
-`charts_sha256` (src/charts), `queries` / `queries_sha256` / `chart_alt_sha256` (chart alt text, below), `layout` (visual-desk layout
-spec, agentwebindex-meta 76b8b23), `phase0_date`, and the Phase 0 guard fields `data_stale_after_phase0` / `phase0_landed`.
+`charts_sha256` (the 8 chart SVGs in src/charts; fonts are not byte-pinned), `queries` / `queries_sha256` / `chart_alt_sha256` (chart alt text, below), `layout` (visual-desk layout
+spec, agentwebindex-meta 76b8b23), and `phase0_date` (2026-10-24).
 `build.py` runs `pins.check()` first and exits non-zero if: the vendored `data/_upstream/SOURCE` sha differs from `data`; copy, chart-alt or chart
-bytes differ from their sha256; or (R4) `data == data_stale_after_phase0` while `phase0_landed` is true.
+SVG bytes differ from their sha256; (R8) `data` is the pre-Phase-0 sha `6b8bd87d778b3fe0fe049f9274796ab498928cc5` (`pins.STALE_DATA_SHA`); or any Tavily input date
+(every `checked_at` / `verified_date` at any depth under `providers.tavily`) in the vendored `bench/pricing.yaml` (the pricing file at the pinned data sha) is before `phase0_date`.
 Re-pin data: `./sync_data.sh <full 40-hex agentwebindex sha> [repo-url-or-path] [recorded-url]` (re-vendors `data/`, writes `data/_upstream/SOURCE`, and regenerates
-`tests/data_pin_manifest.json` through `tools/data_manifest.py`), then edit `pins.json` `data` to the same sha (and set `phase0_landed`
-true once the Tavily data PR is pinned). `data/_upstream/SOURCE` always records a URL, never a local path: with a local clone as the second
+`tests/data_pin_manifest.json` through `tools/data_manifest.py`), then edit `pins.json` `data` to the same sha. `data/_upstream/SOURCE` always records a URL, never a local path: with a local clone as the second
 argument it records the third argument, else `$AWI_RECORD_URL`, else `https://github.com/hazeydata/agentwebindex.git`. A sha that is on no branch
-(a PR head) is fetched by sha. Current pin: data `8ab7ccc` (agentwebindex#25, Tavily re-verified 2026-10-24), `phase0_landed` true.
+(a PR head) is fetched by sha. Current pin: data `8ab7ccc` (agentwebindex#25, Tavily re-verified 2026-10-24).
 Re-pin copy/charts: replace `content/copy.md`, `content/chart-alt.md` or `src/charts/*` and update the sha256 values in `pins.json`.
 Never hand-edit `data/`.
 - `content/chart-alt.md` holds only the `## Alt text` section of Her?'s `QUERIES.md` (agentwebindex-meta 2c28c0a, `cycles/2026-10-24-page-redo/her/QUERIES.md`),
@@ -51,16 +51,20 @@ python3 -m tests.test_ship
 ```
 - `run_tests.sh`: build, JS smoke test (`tests/app_smoke.js`, theme toggle), `tests/run_dist.py` (requires exactly `EXPECTED` tests in
   `tests/test_dist.py` and exactly `EXPECTED_CANARIES` canaries that inject real defects and must be caught; bump the counts by hand when
-  tests change), `tests/test_dist.py`, then `tests/browser_check.py` (headless Chrome over the DevTools protocol: one visible chart variant
-  per chart at 390/720/1440 in both colour schemes, served bytes vs pinned sha256, C2 stacked under C1, no sideways scroll, body >=16px and
+  tests change), `tests/test_dist.py` (set `AWI_DATA_REPO` to a local agentwebindex clone and the pre-Phase-0 pin test re-vendors a real 6b8bd87 tree with `sync_data.sh` in a temp copy; without it the case is built by editing the temp copy's SOURCE and pins.json), then `tests/browser_check.py` (headless Chrome over the DevTools protocol: one visible chart variant
+  per chart at 390/720/1440 in both colour schemes, served chart SVG bytes vs pinned sha256, C2 stacked under C1, no sideways scroll, body >=16px and
   tap targets >=44px at 390px; screenshots go to a temp dir outside the repo, path printed; prints SKIP without Chrome).
 - `tests/test_ship.py`: SHIP gates, run separately, all must pass: `test_no_placeholders` (no `[[LINDSAY-PLACEHOLDER]]` in dist), Tavily price equals
-  pricing.yaml, `test_tavily_date_is_phase0` (R3: rendered Tavily date == 2026-10-24) and `test_data_pin_moved` (R4: pin moved, `phase0_landed` true).
+  pricing.yaml, `test_tavily_date_is_phase0` (R3: rendered Tavily date == 2026-10-24) and `test_data_pin_moved` (R4/R8: pin is not 6b8bd87, no Tavily input before `phase0_date`).
 - `tests/agent_surface_baseline.json`: hashes of the agent surfaces main's code (60a8f4b) builds from the pinned data (regenerated at 8ab7ccc by building
   main's code on the new data). Against the 6b8bd87 baseline the only change is `data/benchmarks/latest.json` (four Tavily `cost_units_note` check dates,
   2026-10-19 to 2026-10-24); the site's `llms.txt` differs from main's only by the added `/tell-us/` entry.
 
-Fonts: IBM Plex Mono self-hosted under `/assets/fonts/` (SIL OFL 1.1, `src/fonts/OFL.txt`); Inter and Space Grotesk reuse the TrueType files shipped with the charts.
+Fonts: all self-hosted as woff2 under `/assets/fonts/` (`src/fonts/`), licensed SIL OFL 1.1 (`src/fonts/OFL.txt`). IBM Plex Mono 400/500/600 are the upstream Latin files.
+Inter 400/600/700 and Space Grotesk 600 (`inter-{400,600,700}-latin.woff2`, `space-grotesk-600-latin.woff2`, each under 20 KB) were subset from the TrueType fonts
+of the 2c28c0a charts with fontTools, Latin range. Those TrueType files are not in the repo or in `dist/`. Weights kept are the ones the CSS uses (Inter 700 is the default `<b>` weight).
+Charts (R8, AC14): `dist/assets/charts` holds exactly the 8 pinned SVGs, byte-identical; fonts are not byte-checked. A test fails if any font file in the repo
+(`git ls-files`) or in `dist/` is over 100 KB or is a TrueType/OpenType file.
 Newsletter: beehiiv embed when `site.config.json` -> `beehiiv_embed_url` is set, otherwise a disabled "Coming soon" form.
 
 ## Deploy (Cloudflare Pages)

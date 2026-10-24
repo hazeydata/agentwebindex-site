@@ -3,7 +3,7 @@
 AC numbers refer to specs/awi-page-redo-001.md (rev 2 + R3-R6). SHIP gates live in tests/test_ship.py;
 the headless-Chrome checks (AC16/AC17/AC14 served bytes, readability) live in tests/browser_check.py.
 """
-import csv, hashlib, html, json, re, shutil, subprocess, sys, tempfile, unittest
+import csv, hashlib, html, json, os, re, shutil, subprocess, sys, tempfile, unittest
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -245,13 +245,10 @@ class Helpers(unittest.TestCase):
         self.assertEqual(r["inputs"]["credits_per_call_verified.checked_at"], c["credits_per_call_verified"]["checked_at"])
         self.assertEqual(r["inputs"]["search.checked_at"], c["checked_at"])
         self.assertEqual(P.priced_tier_checked_at(PRICING, "tavily", "search"), min(c["checked_at"], c["credits_per_call_verified"]["checked_at"]))
-        if PINS["data"] == PINS["data_stale_after_phase0"]:   # pre-Phase-0 data: the dates are the spec's literal examples
-            self.assertEqual({k: v["checked_at"] for k, v in {x["provider"]: x for x in P.price_rows(PRICING, LATEST, PROVIDERS)}.items()},
-                             {"exa": "2026-10-15", "tavily": "2026-10-15", "browserless": "2026-10-15", "apify": "2026-10-19"})
-        else:   # at the Phase 0 pin every Tavily input is dated 2026-10-24 (pricing.yaml), so the min of the inputs is that date
-            self.assertEqual(set(r["inputs"].values()), {PINS["phase0_date"]})
-            self.assertEqual(r["checked_at"], min(r["inputs"].values()))
-            self.assertEqual(r["checked_at"], "2026-10-24")
+        # at the Phase 0 pin every Tavily input is dated 2026-10-24 (pricing.yaml), so the min of the inputs is that date
+        self.assertEqual(set(r["inputs"].values()), {PINS["phase0_date"]})
+        self.assertEqual(r["checked_at"], min(r["inputs"].values()))
+        self.assertEqual(r["checked_at"], "2026-10-24")
 
     def test_priced_inputs_ignore_unrelated_fields_and_raise_when_empty(self):  # AC4
         pr = {"providers": {"x": {"search": {"checked_at": "2026-01-02", "verified_date": "2020-01-01",
@@ -315,29 +312,80 @@ class Pins(unittest.TestCase):
             self.assertEqual(hashlib.sha256((R / rel).read_bytes()).hexdigest(), sha, f"{rel} differs from the pinned upstream bytes")
         self.assertNotRegex(json.dumps(man), "/work" + "space|/home/")
 
-    def test_pin_check_function_cases(self):  # R4
+    def test_pin_check_function_cases(self):  # R8
         base = dict(PINS)
         self.assertEqual(pinmod.check(R, pins=base), [])
-        stale = dict(base, phase0_landed=True, data_stale_after_phase0=base["data"])
-        self.assertTrue(any("Phase-0" in e for e in pinmod.check(R, pins=stale)))
-        moved = dict(stale, data="a" * 40)   # re-pinned: stale guard passes, but vendored SOURCE no longer matches the pin
+        self.assertEqual(pinmod.STALE_DATA_SHA, "6b8bd87d778b3fe0fe049f9274796ab498928cc5")
+        stale = dict(base, data=pinmod.STALE_DATA_SHA)
+        errs = pinmod.check(R, pins=stale, vendored_sha=pinmod.STALE_DATA_SHA)
+        self.assertTrue(any("pre-Phase-0" in e for e in errs), errs)
+        moved = dict(base, data="a" * 40)   # re-pinned: the vendored SOURCE no longer matches the pin
         errs = pinmod.check(R, pins=moved)
-        self.assertFalse(any("Phase-0" in e for e in errs))
+        self.assertFalse(any("pre-Phase-0" in e for e in errs))
         self.assertTrue(any("SOURCE" in e for e in errs))
         self.assertEqual(pinmod.check(R, pins=moved, vendored_sha="a" * 40), [])
+        self.assertTrue(any("before the Phase 0 date" in e for e in pinmod.check(R, pins=dict(base, phase0_date="2026-10-25"))))
 
-    def test_build_fails_if_data_pin_stale_after_phase0(self):  # R4
+    def test_tavily_dates_walk_every_depth_and_only_tavily(self):  # R8
+        dates = dict(pinmod.tavily_dates(R / "data/_upstream/pricing.yaml"))
+        self.assertIn("providers.tavily.search.checked_at", dates)
+        self.assertIn("providers.tavily.search.credits_per_call_verified.checked_at", dates)
+        self.assertGreaterEqual(len(dates), 3)
+        self.assertTrue(all(k.startswith("providers.tavily.") for k in dates))
+        self.assertTrue(all(v >= PINS["phase0_date"] for v in dates.values()), dates)
+
+    def test_build_fails_if_pin_is_pre_phase0_sha(self):  # R8 (a)
+        stale = pinmod.STALE_DATA_SHA
         with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:
             w = Path(t) / "w"
             copy_repo(w)
             p = json.loads((w / "pins.json").read_text())
-            p["phase0_landed"] = True
-            p["data_stale_after_phase0"] = p["data"]
+            p["data"] = stale
             (w / "pins.json").write_text(json.dumps(p))
+            data_repo = os.environ.get("AWI_DATA_REPO")
+            if data_repo:   # real 6b8bd87 tree, re-vendored in the temp copy only
+                s = subprocess.run(["bash", "sync_data.sh", stale, data_repo], cwd=w, capture_output=True, text=True)
+                self.assertEqual(s.returncode, 0, s.stderr[-400:])
+            else:   # no local clone: keep SOURCE consistent with the pin so only the stale-sha rule can fire
+                (w / "data/_upstream/SOURCE").write_text(f"repo https://github.com/hazeydata/agentwebindex.git\nsha {stale}\n")
+            self.assertEqual(pinmod.source_sha(w), stale)
             b = build_in(w)
             self.assertNotEqual(b.returncode, 0)
-            self.assertIn("Phase-0", b.stderr)
+            self.assertIn("pre-Phase-0", b.stderr)
+            self.assertNotIn("SOURCE", b.stderr)
             self.assertFalse((w / "dist/index.html").exists())
+
+    def test_build_fails_if_tavily_input_dated_before_phase0(self):  # R8 (b)
+        with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:
+            w = Path(t) / "w"
+            copy_repo(w)
+            y = w / "data/_upstream/pricing.yaml"
+            old = '"verified_date": "2026-10-24"'
+            raw = y.read_text()
+            self.assertIn(old, raw)
+            i = raw.index(old)   # first 2026-10-24 verified_date: confirm it sits under tavily before editing
+            y.write_text(raw[:i] + '"verified_date": "2026-10-23"' + raw[i + len(old):])
+            self.assertEqual([k for k, v in pinmod.tavily_dates(y) if v == "2026-10-23"], [k for k, v in pinmod.tavily_dates(y) if v == "2026-10-23" and k.startswith("providers.tavily.")])
+            self.assertTrue(any(v == "2026-10-23" for _, v in pinmod.tavily_dates(y)))   # the edited field is under providers.tavily
+            self.assertNotEqual(PINS["data"], pinmod.STALE_DATA_SHA)
+            self.assertEqual(pinmod.source_sha(w), PINS["data"])
+            b = build_in(w)
+            self.assertNotEqual(b.returncode, 0)
+            self.assertIn("2026-10-23", b.stderr)
+            self.assertIn("before the Phase 0 date 2026-10-24", b.stderr)
+            self.assertNotIn("pre-Phase-0", b.stderr)
+            self.assertFalse((w / "dist/index.html").exists())
+
+    def test_real_repo_at_8ab7ccc_builds_and_check_is_ok(self):  # R8 pass case
+        self.assertEqual(PINS["data"], "8ab7ccc6f5efa4ca585c95028c4e0d85c4f2973b")
+        self.assertEqual(pinmod.source_sha(R), PINS["data"])
+        self.assertEqual(pinmod.check(R), [])
+        with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:
+            w = Path(t) / "w"
+            copy_repo(w)
+            b = build_in(w)
+            self.assertEqual(b.returncode, 0, b.stderr[-400:])
+            self.assertTrue((w / "dist/index.html").exists())
 
     def test_build_fails_if_vendored_data_sha_differs_from_pin(self):  # R4
         with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:
@@ -361,16 +409,33 @@ class Pins(unittest.TestCase):
         self.assertEqual(set(copydoc.alt_texts()), {"pass-rate", "cost-per-success"})
         self.assertFalse((R / "content/QUERIES.md").exists())
 
-    def test_charts_byte_identical_to_pin(self):  # AC14
+    def test_charts_byte_identical_to_pin(self):  # AC14 (R8): the 8 chart SVGs only; fonts are not byte-checked
         want = PINS["charts_sha256"]
-        self.assertEqual(sum(1 for n in want if n.endswith(".svg")), 8)
+        self.assertEqual(len(want), 8)
+        self.assertTrue(all(n.endswith(".svg") and "/" not in n for n in want), sorted(want))
         for name, meta in want.items():
             for base in (R / "src/charts", D / "assets/charts"):
                 self.assertEqual(hashlib.sha256((base / name).read_bytes()).hexdigest(), meta["sha256"], f"{base.name}/{name}")
-        served = {p.relative_to(D / "assets/charts").as_posix() for p in (D / "assets/charts").rglob("*") if p.is_file()}
-        self.assertEqual(served, set(want))
         self.assertEqual(hashlib.sha256((R / "content/copy.md").read_bytes()).hexdigest(), PINS["copy_sha256"])
 
+    def test_no_font_over_100kb_and_charts_dir_is_exactly_the_8_svgs(self):  # R8
+        names = set(PINS["charts_sha256"])
+        for base in (R / "src/charts", D / "assets/charts"):
+            self.assertEqual({p.name for p in base.iterdir()}, names, base)
+            self.assertTrue(all(p.is_file() for p in base.iterdir()), base)
+        g = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"], cwd=R, capture_output=True, text=True)
+        if g.returncode == 0:
+            files = [R / f for f in g.stdout.splitlines() if (R / f).is_file()]
+        else:   # copy of the repo without .git (canary / temp copies)
+            files = [p for p in R.rglob("*") if p.is_file() and not {".git", "dist", "node_modules", "__pycache__"} & set(p.relative_to(R).parts)]
+        files += [p for p in D.rglob("*") if p.is_file()]
+        magic = (b"wOFF", b"wOF2", b"\x00\x01\x00\x00", b"OTTO", b"true", b"ttcf")
+        font_ext = (".ttf", ".otf", ".woff", ".woff2", ".eot", ".ttc")
+        fonts = [p for p in files if p.suffix.lower() in font_ext or p.read_bytes()[:4] in magic]
+        self.assertGreaterEqual(len(fonts), 7)   # 3 IBM Plex Mono + 4 Inter / Space Grotesk, in the repo and in dist
+        for p in fonts:
+            self.assertLessEqual(p.stat().st_size, 100 * 1024, f"font over 100 KB: {p}")
+            self.assertFalse(p.suffix.lower() in (".ttf", ".otf", ".eot", ".ttc"), f"unsubsetted font format: {p}")
 
 class Shell(unittest.TestCase):
     def test_nav_top_exactly_four_links(self):  # AC8
@@ -464,6 +529,8 @@ class Shell(unittest.TestCase):
         for u in urls:
             self.assertTrue((D / u.lstrip("/")).exists(), u)
         self.assertIn("SIL Open Font License, Version 1.1", (D / "assets/fonts/OFL.txt").read_text())
+        self.assertNotIn("truetype", css)
+        self.assertEqual(sorted(re.findall(r"/assets/fonts/([\w.-]+)\"", css)), sorted(p.name for p in (D / "assets/fonts").glob("*.woff2")))   # no unused font files
 
     def test_theme_tokens_and_toggle(self):  # brand: two-variable swap; dark default, light by media query and data-theme
         css = (D / "style.css").read_text()
@@ -517,8 +584,6 @@ class Results(unittest.TestCase):
 
     def test_values_computed_from_latest_json_and_linked(self):  # AC13
         ex, text = expected_numbers(), text_of(self.s)
-        self.assertEqual(sorted(ex.values()), sorted(["69%", "40%", "66%", "$11.59", "$17.50", "$1.90", "$7.00", "$8.00", "$1.25"])
-                         if PINS["data"] == PINS["data_stale_after_phase0"] else sorted(ex.values()))
         for k, val in ex.items():
             self.assertIn(val, text, k)
         run = self.s[self.s.index('id="run"'):self.s.index('id="pass-rate"')]

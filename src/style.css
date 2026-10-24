@@ -4,11 +4,11 @@
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("/assets/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("/assets/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap; src: url("/assets/fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); }
-/* Inter and Space Grotesk: the TrueType files shipped with the charts, reused so no new font download is added */
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: local("Inter"), url("/assets/charts/fonts/Inter-400.ttf") format("truetype"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("/assets/charts/fonts/Inter-600.ttf") format("truetype"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("/assets/charts/fonts/Inter-700.ttf") format("truetype"); }
-@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 600; font-display: swap; src: url("/assets/charts/fonts/SpaceGrotesk-600.ttf") format("truetype"); }
+/* Inter and Space Grotesk: Latin subsets (woff2) of the chart fonts, SIL OFL 1.1; Inter 700 is the default <b> weight, Space Grotesk 600 serves headings */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("/assets/fonts/inter-400-latin.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("/assets/fonts/inter-600-latin.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("/assets/fonts/inter-700-latin.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 600; font-display: swap; src: url("/assets/fonts/space-grotesk-600-latin.woff2") format("woff2"); }
 
 :root {
   color-scheme: dark;
