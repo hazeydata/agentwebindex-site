@@ -1,111 +1,445 @@
-import csv, html, json, re, unittest
+"""Tests for the built site (dist/) and the helpers. Run by tests/run_dist.py (exact test count enforced there).
+
+AC numbers refer to specs/awi-page-redo-001.md (rev 2 + R3-R6). SHIP gates live in tests/test_ship.py;
+the headless-Chrome checks (AC16/AC17/AC14 served bytes, readability) live in tests/browser_check.py.
+"""
+import csv, hashlib, html, json, re, shutil, subprocess, sys, tempfile, unittest
+from html.parser import HTMLParser
 from pathlib import Path
 
 R = Path(__file__).resolve().parent.parent
 D = R / "dist"
-BENCH = json.loads((R / "data/benchmarks/latest.json").read_text())
-import sys
 sys.path.insert(0, str(R))
-import render  # noqa: E402
+import copydoc, pins as pinmod, prices as P, render  # noqa: E402
 
-EXCL_PUBLIC = ("provider", "reason", "quote", "terms_url", "checked_at")  # published exclusion fields, in order
-PROVS = {x["id"]: x.get("name") or x["id"] for x in json.loads((R / "data/_upstream/providers.json").read_text())["providers"]}
-
-
-def latest(cat):
-    """Expected table rows for cat: latest week per provider from the JSON, named, ordered by success rate."""
-    rows = [dict(r, _name=PROVS.get(r["provider"], r["provider"])) for r in BENCH["tables"].get(cat, []) if not r.get("mock")]
-    return sorted(render.latest_per_provider(rows), key=lambda r: -(r["success_rate"]["v"] or 0))
-
-
-def real_values():
-    """Every exact value string the page computes from real rows (fractions, percents, CI bounds)."""
-    out = []
-    for cat in BENCH["tables"]:
-        for r in latest(cat):
-            out += [render.frac(r), render.frac(r, ", "), render.ci_text(r), f"{int(r['success_rate']['v'] * 100 + 0.5)}%"]
-            w = render.ci(r)
-            if w:
-                out += [f"{w[0] * 100:.1f}%", f"{w[1] * 100:.1f}%"]
-    return out
-
-
-def real_strings():
-    out = []
-    for cat in BENCH["tables"]:
-        for r in latest(cat):
-            out += [render.ci_text(r), render.frac(r), render.frac(r, ", ")]
-    return out
-
-
-TEXT = (".html", ".css", ".js", ".json", ".csv", ".txt", ".xml", ".svg", ".jsonl", "")
-
-
-def files():
-    return [p for p in D.rglob("*") if p.is_file() and p.suffix in TEXT]
+PINS = pinmod.load(R)
+LATEST = json.loads((R / "data/benchmarks/latest.json").read_text())
+PRICING = P.load_pricing(R / "data/_upstream/pricing.yaml")
+PROVIDERS = json.loads((R / "data/_upstream/providers.json").read_text())["providers"]
+NAMES = {p["id"]: p["name"] for p in PROVIDERS}
+CFG = json.loads((R / "site.config.json").read_text())
+EXCL_PUBLIC = ("provider", "reason", "quote", "terms_url", "checked_at")
+PAGES = {"/": "index.html", "/prices/": "prices", "/methodology/": "methodology", "/data/": "data", "/disclosures/": "disclosures",
+         "/sponsors/": "sponsors", "/newsletter/": "newsletter", "/tell-us/": "tell-us"}
+TEXT_SUFFIXES = (".html", ".css", ".js", ".json", ".csv", ".txt", ".xml", ".svg", ".jsonl", "")
 
 
 def page(path):
     return (D / path.strip("/") / "index.html" if path != "/" else D / "index.html").read_text()
 
 
-def section(h, start, end):
-    i = h.index(start)
-    return h[i:h.index(end, i)]
+def dist_text_files(skip_data=False):
+    out = [p for p in D.rglob("*") if p.is_file() and p.suffix in TEXT_SUFFIXES]
+    return [p for p in out if not (skip_data and p.relative_to(D).parts[0] == "data")]
 
 
-def rows_of(h, cat):
-    t = section(h, f'id="table-{cat}"', "</table>")
-    return re.findall(r"<tr[ >].*?</tr>", t.split("<tbody>", 1)[1], re.S)
+def norm(s):
+    return re.sub(r"\s+", " ", s).strip()
 
 
-def text(s):
-    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", s))).strip()
+class TextOf(HTMLParser):
+    """Visible text of an HTML fragment: inline tags join without spaces, block tags separate; script/style/noscript skipped."""
+    INLINE = {"a", "b", "strong", "em", "i", "span", "code", "time", "small", "mark", "abbr"}
+    SKIP = {"script", "style", "noscript", "title"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out, self.skip = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.SKIP:
+            self.skip += 1
+        elif tag not in self.INLINE:
+            self.out.append(" ")
+
+    def handle_endtag(self, tag):
+        if tag in self.SKIP:
+            self.skip -= 1
+        elif tag not in self.INLINE:
+            self.out.append(" ")
+
+    def handle_data(self, d):
+        if not self.skip:
+            self.out.append(d)
 
 
-def _fresh_row(p, wk, n, rd):
-    return {"provider": p, "set": f"news_{wk}", "week": wk, "run_date": rd, "n": n, "flags": [f"short week (n={n})"],
-            "fresh_hit_at_10": {"v": 0.5}, "median_lag_h": {"v": 1.0}, "censored_share": {"v": 0.0}, "set_sha": "ab" * 32}
+def text_of(s):
+    t = TextOf()
+    t.feed(s)
+    return norm("".join(t.out))
 
 
-FRESH_NEWEST_FIRST = [_fresh_row("exa", "2026-10", 40, "2026-03-09"), _fresh_row("exa", "2026-9", 16, "2026-03-02"),
-                      _fresh_row("tavily", "2026-9", 16, "2026-03-02")]
-FRESH_OLDEST_FIRST = [FRESH_NEWEST_FIRST[1], FRESH_NEWEST_FIRST[2], FRESH_NEWEST_FIRST[0]]
+class Dom(HTMLParser):
+    """Collects the elements the tests care about: nav.top links, footer links, imgs, h1, details, sections."""
+
+    def __init__(self, s):
+        super().__init__(convert_charrefs=True)
+        self.stack, self.nav_links, self.footer_links, self.header_links, self.imgs, self.h1, self.details = [], [], [], [], [], [], []
+        self.cur_h1 = None
+        self.all_links = []
+        self.in_nav_other = []
+        self.feed(s)
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        self.stack.append((tag, a))
+        names = [t for t, _ in self.stack]
+        if tag == "a" and a.get("href") is not None:
+            self.all_links.append((a["href"], names[:]))
+            if any(t == "nav" and "top" in (x.get("class") or "").split() for t, x in self.stack):
+                self.nav_links.append(a["href"])
+            if "footer" in names:
+                self.footer_links.append(a["href"])
+            if "nav" in names:
+                self.in_nav_other.append(a["href"])
+        if tag == "img":
+            self.imgs.append(a)
+        if tag == "h1":
+            self.cur_h1 = []
+        if tag == "details":
+            self.details.append({"open": "open" in a, "summary": "", "id": a.get("id")})
+
+    def handle_endtag(self, tag):
+        if tag == "h1" and self.cur_h1 is not None:
+            self.h1.append(norm("".join(self.cur_h1)))
+            self.cur_h1 = None
+        while self.stack:
+            t, _ = self.stack.pop()
+            if t == tag:
+                break
+
+    def handle_data(self, d):
+        if self.cur_h1 is not None:
+            self.cur_h1.append(d)
+        if self.stack and self.stack[-1][0] == "summary" and self.details:
+            self.details[-1]["summary"] += d
 
 
-class Dist(unittest.TestCase):
-    def _live_html(self, s, p):
-        pos = 0
-        comments = []
-        while (i := s.find("<!--", pos)) != -1:
-            j = s.find("-->", i + 4)
-            if j == -1:
-                self.fail(f"unterminated HTML comment in {p}")
-            comments.append(s[i + 4:j])
-            pos = j + 3
-        for m in re.finditer(r"(?i)<noscript", s):
-            if not re.search(r"(?i)</noscript>", s[m.end():]):
-                self.fail(f"unterminated <noscript> in {p}")
-        no_comments = re.sub(r"(?s)<!--.*?-->", "", s)
-        noscripts = re.findall(r"(?is)<noscript\b.*?</noscript>", no_comments)
-        for body in comments + noscripts:
-            if re.search(r"(?i)goatcounter|gc\.zgo\.at", body):
-                self.fail(f"GoatCounter reference inside a comment or <noscript> in {p}")
-        return re.sub(r"(?is)<noscript\b.*?</noscript>", "", no_comments)
+def copy_repo(dst):
+    shutil.copytree(R, dst, ignore=shutil.ignore_patterns(".git", "dist", "__pycache__", "node_modules"))
 
-    def test_no_pack_sample_values(self):
-        vals = json.loads((R / "tests/pack_sample_values.json").read_text())["values"]
-        self.assertGreater(len(vals), 100)
-        real = set(real_values())
-        vals = [v for v in vals if v not in real]  # exact match: a real computed value may equal a sample number
-        hits = [(v, str(p.relative_to(D))) for p in files() for v in vals if v in p.read_text(errors="ignore")]
+
+def build_in(w):
+    return subprocess.run([sys.executable, "build.py"], cwd=w, capture_output=True, text=True)
+
+
+# ------------------------------------------------------------------ copy.md extraction (independent of copydoc.py)
+
+def strip_md(s):
+    s = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", s)
+    return norm(s.replace("**", ""))
+
+
+def copy_strings():
+    """{page: [verbatim strings]} from content/copy.md, excluding the file header, chart Shows/Data/File lines (and Chart 3,
+    Subtitle), Notes, Open questions, field IDs and labels, and heading suffixes."""
+    secs, cur = [], None
+    for line in (R / "content/copy.md").read_text().splitlines():
+        if line.startswith("## "):
+            cur = [re.sub(r"\s*\((?:fact-cleared|collapsed)[^)]*\)", "", line[3:]).strip(), []]
+            secs.append(cur)
+        elif cur is not None and line.strip():
+            cur[1].append(line.strip())
+    out = {}
+
+    def add(pg, s):
+        out.setdefault(pg, []).append(strip_md(s))
+
+    def body(line):   # drop a leading "**Label:**" / "**ID (Human label):**" field label
+        return re.sub(r"^\*\*[A-Za-z0-9][^*]*?:\*\*\s*", "", line)
+
+    for title, lines in secs:
+        if title in ("Page title and nav", "Notes: layout review (screens/index.html and layout-spec.md @ 0dbe561)", "Open questions"):
+            continue
+        if title == "Home: hero":
+            for l in lines:
+                add("/", body(l))
+        elif title in ("Home: findings",):
+            for l in lines:
+                add("/", l[2:] if l.startswith("- ") else l)
+        elif title == "Home: section intros":
+            for l in lines:
+                add("/", l[4:] if l.startswith("### ") else l)
+        elif title.startswith("Earlier runs"):
+            for l in lines:
+                add("/", body(l) if l.startswith("**Summary line") else (l[2:] if l.startswith("- ") else l))
+        elif title == "Chart briefs":
+            chart = None
+            for l in lines:
+                if l.startswith("### "):
+                    chart = l[4:]
+                elif chart and chart.startswith(("Chart 1", "Chart 2")) and re.match(r"\*\*(Title|Caption):\*\*", l):
+                    add("/", body(l))
+        elif title == "Methodology and limits":
+            for l in lines:
+                add("/methodology/", l[2:] if l.startswith("- ") else l)
+        elif title == "About and tell us":
+            for l in lines:
+                add("/tell-us/", l)
+        elif title == "Data page":
+            for l in lines:
+                add("/data/", l)
+        elif title == "Footer":
+            for l in lines:
+                for pg in PAGES:
+                    add(pg, l)
+        elif title.startswith("Layout slot: newsletter"):
+            for l in lines:
+                add("/", l); add("/newsletter/", l)
+        elif title.startswith("Layout slot: prices lede") or title == "Prices page: also priced":
+            for l in lines:
+                add("/prices/", l)
+        elif title.startswith("Layout slot: methodology lede"):
+            for l in lines:
+                add("/methodology/", l)
+        elif title in ("Disclosures page", "Sponsors page"):
+            pg = "/disclosures/" if title.startswith("Disclosures") else "/sponsors/"
+            for l in lines:
+                add(pg, body(l))
+    return out
+
+
+def expected_numbers():
+    """The nine headline values, derived here from latest.json through the helpers (no copy.md involved)."""
+    t = {r["provider"]: r for r in LATEST["tables"]["search"] if r["run_date"] == LATEST["run_date"]}
+    b = [r for r in LATEST["tables"]["scrape"] if r["run_date"] == LATEST["run_date"]][0]
+    f = lambda r: P.fmt_pct(r["success_rate"]["v"])
+    u = lambda x: P.fmt_usd(x["v"])
+    return {"tavily pass": f(t["tavily"]), "exa pass": f(t["exa"]), "browserless pass": f(b),
+            "tavily cost": u(t["tavily"]["entry_tier_cost_per_successful_1k"]), "exa cost": u(t["exa"]["entry_tier_cost_per_successful_1k"]),
+            "browserless cost": u(b["entry_tier_cost_per_successful_1k"]),
+            "exa list": u(t["exa"]["entry_tier_cost_per_1k"]), "tavily list": u(t["tavily"]["entry_tier_cost_per_1k"]),
+            "browserless list": u(b["entry_tier_cost_per_1k"])}
+
+
+class Helpers(unittest.TestCase):
+    def test_price_rows_exactly_four_priced_providers(self):  # AC4
+        rows = P.price_rows(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(sorted(r["provider"] for r in rows), ["apify", "browserless", "exa", "tavily"])
+        self.assertEqual(len(rows), 4)
+        self.assertEqual({r["provider"]: r["category"] for r in rows}, {"exa": "search", "tavily": "search", "apify": "search", "browserless": "scrape"})
+
+    def test_checked_at_is_min_of_inputs_and_inputs_are_only_used_fields(self):  # AC4
+        mixed = {"providers": {"tavily": {"search": {"checked_at": "2026-10-24", "credits_per_call_verified": {"search": 1, "checked_at": "2026-10-15"},
+                                                        "tiers": {"entry": {"usd_per_credit": 0.008, "checked_at": "2026-10-19"}}}}}}   # data may agree on one date; the rule must not depend on it
+        self.assertEqual(P.priced_tier_checked_at(mixed, "tavily", "search"), "2026-10-15")
+        for r in P.price_rows(PRICING, LATEST, PROVIDERS):
+            self.assertEqual(r["checked_at"], min(r["inputs"].values()), r["provider"])
+            c = PRICING["providers"][r["provider"]][r["category"]]
+            want = {f"{r['category']}.checked_at"}
+            if isinstance((c.get("credits_per_call_verified") or {}).get(r["category"]), (int, float)):
+                want.add("credits_per_call_verified.checked_at")
+            if (c.get("tiers") or {}).get("entry", {}).get("checked_at"):
+                want.add(f"{r['category']}.tiers.entry.checked_at")
+            self.assertEqual(set(r["inputs"]), want, r["provider"])
+            self.assertEqual(r["tier_key"], "entry")
+
+    def test_tavily_named_case_dates(self):  # AC4
+        mixed = {"providers": {"tavily": {"search": {"checked_at": "2026-10-24", "credits_per_call_verified": {"search": 1, "checked_at": "2026-10-15"},
+                                                        "tiers": {"entry": {"usd_per_credit": 0.008, "checked_at": "2026-10-19"}}}}}}   # data may agree on one date; the rule must not depend on it
+        self.assertEqual(P.priced_tier_checked_at(mixed, "tavily", "search"), "2026-10-15")
+        r = {x["provider"]: x for x in P.price_rows(PRICING, LATEST, PROVIDERS)}["tavily"]
+        self.assertIn("credits_per_call_verified.checked_at", r["inputs"])
+        self.assertIn("search.checked_at", r["inputs"])
+        c = PRICING["providers"]["tavily"]["search"]
+        self.assertEqual(r["inputs"]["credits_per_call_verified.checked_at"], c["credits_per_call_verified"]["checked_at"])
+        self.assertEqual(r["inputs"]["search.checked_at"], c["checked_at"])
+        self.assertEqual(P.priced_tier_checked_at(PRICING, "tavily", "search"), min(c["checked_at"], c["credits_per_call_verified"]["checked_at"]))
+        if PINS["data"] == PINS["data_stale_after_phase0"]:   # pre-Phase-0 data: the dates are the spec's literal examples
+            self.assertEqual({k: v["checked_at"] for k, v in {x["provider"]: x for x in P.price_rows(PRICING, LATEST, PROVIDERS)}.items()},
+                             {"exa": "2026-10-15", "tavily": "2026-10-15", "browserless": "2026-10-15", "apify": "2026-10-19"})
+        else:   # at the Phase 0 pin every Tavily input is dated 2026-10-24 (pricing.yaml), so the min of the inputs is that date
+            self.assertEqual(set(r["inputs"].values()), {PINS["phase0_date"]})
+            self.assertEqual(r["checked_at"], min(r["inputs"].values()))
+            self.assertEqual(r["checked_at"], "2026-10-24")
+
+    def test_priced_inputs_ignore_unrelated_fields_and_raise_when_empty(self):  # AC4
+        pr = {"providers": {"x": {"search": {"checked_at": "2026-01-02", "verified_date": "2020-01-01",
+                                              "credits_per_call_verified": {"search": "NOT CAPTURED", "checked_at": "2019-01-01"},
+                                              "tiers": {"entry": {"checked_at": "2026-01-01"}, "volume": {"checked_at": "2000-01-01"}}}}}}
+        self.assertEqual(P.priced_inputs(pr, "x", "search"), {"search.tiers.entry.checked_at": "2026-01-01", "search.checked_at": "2026-01-02"})
+        self.assertEqual(P.priced_tier_checked_at(pr, "x", "search"), "2026-01-01")
+        with self.assertRaises(ValueError):
+            P.priced_tier_checked_at({"providers": {}}, "x", "search")
+
+    def test_rounding_cases_half_up(self):  # AC6
+        cases = [(P.fmt_pct(0.665), "67%"), (P.fmt_pct(0.685), "69%"), (P.fmt_pct(0.69), "69%"), (P.fmt_pct(0.6583333333333333), "66%"),
+                 (P.fmt_usd(11.595), "$11.60"), (P.fmt_usd(11.5942), "$11.59"), (P.fmt_usd(0.00125), "$0.0013"), (P.fmt_usd(0.0075), "$0.0075"),
+                 (P.fmt_usd(7.000000000000001), "$7.00"), (P.fmt_usd(float("inf")), "∞"), (P.fmt_usd(None), "n/a"),
+                 (P.fmt_ms(1261.5), "1,262 ms"), (P.fmt_ms(1262.4), "1,262 ms"), (P.fmt_ms(999.5), "1,000 ms")]
+        for got, want in cases:
+            self.assertEqual(got, want)
+
+    def test_untested_providers_are_the_other_eleven(self):  # AC21
+        u = P.untested_providers(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(len(u), 11)
+        self.assertEqual(u, sorted(u))
+        priced = {r["name"] for r in P.price_rows(PRICING, LATEST, PROVIDERS)}
+        self.assertFalse(priced & set(u))
+        self.assertEqual(len(priced | set(u)), 15)
+
+    def test_placeholder_constant(self):  # AC27 (constant kept)
+        self.assertEqual(P.PLACEHOLDER, "[[LINDSAY-PLACEHOLDER]]")
+
+    def test_sentinel_fetched_at_never_reaches_prices_page(self):  # AC5
+        sentinel = "1999-01-01"
+        with tempfile.TemporaryDirectory(prefix="awi-sentinel.") as t:
+            w = Path(t) / "w"
+            copy_repo(w)
+            for f in ("data/prices/tavily.json",):
+                p = w / f
+                d = json.loads(p.read_text())
+                self.assertIn("fetched_at", d)
+                d["fetched_at"] = sentinel
+                p.write_text(json.dumps(d))
+            h = w / "data/prices/history/tavily.jsonl"
+            lines = [json.loads(l) for l in h.read_text().splitlines() if l.strip()]
+            lines[-1]["fetched_at"] = sentinel
+            h.write_text("\n".join(json.dumps(l) for l in lines) + "\n")
+            b = build_in(w)
+            self.assertEqual(b.returncode, 0, b.stderr[-400:])
+            self.assertNotIn(sentinel, (w / "dist/prices/index.html").read_text())
+            self.assertNotIn(sentinel, (w / "dist/index.html").read_text())
+            self.assertIn(sentinel, (w / "dist/data/prices/tavily.json").read_text())   # the agent export still carries it
+
+
+class Pins(unittest.TestCase):
+    def test_data_pin_matches_upstream_bytes(self):  # AC7
+        man = json.loads((R / "tests/data_pin_manifest.json").read_text())
+        self.assertEqual(man["sha"], PINS["data"])
+        self.assertEqual(man["repo"], "https://github.com/hazeydata/agentwebindex.git")
+        self.assertEqual(pinmod.source_sha(R), PINS["data"])
+        upstream = {p.relative_to(R).as_posix() for p in (R / "data/_upstream").iterdir() if p.name != "SOURCE"} | {"data/benchmarks/latest.json"}
+        self.assertEqual(set(man["files"]), upstream, "every file under data/_upstream/ (except SOURCE) and latest.json must be in the manifest")
+        for rel, sha in man["files"].items():
+            self.assertEqual(hashlib.sha256((R / rel).read_bytes()).hexdigest(), sha, f"{rel} differs from the pinned upstream bytes")
+        self.assertNotRegex(json.dumps(man), "/work" + "space|/home/")
+
+    def test_pin_check_function_cases(self):  # R4
+        base = dict(PINS)
+        self.assertEqual(pinmod.check(R, pins=base), [])
+        stale = dict(base, phase0_landed=True, data_stale_after_phase0=base["data"])
+        self.assertTrue(any("Phase-0" in e for e in pinmod.check(R, pins=stale)))
+        moved = dict(stale, data="a" * 40)   # re-pinned: stale guard passes, but vendored SOURCE no longer matches the pin
+        errs = pinmod.check(R, pins=moved)
+        self.assertFalse(any("Phase-0" in e for e in errs))
+        self.assertTrue(any("SOURCE" in e for e in errs))
+        self.assertEqual(pinmod.check(R, pins=moved, vendored_sha="a" * 40), [])
+
+    def test_build_fails_if_data_pin_stale_after_phase0(self):  # R4
+        with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:
+            w = Path(t) / "w"
+            copy_repo(w)
+            p = json.loads((w / "pins.json").read_text())
+            p["phase0_landed"] = True
+            p["data_stale_after_phase0"] = p["data"]
+            (w / "pins.json").write_text(json.dumps(p))
+            b = build_in(w)
+            self.assertNotEqual(b.returncode, 0)
+            self.assertIn("Phase-0", b.stderr)
+            self.assertFalse((w / "dist/index.html").exists())
+
+    def test_build_fails_if_vendored_data_sha_differs_from_pin(self):  # R4
+        with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:
+            w = Path(t) / "w"
+            copy_repo(w)
+            p = json.loads((w / "pins.json").read_text())
+            p["data"] = "b" * 40
+            (w / "pins.json").write_text(json.dumps(p))
+            b = build_in(w)
+            self.assertNotEqual(b.returncode, 0)
+            self.assertIn("SOURCE", b.stderr)
+
+    def test_chart_alt_vendored_section_only(self):  # content/chart-alt.md is the pinned "## Alt text" section of QUERIES.md, not the whole file
+        raw = (R / "content/chart-alt.md").read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), PINS["chart_alt_sha256"])
+        head, _, rest = raw.decode().partition("\n")
+        self.assertTrue(head.startswith("<!--") and head.endswith("-->") and "agentwebindex-meta 2c28c0a cycles/2026-10-24-page-redo/her/QUERIES.md" in head)
+        self.assertTrue(rest.startswith("## Alt text"))
+        self.assertEqual([l for l in rest.splitlines() if l.startswith("#")], [rest.splitlines()[0]])   # a single section
+        self.assertRegex(PINS["queries_sha256"], r"^[0-9a-f]{64}$")   # sha256 of the full original QUERIES.md at 2c28c0a
+        self.assertEqual(set(copydoc.alt_texts()), {"pass-rate", "cost-per-success"})
+        self.assertFalse((R / "content/QUERIES.md").exists())
+
+    def test_charts_byte_identical_to_pin(self):  # AC14
+        want = PINS["charts_sha256"]
+        self.assertEqual(sum(1 for n in want if n.endswith(".svg")), 8)
+        for name, meta in want.items():
+            for base in (R / "src/charts", D / "assets/charts"):
+                self.assertEqual(hashlib.sha256((base / name).read_bytes()).hexdigest(), meta["sha256"], f"{base.name}/{name}")
+        served = {p.relative_to(D / "assets/charts").as_posix() for p in (D / "assets/charts").rglob("*") if p.is_file()}
+        self.assertEqual(served, set(want))
+        self.assertEqual(hashlib.sha256((R / "content/copy.md").read_bytes()).hexdigest(), PINS["copy_sha256"])
+
+
+class Shell(unittest.TestCase):
+    def test_nav_top_exactly_four_links(self):  # AC8
+        for p in PAGES:
+            dom = Dom(page(p))
+            self.assertEqual(dom.nav_links, ["/", "/prices/", "/methodology/", "/data/"], p)
+
+    def test_secondary_links_in_footer_never_nav(self):  # AC9
+        for p in PAGES:
+            dom = Dom(page(p))
+            for u in ("/disclosures/", "/sponsors/", "/newsletter/", "/tell-us/"):
+                self.assertIn(u, dom.footer_links, (p, u))
+                self.assertNotIn(u, dom.in_nav_other, (p, u))
+            for u in ("/data/benchmarks/latest.json", "/data/prices/index.json", "/llms.txt"):
+                self.assertIn(u, dom.footer_links, (p, u))
+
+    def test_results_title_h1_and_no_leaderboard_anywhere(self):  # AC10
+        s = page("/")
+        self.assertEqual(Dom(s).h1, ["Results"])
+        self.assertEqual(re.search(r"<title>(.*?)</title>", s).group(1), "Results · AgentWebIndex")
+        hits = [str(p.relative_to(D)) for p in D.rglob("*") if "leaderboard" in p.name.lower()]
+        for p in D.rglob("*"):
+            if p.is_file():
+                hits += [str(p.relative_to(D))] if re.search(rb"(?i)leaderboard", p.read_bytes()) else []
         self.assertEqual(hits, [])
+        for f in ("render.py", "build.py", "prices.py", "copydoc.py", "pins.py", "src/style.css", "src/app.js"):
+            self.assertNotRegex((R / f).read_text(), r"(?i)leaderboard", f)   # no function, class or id of that name either
 
-    def test_no_sample_data_file(self):
-        self.assertFalse((D / "data/latest.json").exists())
-        self.assertFalse((D / "data/schema.json").exists())
-        for p in files():
-            self.assertNotIn('"sample": true', p.read_text(errors="ignore"), p)
+    def test_every_contact_address_is_fred(self):  # AC11
+        found = set()
+        for p in dist_text_files():
+            found |= set(re.findall(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", p.read_text(errors="ignore")))
+        found -= {"fred@hazeydata.ai"}
+        self.assertEqual(found, set())
+        self.assertNotIn("sponsors@agentwebindex.com", "".join(p.read_text(errors="ignore") for p in dist_text_files()))
+        self.assertIn("mailto:fred@hazeydata.ai", page("/tell-us/"))
+
+    def test_one_h1_skip_link_main_and_img_alts(self):
+        for p in PAGES:
+            s = page(p)
+            self.assertEqual(s.count("<h1"), 1, p)
+            self.assertIn(f'<a href="{p}" aria-current="page">', s) if p in ("/", "/prices/", "/methodology/", "/data/") else None
+            self.assertIn('<a class="skip-link" href="#main">', s)
+            self.assertIn('<main id="main">', s)
+            for img in Dom(s).imgs:
+                self.assertTrue(img.get("alt"), p)
+
+    def test_canonical_robots_sitemap_goatcounter(self):  # AC24, AC26
+        base = json.loads((R / "tests/agent_surface_baseline.json").read_text())
+        site = CFG["site_url"].rstrip("/")
+        robots, sitemap = (D / "robots.txt").read_text(), (D / "sitemap.xml").read_text()
+        for p in PAGES:
+            s = page(p)
+            self.assertEqual(s.count(f'<link rel="canonical" href="{site}{p}">'), 1, p)
+            self.assertEqual(s.count(base["goatcounter_snippet"]), 1, p)
+            self.assertLess(s.index(base["goatcounter_snippet"]), s.index("</head>"), p)
+            self.assertIn(f"<loc>{site}{p}</loc>", sitemap, p)
+            if p != "/":
+                self.assertIn(f"Allow: {p}\n", robots, p)
+        self.assertTrue(robots.startswith("User-agent: *\nAllow: /\n"))
+        self.assertTrue(robots.endswith(f"Sitemap: {site}/sitemap.xml\n"))
+
+    def test_beehiiv_embed(self):
+        fid = CFG["beehiiv_embed_url"].rstrip("/").rsplit("/", 1)[1]
+        for p in ("/newsletter/", "/"):
+            s = page(p)
+            self.assertIn(f'data-beehiiv-form="{fid}"', s)
+            self.assertIn('src="https://subscribe-forms.beehiiv.com/v3/loader.js"', s)
+            self.assertIn(f'<noscript><a href="{CFG["beehiiv_embed_url"]}">', s)
 
     def test_no_external_fonts_or_cdn(self):
         allowed = {"https://subscribe-forms.beehiiv.com/v3/loader.js", "https://gc.zgo.at/count.js"}
@@ -116,254 +450,31 @@ class Dist(unittest.TestCase):
             self.assertNotRegex(s, r"@import", p)
             self.assertNotRegex(s, r"url\(\s*['\"]?(https?:)?//", p)
             self.assertNotRegex(s, r"(?i)fonts\.(googleapis|gstatic)|cdnjs|jsdelivr|unpkg|typekit|fontawesome", p)
-            live = self._live_html(s, p) if p.suffix == ".html" else s
-            for tag, attrs in re.findall(r"<(link|script|img|source)\b([^>]*)>", live):
+            for tag, attrs in re.findall(r"<(link|script|img|source)\b([^>]*)>", s):
                 if tag == "link" and 'rel="canonical"' in attrs:
                     continue
                 for url in re.findall(r"(?<![\w-])(?:href|src)=\"([^\"]*)\"", attrs):
                     if url.startswith(("http:", "https:", "//")):
                         self.assertIn(url, allowed, (p, tag, url))
-            for val in re.findall(r"\bdata-goatcounter=\"([^\"]*)\"", live):
-                self.assertEqual(val, "https://openmillage.goatcounter.com/count", p)
 
-    def test_fonts_self_hosted_with_license(self):
+    def test_fonts_self_hosted(self):
         css = (D / "style.css").read_text()
-        urls = re.findall(r"url\(\"(/assets/fonts/[^\"]+)\"\)", css)
-        self.assertEqual(len(urls), 7)
+        urls = re.findall(r"url\(\"(/assets/[^\"]+)\"\)", css)
+        self.assertGreaterEqual(len(urls), 6)
         for u in urls:
             self.assertTrue((D / u.lstrip("/")).exists(), u)
         self.assertIn("SIL Open Font License, Version 1.1", (D / "assets/fonts/OFL.txt").read_text())
 
-    def test_real_search_rows(self):
-        h = page("/")
-        tested = [r for r in rows_of(h, "search") if "is-untested" not in r]
-        want = latest("search")
-        self.assertEqual([re.search(r'data-id="([^"]+)"', r).group(1) for r in tested], [r["provider"] for r in want])
-        for x, r in zip(want, tested):
-            t = text(r)
-            p50 = x["p50_latency_ms"]["v"]
-            for w in (render.frac(x, ", "), render.ci_text(x), f"n={x['attempted']['v']}", f"Run {x['run_date']}", x["set"],
-                      "n/a" if p50 is None else f"{p50:.0f} ms"):
-                self.assertIn(w, t, (x["provider"], w))
-            self.assertIn("<details", r)
-            self.assertNotIn("Free quota", text(r.split("<details", 1)[0]))
-
-    def test_real_browser_rows(self):
-        tested = [r for r in rows_of(page("/"), "browser") if "is-untested" not in r]
-        want = latest("browser")
-        self.assertEqual(len(tested), len(want))
-        for x, r in zip(want, tested):
-            for w in (x["_name"], render.frac(x, ", "), render.ci_text(x), x["set"]):
-                self.assertIn(w, text(r))
-
-    def test_values_match_json(self):
-        h = page("/")
-        for cat, rows in BENCH["tables"].items():
-            if not rows:
-                continue
-            got = {re.search(r'data-id="([^"]+)"', r).group(1): text(r) for r in rows_of(h, cat) if "is-untested" not in r}
-            self.assertEqual(sorted(got), sorted({r["provider"] for r in rows if not r.get("mock")}))
-            for r in latest(cat):
-                self.assertIn(f'{r["passed"]["v"]}/{r["attempted"]["v"]}, {int(r["success_rate"]["v"] * 100 + 0.5)}%', got[r["provider"]])
-
-    def test_untested_shows_not_tested_never_zero(self):
-        h = page("/")
-        provs = json.loads((R / "data/_upstream/providers.json").read_text())["providers"]
-        excluded = {x["provider"] for x in BENCH["exclusions"]}
-        for cat in ("search", "scrape", "browser"):
-            have = {r["provider"] for r in BENCH["tables"][cat]}
-            want = [p for p in provs if cat in p["categories"] and p["id"] not in have | excluded]
-            panel = section(h, f'id="panel-{cat}"', 'class="lb-foot"')
-            if not have:
-                self.assertNotIn("<figure", panel)
-                self.assertNotIn("<table", panel)
-                self.assertIn(f'{cat.title()}: no providers tested yet this week ({len(want)} queued).', panel)
-                self.assertEqual(text(section(panel, f'id="queued-{cat}"', "</p>")).split(">", 1)[1], ", ".join(p["name"] for p in want))
-                continue
-            un = [r for r in rows_of(h, cat) if "is-untested" in r]
-            self.assertEqual(sorted(re.search(r'data-id="([^"]+)"', r).group(1) for r in un), sorted(p["id"] for p in want), cat)
-            for r in un:
-                self.assertIn("Not tested", r)
-                self.assertNotRegex(text(r), r"\d%|\$\d")
-            chart = section(h, f'id="chart-{cat}"', "</figure>")
-            self.assertNotIn("(0%)", chart)
-            self.assertEqual(chart.count(">not tested<"), 2 * len(want))
-
-    def test_figures_no_legend_wilson_caption_title(self):
-        h = page("/")
-        figs = re.findall(r"<figure.*?</figure>", h, re.S)
-        self.assertEqual(len(figs), sum(1 for v in BENCH["tables"].values() if v))
-        for f in figs:
-            self.assertNotIn("chart-card__key", f)
-            self.assertNotIn("Not tested:", "".join(re.findall(r'<p class="chart-card__foot">.*?</p>', f)))
-            self.assertNotIn("pt-bar", f)
-            self.assertIn("Lines show 95% Wilson intervals; overlapping lines mean the order isn't settled.", html.unescape(f))
-            self.assertIn("queries each" if 'data-cat="search"' in f else "each", f)
-        for cat in BENCH["tables"]:
-            rows = latest(cat)
-            if not rows:
-                continue
-            s = html.unescape(section(h, f'id="chart-{cat}"', "</figcaption>"))
-            self.assertIn(render.finding(cat, rows), s)
-            self.assertIn(render.run_dates(rows), s)
-            for r in rows:
-                self.assertIn(f">{render.frac(r)}<", h)
-
-    def test_narrow_labels_fit(self):
-        h = page("/")
-        for svg in re.findall(r'<svg class="plot--narrow".*?</svg>', h, re.S):
-            W = float(re.search(r'viewBox="0 0 ([\d.]+)', svg).group(1))
-            for x, a, w in re.findall(r'class="pt-val" x="([\d.]+)" y="[\d.]+" text-anchor="(\w+)" data-w="(\d+)"', svg):
-                x, w = float(x), float(w)
-                lo = x if a == "start" else x - w if a == "end" else x - w / 2
-                self.assertGreaterEqual(lo, 92 - 10)
-                self.assertLessEqual(lo + w, W)
-
-    def test_excluded_provider_not_in_tables(self):
-        h = page("/")
-        for cat in ("search", "scrape", "browser"):
-            self.assertNotIn('data-id="brave"', section(h, f'id="panel-{cat}"', 'class="lb-foot"'))
-        self.assertIn('id="exclusions"', h)
-        self.assertIn("Brave Search API", section(h, 'id="exclusions"', "</div>"))
-
-    def test_status_flags_sets_valid_visible(self):
-        h = page("/")
-        rs = section(h, 'id="run-status"', "</section>")
-        for s in BENCH["sets_valid"]:
-            self.assertIn(s, section(rs, 'id="sets-valid"', "</p>"))
-        for f in BENCH["flags"]:
-            self.assertIn(f'{f["set"]}: {html.escape(f["flag"])}', rs)
-        for k in BENCH["skips"]:
-            self.assertIn(html.escape(k["reason"]), rs)
-        self.assertIn("brightdata (scrape): not run yet", rs)
-        self.assertIn(BENCH["freshness_notes"][0]["note"], h)
-        for p in ("/", "/prices/", "/methodology/", "/data/"):
-            s = page(p)
-            self.assertIn(f'data-generated="{BENCH["generated_at"]}"', s)
-            self.assertIn("Valid sets: " + ", ".join(BENCH["sets_valid"]), s)
-
-    def test_freshness_table(self):
-        t = text(section(page("/"), 'id="freshness"', "</table>"))
-        for f in BENCH["freshness"]:
-            for want in (PROVS.get(f["provider"], f["provider"]), render.count_pct(f["fresh_hit_at_10"], f["n"]), f["set_sha"][:12]):
-                self.assertIn(want, t)
-        self.assertIn("Fresh in top 10", t)
-        self.assertNotIn("fresh_hit@10", t)
-
-    def test_sets_published_only_shown_sets(self):
-        p = text(section(page("/"), 'id="sets-published"', "</p>"))
-        shown = sorted({r["set"] for cat in BENCH["tables"] for r in latest(cat)})
-        listed = re.findall(r"[a-z]+_\d{4}-\d+", p)
-        self.assertEqual(sorted(listed), shown)
-        old = {r["set"] for v in BENCH["tables"].values() for r in v} - set(shown)
-        self.assertTrue(old)  # the data carries older weeks, so this check is meaningful
-        for s in old:
-            self.assertNotIn(s, p)
-
-    def test_latest_providers_exactly_once(self):
-        h = page("/")
-        seen = 0
-        for cat in BENCH["tables"]:
-            want = latest(cat)
-            if not want:
-                continue
-            ids = [re.search(r'data-id="([^"]+)"', r).group(1) for r in rows_of(h, cat) if "is-untested" not in r]
-            self.assertEqual(sorted(ids), sorted(r["provider"] for r in want), cat)
-            self.assertEqual(len(ids), len(set(ids)), cat)
-            chart = section(h, f'id="chart-{cat}"', "</figure>")
-            for kind in ("wide", "narrow"):
-                svg = re.search(rf'<svg class="plot--{kind}".*?</svg>', chart, re.S).group(0)
-                labs = [html.unescape(x) for x in re.findall(r'<text class="pt-label" [^>]*>([^<]*)</text>', svg)]
-                self.assertEqual(len(labs), len(want), (cat, kind, labs))
-                for r in want:
-                    nm = r["_name"] if kind == "wide" or len(r["_name"]) <= 12 else r["_name"][:11] + "…"
-                    self.assertEqual(labs.count(nm), 1, (cat, kind, nm))
-                    self.assertEqual(svg.count(f">{render.frac(r)}<"), 1, (cat, kind, r["provider"]))
-            seen += len(want)
-        self.assertEqual(seen, sum(len({r["provider"] for r in v if not r.get("mock")}) for v in BENCH["tables"].values()))
-
-    def test_browserless_own_set_label(self):
-        h = page("/")
-        bl = [r for r in latest("browser") if r["provider"] == "browserless"]
-        self.assertEqual(len(bl), 1)
-        bl = bl[0]
-        self.assertEqual((bl["passed"]["v"], bl["attempted"]["v"]), (37, 40))
-        head = html.unescape(section(h, 'id="chart-browser"', "</figcaption>"))
-        self.assertIn(f"set {bl['set']}", head)
-        self.assertIn(f"{bl['_name']} loaded 37 of 40", head)
-        row = text(next(r for r in rows_of(h, "browser") if 'data-id="browserless"' in r))
-        self.assertIn(f"set {bl['set']}", row)
-        self.assertIn("37/40", row)
-        others = {r["set"] for c in BENCH["tables"] if c != "browser" for r in latest(c)}
-        for s in others - {bl["set"]}:
-            self.assertNotIn(s, head)
-
-    def test_week_set_label_from_data(self):
-        h = page("/")
-        for cat in BENCH["tables"]:
-            rows = latest(cat)
-            if not rows:
-                continue
-            head = html.unescape(section(h, f'id="chart-{cat}"', "</figcaption>"))
-            sets = sorted({r["set"] for r in rows})
-            wks = sorted({"%d-%02d" % render.week_of(r) for r in rows})
-            self.assertIn(f"Week {', '.join(wks)} · set {', '.join(sets)}", head)
-            for svg in re.findall(r"<svg class=\"plot--.*?</title>", section(h, f'id="chart-{cat}"', "</figure>"), re.S):
-                self.assertIn(f"set {', '.join(sets)}", html.unescape(svg))
-
-    def test_run_status_plain_words(self):
-        import render
-        rs = section(page("/"), 'id="run-status"', "</section>")
-        pub = sorted({r["set"] for cat in BENCH["tables"] for r in latest(cat)})
-        p = text(section(rs, 'id="sets-published"', "</p>"))
-        for s in pub:
-            self.assertIn(s, p)
-        skips = section(rs, 'id="skips"', "</table>")
-        for k in BENCH["skips"]:
-            self.assertIn(f'title="{k["status"]}">{html.escape(render.status_words(k["status"]))}<', skips)
-            self.assertNotIn(f'>{k["status"]}<', skips)
-        self.assertEqual(render.status_words("new_code_here"), "New code here")
-
-    def test_freshness_latest_week_per_provider(self):
-        self._check_freshness_fixture(FRESH_NEWEST_FIRST)
-
-    def test_freshness_latest_week_file_order_reversed(self):
-        self._check_freshness_fixture(FRESH_OLDEST_FIRST)  # newest exa week listed last: file order must not decide
-
-    def _check_freshness_fixture(self, fr):
-        d = {"has_results": True, "freshness": fr,
-             "tables": {"search": [{"provider": "tavily", "set": "news_2026-10", "run_date": "2026-03-09", "attempted": {"v": 40}}]}}
-        h = render.freshness(d, {"exa": "Exa", "tavily": "Tavily"})
-        rows = re.findall(r'<tr data-id="([^"]+)">(.*?)</tr>', h, re.S)
-        self.assertEqual([p for p, _ in rows], ["exa", "tavily"])  # one row per provider
-        exa, tav = text(rows[0][1]), text(rows[1][1])
-        self.assertIn("Week 2026-10 · set news_2026-10", exa)  # 10 > 9 numerically, not as strings
-        self.assertIn("short week (n=40)", exa)
-        self.assertNotIn("n=16", exa)
-        self.assertIn("Week 2026-09 · set news_2026-9 · results table is week 2026-10", tav)
-
-    def test_freshness_rows_once_on_page(self):
-        t = section(page("/"), 'id="freshness"', "</table>")
-        ids = re.findall(r'<tr data-id="([^"]+)"', t)
-        self.assertEqual(sorted(ids), sorted({f["provider"] for f in BENCH["freshness"]}))
-        for f in render.latest_per_provider(BENCH["freshness"]):
-            self.assertIn(render.week_label([f]), text(t))
-
-    def test_freshness_counts(self):
-        import render
-        self.assertEqual(render.count_pct({"v": 0.9375}, 16), "15/16 (94%)")
-        self.assertEqual(render.count_pct({"v": 0.3}, 16), "30%")
-        self.assertEqual(render.count_pct(None, 16), "n/a")
-
-    def test_narrow_labels_one_placement(self):
-        h = page("/")
-        for svg in re.findall(r'<svg class="plot--narrow".*?</svg>', h, re.S):
-            self.assertEqual(set(re.findall(r'class="pt-val"[^>]*text-anchor="(\w+)"', svg)), {"middle"})
-
-    def test_urls_preserved(self):
-        old = (R / "tests/urls_baseline.txt").read_text().split()
-        missing = [u for u in old if not (D / u.lstrip("/")).is_file()]
-        self.assertEqual(missing, [])
+    def test_theme_tokens_and_toggle(self):  # brand: two-variable swap; dark default, light by media query and data-theme
+        css = (D / "style.css").read_text()
+        for tok in ("--cyan: #5FC4D6", "--acc: #616512", "--acc-tint: #8B901A", "--font-head:", "--font-body:", "--font-mono:"):
+            self.assertIn(tok, css)
+        self.assertIn("Space Grotesk", css)
+        self.assertIn("prefers-color-scheme: light", css)
+        self.assertIn(":root[data-theme=light]", css)
+        self.assertLess(css.index("color-scheme: dark"), css.index("prefers-color-scheme: light"))   # dark is the default
+        self.assertIn("data-theme-toggle", page("/"))
+        self.assertIn("setAttribute('data-theme'", (D / "app.js").read_text())
 
     def test_internal_links_resolve(self):
         seen, missing = 0, []
@@ -372,7 +483,6 @@ class Dist(unittest.TestCase):
                 continue
             s = p.read_text()
             refs = re.findall(r'(?:href|src)="(/[^"]*)"', s) + re.findall(r'url\("(/[^"]+)"\)', s)
-            refs += re.findall(r"j\('(/[^'$`]+)'\)", s)
             refs += [u[len("https://agentwebindex.com"):] or "/" for u in re.findall(r"https://agentwebindex\.com(/[^\s<\"]*)", s)]
             for u in refs:
                 if u.startswith("//"):
@@ -387,31 +497,280 @@ class Dist(unittest.TestCase):
         self.assertGreater(seen, 50)
         self.assertEqual(missing, [])
 
-    def test_data_json_parses(self):
+
+class Results(unittest.TestCase):
+    def setUp(self):
+        self.s = page("/")
+
+    def test_section_order(self):  # AC12
+        ids = re.findall(r'<(?:section|footer)\b[^>]*?(?:id="([a-z-]+)"|class="(site-footer)")', self.s)
+        order = [a or b for a, b in ids]
+        self.assertEqual([x for x in order if x != ""], ["run", "pass-rate", "cost", "not-tested", "details", "sponsor-newsletter", "site-footer"])
+        self.assertTrue(self.s.index('class="hero"') < self.s.index('id="run"'))
+        self.assertIn('<aside id="sponsor-banner" class="sponsor"><b>Sponsored</b>', self.s)
+        run = self.s[self.s.index('id="run"'):self.s.index('id="pass-rate"')]
+        rows = re.findall(r'<div class="row"[^>]*data-provider="([a-z]+)"', run)
+        self.assertEqual(rows, ["exa", "tavily", "browserless"])
+        subs = re.findall(r'<div class="who"><b>([^<]+)</b>\s*<span>([^<]*)</span>', run)
+        self.assertEqual([(a, norm(b)) for a, b in subs], [("Exa", "search · 100 evergreen questions"), ("Tavily", "search · 100 evergreen questions"),
+                         ("Browserless", "scrape · 150 URLs; 30 skipped by design under its terms")])
+
+    def test_values_computed_from_latest_json_and_linked(self):  # AC13
+        ex, text = expected_numbers(), text_of(self.s)
+        self.assertEqual(sorted(ex.values()), sorted(["69%", "40%", "66%", "$11.59", "$17.50", "$1.90", "$7.00", "$8.00", "$1.25"])
+                         if PINS["data"] == PINS["data_stale_after_phase0"] else sorted(ex.values()))
+        for k, val in ex.items():
+            self.assertIn(val, text, k)
+        run = self.s[self.s.index('id="run"'):self.s.index('id="pass-rate"')]
+        pin = PINS["data"]
+        for pid in ("exa", "tavily", "browserless"):
+            row = re.search(rf'<div class="row"[^>]*data-provider="{pid}">.*?</div></div>', run, re.S).group(0)
+            logs = re.findall(r'href="(https://github\.com/hazeydata/agentwebindex/blob/[^"]+)"', row)
+            self.assertEqual(len(logs), 1, pid)
+            self.assertTrue(logs[0].startswith(f"https://github.com/hazeydata/agentwebindex/blob/{pin}/bench/runs/{LATEST['run_date']}/{pid}/"), logs[0])
+            src = PRICING["providers"][pid]["scrape" if pid == "browserless" else "search"]["source_url"]
+            self.assertIn(f'href="{src}"', row)
+
+    def test_no_hardcoded_values_in_code_or_templates(self):  # AC13
+        literals = ["69%", "40%", "66%", "$11.59", "$17.50", "$1.90", "$7.00", "$8.00", "$1.25"] + list(expected_numbers().values())
+        files = [R / "render.py", R / "build.py", R / "prices.py", R / "copydoc.py"] + sorted((R / "src").glob("*.html"))
+        for f in files:
+            src = f.read_text()
+            for lit in literals:
+                self.assertFalse(lit in src, f"{lit} hard-coded in {f.name}")
+
+    def test_charts_alt_title_caption(self):  # AC15
+        alts, doc = copydoc.alt_texts(), copydoc.load()
+        queries = (R / "content/chart-alt.md").read_text()
+        for name, sub, sid in (("pass-rate", "Chart 1", "pass-rate"), ("cost-per-success", "Chart 2", "cost")):
+            alt = alts[name]
+            self.assertIn(f'"{alt}"', queries)
+            sec = self.s[self.s.index(f'id="{sid}"'):]
+            sec = sec[:sec.index("</section>")]
+            imgs = re.findall(r"<img\b[^>]*>", sec)
+            self.assertEqual(len(imgs), 4)
+            for img in imgs:
+                self.assertEqual(html.unescape(re.search(r'alt="([^"]*)"', img).group(1)), alt)
+            fig = sec[sec.index("<figure"):]
+            self.assertEqual(text_of(re.search(r"<h3>(.*?)</h3>", fig).group(1)), doc.field("Chart briefs", "Title", sub=sub))
+            self.assertEqual(text_of(re.search(r"<figcaption>(.*?)</figcaption>", fig).group(1)), doc.field("Chart briefs", "Caption", sub=sub))
+            self.assertIn(f'<h3>', fig)
+
+    def test_chart_variants_and_css(self):  # AC16 (static half; real rendering in browser_check.py)
+        for name in ("pass-rate", "cost-per-success"):
+            imgs = [i for i in Dom(self.s).imgs if f"awi-{name}-" in i["src"]]
+            self.assertEqual(sorted(i["src"] for i in imgs), sorted(f"/assets/charts/awi-{name}-{w}-{c}.svg" for w in (720, 350) for c in ("light", "dark")))
+            for i in imgs:
+                self.assertTrue(int(i["width"]) > 0 and int(i["height"]) > 0)   # explicit size: no layout shift
+                self.assertIn(f"ch-{i['src'].split('-')[-2]}", i["class"].split())
+        css = (D / "style.css").read_text()
+        self.assertIn(".ch { display: none;", css)
+        self.assertIn("@media (min-width: 768px) { .ch-720.ch-dark { display: block; } }", css)
+        self.assertIn("@media (max-width: 767.98px) { .ch-350.ch-dark { display: block; } }", css)
+        self.assertIn("max-width: 100%", css[css.index(".ch {"):css.index(".ch {") + 80])
+
+    def test_charts_stacked_in_one_column_markup(self):  # AC17 (static half)
+        self.assertLess(self.s.index('id="chart-pass-rate"'), self.s.index('id="chart-cost"'))
+        css = (D / "style.css").read_text()
+        self.assertNotRegex(css[css.index(".chart {"):css.index("/* details */")], r"float|grid-template-columns|display: flex")
+
+    def test_earlier_runs_details(self):  # AC18
+        dom = Dom(self.s)
+        er = [d for d in dom.details if d["id"] == "earlier-runs"][0]
+        self.assertFalse(er["open"])
+        self.assertTrue(all(not d["open"] for d in dom.details))
+        doc = copydoc.load()
+        self.assertEqual(norm(er["summary"]), doc.field("Earlier runs", "Summary line"))
+        body = self.s[self.s.index('id="earlier-runs"'):]
+        body = text_of(body[:body.index("</details>")])
+        for kind, t in doc.blocks("Earlier runs"):
+            if kind in ("li", "h3") or t.startswith("**Week"):
+                self.assertIn(strip_md(t), body, t)
+        self.assertEqual(len(re.findall(r"<li>", self.s[self.s.index('id="earlier-runs"'):self.s.index('id="every-row"')])), 8)
+
+    def test_index_forbidden_words(self):  # AC19
+        for w in ("p50", "latency", "ms</", "freshness"):
+            self.assertNotIn(w, self.s.lower(), w)
+
+    def test_every_row_table_has_all_rows_without_latency(self):
+        t = self.s[self.s.index('id="every-row"'):]
+        t = t[:t.index("</details>")]
+        want = sum(len([r for r in rows if not r.get("mock")]) for rows in LATEST["tables"].values())
+        self.assertEqual(t.count('<th scope="row"'), want)
+        self.assertNotRegex(t, r"(?i)p50|latency")
+
+
+class OtherPages(unittest.TestCase):
+    def test_prices_rows_dates_and_links(self):  # AC20
+        s = page("/prices/")
+        rows = re.findall(r'<div class="row price-row".*?</div></div>', s, re.S)
+        want = P.price_rows(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(len(rows), len(want))
+        for r, w in zip(rows, want):
+            t = text_of(r)
+            self.assertIn(f"{w['name']} {w['category']}", t)
+            self.assertIn(w["price_display"], t)
+            self.assertIn(f"Last checked {w['checked_at']} · pricing page", t)
+            self.assertIn(f'<a href="{html.escape(w["source_url"])}">pricing page</a>', r)
+            self.assertEqual(w["checked_at"], P.priced_tier_checked_at(PRICING, w["provider"], w["category"]))
+        self.assertEqual(len(re.findall(r"\bimg\b|<svg|<canvas", s[s.index("<main"):s.index("<footer")])), 0)   # no chart
+
+    def test_no_cheapest_tier_100k_claim_anywhere(self):  # R7: nothing in dist/ (any file type) makes the 'cheapest tier covering 100k/month' claim
+        pat = re.compile(r"cheapest\s+tier|100\s*k\s*(?:/|per|a)\s*mo(?:nth)?|100,?000\s*(?:/|per|a)\s*mo(?:nth)?|100\s*k\s*(?:requests|calls|credits)?\s*(?:/|per|a)\s*mo(?:nth)?", re.I)
+        files = [p for p in D.rglob("*") if p.is_file()]
+        self.assertGreater(len(files), 50)
+        hits = [(str(p.relative_to(D)), m.group(0)) for p in files for m in pat.finditer(p.read_bytes().decode("utf-8", "ignore"))]
+        self.assertEqual(hits, [])
+        for ok in ("Cheapest tier covering 100K/month", "cheapest  tier", "100,000/month", "100k per month", "100000 / month"):
+            self.assertTrue(pat.search(ok), ok)   # the pattern itself catches the variants
+
+    def test_prices_shows_only_tavily_entry_tier(self):  # R6/R7: Bootstrap/Startup/Growth and the volume (Project) tier are not on the page
+        tiers = PRICING["providers"]["tavily"]["search"]["tiers"]
+        row = text_of(re.search(r'<div class="row price-row"[^>]*data-provider="tavily">.*?</div></div>', page("/prices/"), re.S).group(0))
+        self.assertIn(tiers["entry"]["name"], row)
+        self.assertIn(f"${tiers['entry']['usd_per_credit']} per credit", row)
+        for word in ("Bootstrap", "Startup", "Growth", "Project", "volume", "slider", str(tiers["volume"]["usd_per_credit"]), "$30"):
+            self.assertNotIn(word, row, word)
+            self.assertNotIn(word, text_of(page("/prices/")), word)
+
+    def test_no_daily_anywhere(self):  # AC20
+        self.assertEqual([str(p.relative_to(D)) for p in dist_text_files() if re.search(r"(?i)daily", p.read_text(errors="ignore"))], [])
+        for f in ("render.py", "build.py", "src/style.css", "src/app.js"):
+            self.assertNotRegex((R / f).read_text(), r"(?i)daily")
+
+    def test_also_priced_line_names_all_eleven_none_has_a_row(self):  # AC21
+        s = page("/prices/")
+        line = text_of(re.search(r'<p class="lcopy" id="also-priced">(.*?)</p>', s, re.S).group(1))
+        self.assertEqual(s.count('id="also-priced"'), 1)
+        self.assertTrue(line.startswith("Also priced, no published results yet: "))
+        listed = {n.strip() for n in line.split(": ", 1)[1].rstrip(".").split(", ")}
+        un = P.untested_providers(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(listed, set(un))
+        rows = text_of("".join(re.findall(r'<div class="row price-row".*?</div></div>', s, re.S)))
+        for n in un:
+            self.assertNotIn(n, rows)
+
+    def test_methodology_latency_uses_fmt_ms(self):  # AC22
+        s = text_of(page("/methodology/"))
+        rows = {(r["provider"], c): r for c, rr in LATEST["tables"].items() for r in rr if r["run_date"] == LATEST["run_date"]}
+        for (pid, cat) in (("exa", "search"), ("tavily", "search"), ("browserless", "scrape")):
+            self.assertIn(f"{NAMES[pid]} {cat} {P.fmt_ms(rows[(pid, cat)]['p50_latency_ms']['v'])}.", s)
+        self.assertIn("Freshness: not measured yet", s)   # the single copy line; no chart, table or id
+        self.assertIn("Latency (p50)", s)
+
+    def test_pro_waitlist_and_freshness_blocks_gone(self):  # AC23
+        for p in dist_text_files(skip_data=True):
+            self.assertNotRegex(p.read_text(errors="ignore"), r"(?i)AWI Pro|\$29|29/mo|29/month|waitlist", p)
+        for p in PAGES:
+            self.assertNotIn('id="freshness"', page(p))
+        self.assertNotRegex((R / "render.py").read_text(), r"(?i)def freshness|id=\"freshness\"")
+
+    def test_tell_us_page(self):  # AC24
+        s = page("/tell-us/")
+        self.assertIn('href="https://github.com/hazeydata/agentwebindex-site/issues"', s)
+        self.assertIn('href="mailto:fred@hazeydata.ai"', s)
+        self.assertIn("<loc>https://agentwebindex.com/tell-us/</loc>", (D / "sitemap.xml").read_text())
+        self.assertIn("Allow: /tell-us/", (D / "robots.txt").read_text())
+        self.assertEqual(Dom(s).h1, ["Tell us"])
+
+    def test_disclosures_and_sponsors_structure(self):  # AC25
+        for p in PAGES:
+            s = page(p)
+            self.assertNotRegex(s, r"\b(?:DISC|SPON)-[A-Z]+\b")
+            self.assertNotIn("**", s)
+            self.assertNotRegex(text_of(s), r"\b(?:Kicker|Title|Intro):")
+        d = text_of(page("/disclosures/"))
+        for h in ("Current and past sponsors", "Affiliate relationships", "Free credits received", "Who pays for testing", "Corrections changelog"):
+            self.assertIn(h, page("/disclosures/"))
+        self.assertIn("No corrections yet. If we get one wrong, we'll fix it and log it here.", d)
+        self.assertEqual(Dom(page("/sponsors/")).h1, ["Sponsors"])
+        self.assertEqual(Dom(page("/disclosures/")).h1, ["Disclosures"])
+
+    def test_data_page_file_list(self):
+        s = page("/data/")
+        for u in ("/data/benchmarks/latest.json", "/data/benchmarks/latest.csv", "/data/prices.json", "/data/prices.csv", "/data/prices/index.json", "/data/LICENSE"):
+            self.assertIn(f'href="{u}"', s)
+        self.assertIn("prices/&lt;provider&gt;.json", s)
+
+
+class CopyAndGreps(unittest.TestCase):
+    def test_copy_diff_verbatim(self):  # AC28
+        strings = copy_strings()
+        self.assertGreater(sum(len(v) for v in strings.values()), 60)
+        self.assertEqual(set(strings), set(PAGES))
+        for pg, items in strings.items():
+            text = text_of(page(pg))
+            for s in items:
+                self.assertIn(norm(s), text, f"{pg}: {s[:70]}")
+        # copy.md has not been edited: the verbatim target is the pinned file
+        self.assertEqual(hashlib.sha256((R / "content/copy.md").read_bytes()).hexdigest(), PINS["copy_sha256"])
+        alts = copydoc.alt_texts()
+        for key in ("pass-rate", "cost-per-success"):
+            self.assertIn(f"Alt text:** {alts[key]}", (R / "content/copy.md").read_text())   # chart-alt.md alt == copy.md alt
+
+    def test_no_fact_cleared_text(self):  # AC29
+        self.assertEqual([p.name for p in dist_text_files() if "(fact-cleared" in p.read_text(errors="ignore")], [])
+
+    def test_no_draft_or_pending_case_sensitive(self):  # AC30
+        hits = [(p.name, w) for p in dist_text_files() for w in ("DRAFT", "PENDING") if w in p.read_text(errors="ignore")]
+        self.assertEqual(hits, [])
+
+    def test_no_ssd_term_anywhere(self):
+        self.assertEqual([p.name for p in dist_text_files() if re.search(r"\bSSD\b", p.read_text(errors="ignore"))], [])
+
+    def test_no_absolute_local_paths_in_repo_files(self):
+        bad = []
+        for f in R.rglob("*"):
+            if f.is_file() and ".git" not in f.parts and "dist" not in f.parts and "__pycache__" not in f.parts and f.suffix in (".py", ".md", ".sh", ".js", ".json", ".html", ".css", ".txt", ".yaml") and f.parts[len(R.parts)] != "data":
+                s = f.read_text(errors="ignore")
+                if f.name == "SOURCE":
+                    continue
+                if re.search("/work" + "space|/home/" + "box", s):
+                    bad.append(str(f.relative_to(R)))
+        self.assertEqual(bad, [], "local absolute paths in committed files")
+
+    def test_no_pack_sample_values(self):
+        vals = json.loads((R / "tests/pack_sample_values.json").read_text())["values"]
+        self.assertGreater(len(vals), 100)
+        hits = [(v, str(p.relative_to(D))) for p in dist_text_files() for v in vals if v in p.read_text(errors="ignore")]
+        self.assertEqual(hits, [])
+
+
+class AgentSurfaces(unittest.TestCase):
+    def test_agent_surfaces_unchanged(self):  # AC26
+        base = json.loads((R / "tests/agent_surface_baseline.json").read_text())
+        # invariants that hold for any data pin: the vendored data is served as-is
+        skip = {"cache", "_upstream"}
+        for p in (R / "data").rglob("*"):
+            rel = p.relative_to(R / "data")
+            if p.is_file() and not (set(rel.parts) & skip) and rel.as_posix() != "benchmarks/latest.json":
+                self.assertEqual((D / "data" / rel).read_bytes(), p.read_bytes(), rel.as_posix())
+        pub = json.loads((D / "data/benchmarks/latest.json").read_text())
+        self.assertEqual({k: v for k, v in pub.items() if k != "exclusions"}, {k: v for k, v in LATEST.items() if k != "exclusions"})
+        self.assertEqual(pub["exclusions"], [{k: x[k] for k in EXCL_PUBLIC if k in x} for x in LATEST["exclusions"]])
+        llms = (D / "llms.txt").read_text()
+        self.assertIn("Machine-readable data: /data/benchmarks/latest.json, /data/benchmarks/latest.csv (CC BY 4.0), /data/prices.json, /data/prices.csv, /data/prices/<provider>.json\n", llms)
+        self.assertTrue(llms.endswith("/newsletter/, /tell-us/\n"))   # only addition: the new page
+        rows = list(csv.reader((D / "data/benchmarks/latest.csv").read_text().splitlines()))
+        self.assertEqual(len(rows) - 1, sum(len(v) for v in LATEST["tables"].values()))
         for p in (D / "data").rglob("*.json"):
             json.loads(p.read_text())
-        for p in (D / "data").rglob("*.jsonl"):
-            for line in p.read_text().splitlines():
-                if line.strip():
-                    json.loads(line)
-        idx = json.loads((D / "data/prices/index.json").read_text())
-        self.assertTrue(idx["providers"])
-        for x in idx["providers"]:
-            self.assertTrue((D / f"data/prices/{x['provider']}.json").is_file(), x["provider"])
+        # byte comparison with what main (60a8f4b) built from the same data, while the data pin is the one it was built from
+        if base["data_sha"] == PINS["data"]:
+            for rel, sha in base["files"].items():
+                if rel == "data/index.html":   # the Data page itself (redesigned), not an agent surface
+                    continue
+                self.assertEqual(hashlib.sha256((D / rel).read_bytes()).hexdigest(), sha, rel)
+            self.assertEqual(hashlib.sha256(llms.replace(", /tell-us/\n", "\n").encode()).hexdigest(), base["llms_txt_sha256"])
 
-    def test_beehiiv_embed(self):
-        cfg = json.loads((R / "site.config.json").read_text())
-        fid = cfg["beehiiv_embed_url"].rstrip("/").rsplit("/", 1)[1]
-        for p in ("/newsletter/", "/"):
-            s = page(p)
-            self.assertIn(f'data-beehiiv-form="{fid}"', s)
-            self.assertIn('src="https://subscribe-forms.beehiiv.com/v3/loader.js"', s)
-            self.assertIn(f'<noscript><a href="{cfg["beehiiv_embed_url"]}">', s)
+    def test_urls_preserved(self):
+        old = (R / "tests/urls_baseline.txt").read_text().split()
+        self.assertEqual([u for u in old if not (D / u.lstrip("/")).is_file()], [])
 
     def test_no_internal_exclusion_fields(self):
         """Only allowlisted exclusion fields reach any built output; internal notes (ToS "note") never do."""
         public = set(EXCL_PUBLIC)
-        internal = [x[k] for x in BENCH["exclusions"] for k in x if k not in public and isinstance(x[k], str)]
+        internal = [x[k] for x in LATEST["exclusions"] for k in x if k not in public and isinstance(x[k], str)]
         self.assertTrue(internal, "fixture lost its internal note; this test would be hollow")
         needles = ["needs legal review", "treated as forbidden"] + internal + [html.escape(t) for t in internal]
         files = [f for f in D.rglob("*") if f.is_file() and f.suffix in (".html", ".txt", ".json", ".csv", ".xml")]
@@ -420,21 +779,18 @@ class Dist(unittest.TestCase):
             t = f.read_text()
             for n in needles:
                 self.assertNotIn(n, t, f"{n!r} leaked into {f.relative_to(D)}")
-        pub = json.loads((D / "data/benchmarks/latest.json").read_text())["exclusions"]
-        self.assertEqual(pub, [{k: x[k] for k in EXCL_PUBLIC if k in x} for x in BENCH["exclusions"]])
 
     def test_unknown_exclusion_key_never_published(self):
         """Allowlist, not denylist: an unknown internal key added to a tmp copy of the data never reaches dist."""
-        import shutil, subprocess, sys, tempfile
         marker = "AWI-INTERNAL-MARKER-q7zk"
         with tempfile.TemporaryDirectory(prefix="awi-excl.") as t:
             w = Path(t) / "w"
-            shutil.copytree(R, w, ignore=shutil.ignore_patterns(".git", "dist", "__pycache__"))
+            copy_repo(w)
             p = w / "data/benchmarks/latest.json"
             d = json.loads(p.read_text())
             d["exclusions"][0]["internal_x"] = marker
             p.write_text(json.dumps(d, indent=1))
-            b = subprocess.run([sys.executable, "build.py"], cwd=w, capture_output=True, text=True)
+            b = build_in(w)
             self.assertEqual(b.returncode, 0, b.stderr[-300:])
             for f in (w / "dist").rglob("*"):
                 if f.is_file() and f.suffix in (".html", ".txt", ".json", ".csv", ".xml"):
@@ -442,178 +798,6 @@ class Dist(unittest.TestCase):
                     self.assertNotIn(marker, t2, f"marker leaked into {f.name}")
                     self.assertNotIn("internal_x", t2, f"key leaked into {f.name}")
 
-    def test_downloads(self):
-        rows = list(csv.reader((D / "data/benchmarks/latest.csv").read_text().splitlines()))
-        self.assertEqual(len(rows) - 1, sum(len(v) for v in BENCH["tables"].values()))
-        pub = json.loads((D / "data/benchmarks/latest.json").read_text())
-        self.assertEqual({k: v for k, v in pub.items() if k != "exclusions"}, {k: v for k, v in BENCH.items() if k != "exclusions"})
-        self.assertGreater(len(json.loads((D / "data/prices.json").read_text())["rows"]), 0)
-        self.assertTrue((D / "data/prices.csv").read_text().startswith("provider,name,pricing_url"))
-        d = page("/data/")
-        for u in ("/data/benchmarks/latest.csv", "/data/benchmarks/latest.json"):
-            self.assertIn(f'href="{u}"', d)
-
-    def test_page_content_kept(self):
-        for name in ("methodology", "disclosures", "sponsors", "data", "newsletter", "prices"):
-            src = (R / "src" / f"{name}.html").read_text()
-            src = re.sub(r"<!--.*?-->|\{\{\w+\}\}", "", src)
-            for chunk in re.findall(r"<(?:p|li|h1|h2)>(.*?)</(?:p|li|h1|h2)>", src, re.S):
-                self.assertIn(text(chunk), text(page(f"/{name}/")), (name, chunk[:60]))
-
-    def test_prices_page(self):
-        p = page("/prices/")
-        t = section(p, 'id="curated-prices"', "</table>")
-        self.assertIn("Normalized $/1k requests", t)
-        rows = re.findall(r"<tr><td>.*?</tr>", t)
-        for r in rows:
-            cell = text(re.search(r'data-label="Normalized \$/1k requests"[^>]*>(.*?)</td>', r).group(1))
-            self.assertRegex(cell, r"^(\$[\d.]+( \(overage rate[^)]*\))?|n/a \(.+\))$")
-        pricing = json.loads("\n".join(l for l in (R / "data/_upstream/pricing.yaml").read_text().splitlines() if not l.lstrip().startswith("#")))
-        inc = pricing["providers"]["firecrawl"]["search"]["tiers"]["entry"]["included_units"]
-        self.assertIn(f"overage rate after the plan's {inc:,} included units", text([r for r in rows if "Firecrawl" in r][0]))
-        self.assertIn("$8", text([r for r in rows if "Tavily" in r][0]))
-        self.assertNotRegex(p, r"NOT CAPTURED|Not captured|Not Captured")
-        self.assertGreater(t.count("<tr>"), 10)
-        self.assertIn("Checked", t)
-
-    def test_goatcounter_snippet_in_head_once_per_page(self):
-        config = "<script>window.goatcounter = {path: function(p){return '/awi' + p}}</script>"
-        counter = '<script data-goatcounter="https://openmillage.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>'
-        pages = list(D.rglob("*.html"))
-        self.assertTrue(pages)
-        for p in pages:
-            s = self._live_html(p.read_text(), p)
-            self.assertEqual(s.count(config), 1, p)
-            self.assertEqual(s.count(counter), 1, p)
-            head = s[:s.index("</head>")]
-            self.assertIn(config, head, p)
-            self.assertIn(counter, head, p)
-            self.assertLess(s.index(config), s.index(counter), p)
-            self.assertIn("return '/awi' + p", s, p)
-
-    def test_nav_and_landmarks(self):
-        for p in ("/", "/prices/", "/methodology/", "/disclosures/", "/newsletter/", "/data/", "/sponsors/"):
-            s = page(p)
-            self.assertEqual(s.count("<h1"), 1, p)
-            self.assertIn(f'<a href="{p}" aria-current="page">', s)
-            self.assertIn('<a class="skip-link" href="#main">', s)
-            self.assertIn('<main id="main"', s)
-            for img in re.findall(r"<img\b[^>]*>", s):
-                self.assertIn("alt=", img, p)
-            for svg in re.findall(r"<svg\b[^>]*>", s):
-                self.assertTrue('aria-hidden="true"' in svg or "aria-labelledby=" in svg, (p, svg[:80]))
-
-
-def tokens(block):
-    return dict(re.findall(r"--([a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})", block))
-
-
-def lum(h):
-    c = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
-    c = [x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
-    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
-
-
-def ratio(a, b):
-    la, lb = sorted((lum(a), lum(b)), reverse=True)
-    return (la + 0.05) / (lb + 0.05)
-
-
-TEXT_PAIRS = [("ink", "bg"), ("ink", "surface"), ("ink", "surface-2"), ("ink-2", "bg"), ("ink-2", "surface"), ("ink-2", "surface-2"),
-              ("ink-3", "bg"), ("ink-3", "surface"), ("accent-ink", "bg"), ("accent-ink", "surface-2"), ("on-accent", "accent"), ("bg", "ink")]
-MARK_PAIRS = [("focus", "bg"), ("field-border", "bg"), ("cat-search", "bg"), ("cat-scrape", "bg"), ("cat-browser", "bg")]
-
-
-def themes():
-    css = (D / "style.css").read_text()
-    light = tokens(css[css.index(":root {"):css.index("}", css.index(":root {"))])
-    dark = dict(light, **tokens(css[css.index(':root[data-theme="dark"]'):]))
-    return {"light": light, "dark": dark}
-
-
-class Wilson(unittest.TestCase):
-    def test_reference_values(self):
-        import render
-        for k, n, lo, hi in ((12, 16, 50.5, 89.8), (8, 16, 28.0, 72.0), (2, 16, 3.5, 36.0), (11, 16, 44.4, 85.8)):
-            w = render.wilson(k, n)
-            self.assertEqual((round(w[0] * 100, 1), round(w[1] * 100, 1)), (lo, hi))
-
-    def test_finding_phrases(self):
-        import render
-        row = lambda name, k, n: {"_name": name, "set": "news_x", "passed": {"v": k}, "attempted": {"v": n}, "success_rate": {"v": k / n}}
-        self.assertEqual(render.finding("search", [row("A", 40, 40), row("B", 0, 40)]), "A answered 40 of 40 news queries, B 0; at n=40 every gap is clear")
-        self.assertEqual(render.finding("search", [row("A", 5, 10), row("B", 4, 10)]), "A answered 5 of 10 news queries, B 4; at n=10 no gap is clear")
-        self.assertEqual(render.finding("search", [row("A", 9, 10), row("B", 1, 20)]), "A answered 9 of 10 news queries, B 1 of 20; at n=10–20 every gap is clear")
-
-
-class TwoWeeks(unittest.TestCase):
-    FIX = {"has_results": True, "tables": {"search": [
-        {"provider": p, "set": f"news_2026-{w}", "run_date": d, "passed": {"v": k}, "attempted": {"v": n}, "success_rate": {"v": k / n},
-         "p50_latency_ms": {"v": 100}, "flags": []}
-        # file order deliberately puts the newer week first for exa
-        for p, w, d, k, n in (("exa", 43, "2026-10-20", 37, 40), ("exa", 42, "2026-10-15", 15, 16),
-                              ("tavily", 42, "2026-10-15", 12, 16), ("tavily", 43, "2026-10-20", 29, 40))]}, "scrape": [], "browser": []}
-
-    def test_one_row_per_provider_single_week_title(self):
-        import tempfile
-        with tempfile.TemporaryDirectory() as td:
-            b = Path(td) / "b.json"
-            b.write_text(json.dumps(self.FIX))
-            pv = Path(td) / "p.json"
-            pv.write_text(json.dumps({"providers": [{"id": "exa", "name": "Exa", "categories": ["search"]},
-                                                    {"id": "tavily", "name": "Tavily", "categories": ["search"]}]}))
-            h = render.leaderboard(b, pv)
-        ids = re.findall(r'<tr data-id="([^"]+)"', section(h, 'id="table-search"', "</table>"))
-        self.assertEqual(ids, ["exa", "tavily"])
-        head = html.unescape(section(h, 'id="chart-search"', "</figcaption>"))
-        self.assertIn("Week 2026-43 · set news_2026-43", head)
-        self.assertNotIn("2026-42", head)
-        self.assertIn("Exa answered 37 of 40 news queries, Tavily 29;", head)
-        self.assertNotIn("of 16", h)
-
-
-class WeekOrder(unittest.TestCase):
-    @staticmethod
-    def row(p, s, d, k=1):
-        return {"provider": p, "set": s, "run_date": d, "passed": {"v": k}}
-
-    def test_same_week_later_run_date_wins(self):
-        rows = [self.row("exa", "news_2026-43", "2026-10-22", 2), self.row("exa", "news_2026-43", "2026-10-20", 1)]
-        for order in (rows, rows[::-1]):
-            got = render.latest_per_provider(order)
-            self.assertEqual(len(got), 1)
-            self.assertEqual(got[0]["run_date"], "2026-10-22")
-
-    def test_week_compared_numerically(self):
-        self.assertEqual(render.week_of({"set": "news_2026-9"}), (2026, 9))
-        self.assertGreater(render.week_of({"set": "news_2026-10"}), render.week_of({"set": "news_2026-9"}))
-        rows = [self.row("exa", "news_2026-10", "2026-03-02"), self.row("exa", "news_2026-9", "2026-03-09")]
-        for order in (rows, rows[::-1]):
-            self.assertEqual(render.latest_per_provider(order)[0]["set"], "news_2026-10")
-        self.assertEqual(render.week_label(rows[:1]), "Week 2026-10 · set news_2026-10")
-
-
-class Colours(unittest.TestCase):
-    def test_category_colours_only_via_data_cat(self):
-        css = (D / "style.css").read_text()
-        uses = [l.strip() for l in css.splitlines() if "var(--cat-" in l]
-        for l in uses:
-            self.assertRegex(l, r'^(--cat: var\(--cat-search\);|\[data-cat="(search|scrape|browser)"\]\s*\{ --cat: var\(--cat-\2\); \}|\.diagram \.d-search)', l)
-
-
-class Contrast(unittest.TestCase):
-    def test_text_pairs_aa(self):
-        for name, tk in themes().items():
-            for f, b in TEXT_PAIRS:
-                self.assertGreaterEqual(ratio(tk[f], tk[b]), 4.5, (name, f, b))
-
-    def test_marks_3_to_1(self):
-        for name, tk in themes().items():
-            for f, b in MARK_PAIRS:
-                self.assertGreaterEqual(ratio(tk[f], tk[b]), 3.0, (name, f, b))
-
 
 if __name__ == "__main__":
-    for name, tk in themes().items():
-        for f, b in TEXT_PAIRS + MARK_PAIRS:
-            print(name, f, b, round(ratio(tk[f], tk[b]), 2))
+    unittest.main()

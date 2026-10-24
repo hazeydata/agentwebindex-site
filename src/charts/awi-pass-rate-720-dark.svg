@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="518.4pt" height="472.73625pt" viewBox="0 0 518.4 472.73625" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-24T14:15:25.522446</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 472.73625 
+L 518.4 472.73625 
+L 518.4 0 
+L 0 0 
+z
+" style="fill: #03070f"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 93.312 160.8525 
+L 414.72 160.8525 
+L 414.72 120.5325 
+L 93.312 120.5325 
+z
+" style="fill: #03070f"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1"/>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2"/>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3"/>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4"/>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5"/>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_6"/>
+     <g id="text_1">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="89.812" y="154.215511" transform="rotate(-0 89.812 154.215511)">Exa</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_7"/>
+     <g id="text_2">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="89.812" y="135.888239" transform="rotate(-0 89.812 135.888239)">Tavily</text>
+     </g>
+    </g>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 284.144016 131.528864 
+L 341.504661 131.528864 
+" clip-path="url(#pa02b4eb1af)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 192.755554 149.856136 
+L 253.372932 149.856136 
+" clip-path="url(#pa02b4eb1af)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="line2d_8">
+    <defs>
+     <path id="m92a3a63769" d="M 0 3 
+C 0.795609 3 1.55874 2.683901 2.12132 2.12132 
+C 2.683901 1.55874 3 0.795609 3 0 
+C 3 -0.795609 2.683901 -1.55874 2.12132 -2.12132 
+C 1.55874 -2.683901 0.795609 -3 0 -3 
+C -0.795609 -3 -1.55874 -2.683901 -2.12132 -2.12132 
+C -2.683901 -1.55874 -3 -0.795609 -3 0 
+C -3 0.795609 -2.683901 1.55874 -2.12132 2.12132 
+C -1.55874 2.683901 -0.795609 3 0 3 
+z
+" style="stroke: #5fc4d6"/>
+    </defs>
+    <g clip-path="url(#pa02b4eb1af)">
+     <use xlink:href="#m92a3a63769" x="315.08352" y="131.528864" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="424.36224" y="134.984674" transform="rotate(-0 424.36224 134.984674)">69/100 (69%)</text>
+   </g>
+   <g id="line2d_9">
+    <g clip-path="url(#pa02b4eb1af)">
+     <use xlink:href="#m92a3a63769" x="221.8752" y="149.856136" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="424.36224" y="153.311947" transform="rotate(-0 424.36224 153.311947)">40/100 (40%)</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_3">
+    <path d="M 93.312 247.455 
+L 414.72 247.455 
+L 414.72 227.295 
+L 93.312 227.295 
+z
+" style="fill: #03070f"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_6">
+     <g id="line2d_10">
+      <defs>
+       <path id="m86ef9870aa" d="M 0 0 
+L 0 2 
+" style="stroke: #8796a8; stroke-width: 0.6"/>
+      </defs>
+      <g>
+       <use xlink:href="#m86ef9870aa" x="93.312" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_5">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="93.312" y="261.67375" transform="rotate(-0 93.312 261.67375)">0%</text>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_11">
+      <g>
+       <use xlink:href="#m86ef9870aa" x="173.664" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_6">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="173.664" y="261.67375" transform="rotate(-0 173.664 261.67375)">25%</text>
+     </g>
+    </g>
+    <g id="xtick_8">
+     <g id="line2d_12">
+      <g>
+       <use xlink:href="#m86ef9870aa" x="254.016" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_7">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="254.016" y="261.67375" transform="rotate(-0 254.016 261.67375)">50%</text>
+     </g>
+    </g>
+    <g id="xtick_9">
+     <g id="line2d_13">
+      <g>
+       <use xlink:href="#m86ef9870aa" x="334.368" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_8">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="334.368" y="261.67375" transform="rotate(-0 334.368 261.67375)">75%</text>
+     </g>
+    </g>
+    <g id="xtick_10">
+     <g id="line2d_14">
+      <g>
+       <use xlink:href="#m86ef9870aa" x="414.72" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_9">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="414.72" y="261.67375" transform="rotate(-0 414.72 261.67375)">100%</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_3">
+     <g id="line2d_15"/>
+     <g id="text_10">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="89.812" y="241.734375" transform="rotate(-0 89.812 241.734375)">Browserless</text>
+     </g>
+    </g>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 276.433129 237.375 
+L 330.220852 237.375 
+" clip-path="url(#pc8343dbd9a)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 93.312 247.455 
+L 414.72 247.455 
+" style="fill: none; stroke: #8796a8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_16">
+    <g clip-path="url(#pc8343dbd9a)">
+     <use xlink:href="#m92a3a63769" x="304.9056" y="237.375" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(424.36224 235.083496)">79 of 120 tested</text>
+    <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(424.36224 246.578125)">(66%)</text>
+   </g>
+  </g>
+  <g id="text_12">
+   <text style="font-weight: 600; font-size: 11px; font-family: 'Space Grotesk'; fill: #e6edf5" transform="translate(20.736 21.698044)">Tavily passed 69% of our 100 evergreen checks, Exa 40%; Browserless passed 66% of 120</text>
+   <text style="font-weight: 600; font-size: 11px; font-family: 'Space Grotesk'; fill: #e6edf5" transform="translate(20.736 37.7621)">scrape checks</text>
+  </g>
+  <g id="text_13">
+   <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 55.260625)">Pass rate on our test set (passed / attempted), with 95% intervals. One run, 2026-10-23. Search and</text>
+   <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 66.755254)">scrape are different jobs; compare within a panel. A search pass = the expected URL in the top 10, the</text>
+   <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 78.249883)">expected domain in the top 5, or the expected text in a top-5 result.</text>
+  </g>
+  <g id="text_14">
+   <text style="font-weight: 600; font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="20.736" y="111.028311" transform="rotate(-0 20.736 111.028311)">Search APIs · 100 evergreen questions</text>
+  </g>
+  <g id="text_15">
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 176.782598)">Not tested: Brave (terms forbid benchmarking), Linkup (not in month 1), Parallel (not in month 1), Serper (not</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 189.657441)">in month 1)</text>
+  </g>
+  <g id="text_16">
+   <text style="font-weight: 600; font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="20.736" y="217.790811" transform="rotate(-0 20.736 217.790811)">Scrape APIs · URL set</text>
+  </g>
+  <g id="text_17">
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 288.439668)">30 skipped under Browserless's terms (anti-bot URLs; skips, not failures). Not tested: Exa (not built),</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 300.959902)">Parallel (not in month 1), Firecrawl (no key), Jina (not in month 1), Apify (not built), Hyperbrowser (not in</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 313.268301)">month 1), ScrapingBee (not in month 1), Bright Data (not run yet)</text>
+  </g>
+  <g id="text_18">
+   <text style="font-weight: 600; font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="20.736" y="340.494561" transform="rotate(-0 20.736 340.494561)">Browser APIs</text>
+  </g>
+  <g id="text_19">
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 365.733613)">No browser run on Oct 23: the browser-task set file was missing at run time. Not tested: Hyperbrowser (not in</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 378.442441)">month 1), Browserbase (not in month 1), Steel (not in month 1)</text>
+  </g>
+  <g id="text_20">
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 401.213398)">Denominator = queries or URLs we graded: excludes ToS skips and HTTP 429 rate-limit replies (none logged on</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 413.496758)">Oct 23). Search graded with canon-2026-10-20; scrape pass/fail from the run log (grader 'run-log'). Scrape</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 425.418242)">set: 150 URLs; Browserless's terms forbid the 30 anti-bot ones, so 120 were tested. No row is mock or partial.</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 437.512227)">Left out on purpose: the short news weeks 42 and 43 (n=16 and 40, flagged), Apify (news weeks only) and</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 449.929961)">Browserless browser (no Oct 23 run).</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 461.670195)">Source: hazeydata/agentwebindex data/benchmarks/latest.json @ 6b8bd87</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pa02b4eb1af">
+   <rect x="93.312" y="120.5325" width="321.408" height="40.32"/>
+  </clipPath>
+  <clipPath id="pc8343dbd9a">
+   <rect x="93.312" y="227.295" width="321.408" height="20.16"/>
+  </clipPath>
+ </defs>
+</svg>

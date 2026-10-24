@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """Minimal static generator.
-Site repo build: reads ONLY the vendored data/ copy (refresh with ./sync_data.sh).
-src/*.html wrapped in _layout.html -> dist/<page>/index.html; data/ (minus data/cache) -> dist/data;
-generates dist/data/prices.csv + prices.json from data/prices/history/*.jsonl; reads site.config.json."""
-import csv, html, json, re, shutil
-import render
+Site repo build: reads ONLY the vendored data/ copy (refresh with ./sync_data.sh) plus content/copy.md, content/chart-alt.md
+and src/charts (vendored at the commits pinned in pins.json).
+Guards first: pins.check() fails the build (non-zero exit) on a stale data pin after Phase 0 (R4) or when the vendored data, copy or chart bytes differ from pins.json.
+src/*.html (slot templates filled by render.py) wrapped in src/_layout.html -> dist/<page>/index.html;
+charts (byte-identical) + fonts -> dist/assets/charts; data/ (minus data/cache and data/_upstream) -> dist/data;
+generates dist/data/prices.csv + prices.json from data/prices/history/*.jsonl and dist/data/benchmarks/latest.csv;
+llms.txt, robots.txt, sitemap.xml; reads site.config.json."""
+import csv, html, json, re, shutil, sys
 from pathlib import Path
 R=Path(__file__).resolve().parent; S=R/"src"; D=R/"dist"
+sys.path.insert(0,str(R))
+import copydoc, pins as pinmod, prices as P, render
+errs=pinmod.check(R)
+if errs:
+    sys.exit("build failed: pin check\n  "+"\n  ".join(errs))
+PINS=pinmod.load(R)
 cfg=json.loads((R/"site.config.json").read_text()) if (R/"site.config.json").exists() else {}
 SITE_URL=(cfg.get("site_url") or "https://agentwebindex.com").rstrip("/")
 UP=R/"data"/"_upstream"   # vendored copies of agentwebindex collectors/providers.json, bench/tos_matrix.yaml, bench/pricing.yaml (see sync_data.sh)
@@ -25,67 +34,6 @@ def newsletter_slot():
                 'width="100%" height="320" frameborder="0" scrolling="no" style="border:0;max-width:100%"></iframe>')
     return ('<form id="signup" onsubmit="return false" aria-disabled="true"><input type="email" placeholder="you@example.com" disabled>'
             '<button disabled>Coming soon</button></form><p class="muted">Placeholder: no form endpoint is connected and nothing is submitted.</p>')
-
-def exclusion_note():
-    """Static note (rendered at build time from bench/tos_matrix.yaml) for providers whose terms forbid benchmarking."""
-    p = UP / "tos_matrix.yaml"
-    if not p.exists(): return ""
-    txt = p.read_text(); tos = json.loads("\n".join(l for l in txt.splitlines() if not l.lstrip().startswith("#")))["providers"]
-    names = {x["id"]: x["name"] for x in json.loads(PROVIDERS.read_text())["providers"]}
-    items = [(pid, t) for pid, t in sorted(tos.items()) if (t.get("benchmarking") or {}).get("status") == "forbidden"]
-    if not items: return ""
-    li = "".join(f'<li><b>{html.escape(names.get(pid, pid))}</b> is excluded from benchmark tables: its terms forbid benchmarking ('
-                 f'{html.escape(t["benchmarking"].get("quote") or "")}; <a href="{html.escape(t.get("terms_url") or "")}">terms</a>, checked {html.escape(str(t.get("checked_at")))}). '
-                 f'It still appears on the <a href="/prices/">prices</a> page.'
-                 '</li>' for pid, t in items)   # internal fields (e.g. "note") are never rendered
-    return f'<div id="exclusions" class="note"><h3>Excluded providers</h3><ul>{li}</ul></div>'
-
-def _money(x): return f"${x:,.4f}".rstrip("0").rstrip(".") if isinstance(x,(int,float)) else None
-
-def price_label(t):
-    if _money(t.get("unit_price")): return f"{_money(t['unit_price']*1000)} per 1k requests"
-    if _money(t.get("usd_per_credit")): return f"{_money(t['usd_per_credit'])} per credit"
-    if _money(t.get("usd_per_hour")): return f"{_money(t['usd_per_hour'])} per browser-hour"
-    if _money(t.get("plan_fee")): return f"{_money(t['plan_fee'])}/month" + (f", {t['included_units']:,} units included" if isinstance(t.get("included_units"),int) else "")
-    return None
-
-def per_1k(c, cat, e):
-    num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool)
-    cpc = (c.get("credits_per_call") or {}).get(cat)
-    if not num(cpc): cpc = (c.get("credits_per_call_verified") or {}).get(cat)
-    if num(e.get("unit_price")): return _money(e["unit_price"] * 1000), None
-    if e.get("usd_per_hour") is not None: return None, "billed per browser-hour; a request's duration is not part of the price"
-    if num(e.get("usd_per_credit")):
-        return (_money(e["usd_per_credit"] * cpc * 1000), None) if num(cpc) else (None, "credits per request not published")
-    if num(e.get("plan_fee")):
-        if num(e.get("overage_per_unit")) and num(cpc):
-            inc = f" after the plan's {e['included_units']:,} included units" if num(e.get("included_units")) else ""
-            return _money(e["overage_per_unit"] * cpc * 1000) + f" (overage rate{inc})", None
-        return None, "plan fee; units per request not published" if num(e.get("overage_per_unit")) else "plan fee; overage rate not published"
-    return None, "price not captured"
-
-def lc(s): return re.sub(r"(?i)not captured", "not captured", s or "")
-
-def curated_prices(path):
-    if not path.exists(): return '<p class="nodata">No data yet.</p>'
-    doc = json.loads("\n".join(l for l in path.read_text().splitlines() if not l.lstrip().startswith("#")))
-    names = {x["id"]: x["name"] for x in json.loads(PROVIDERS.read_text())["providers"]} if PROVIDERS.exists() else {}
-    rows = []
-    for pid, cats in sorted(doc.get("providers", {}).items()):
-        for cat, c in cats.items():
-            if not isinstance(c, dict): continue
-            e = (c.get("tiers") or {}).get("entry") or {}; lab = price_label(e); src = c.get("source_url") or c.get("pricing_url") or ""
-            price = html.escape(lab) if lab else '<span class="muted">not captured</span>'
-            nv, why = per_1k(c, cat, e)
-            norm = html.escape(nv) if nv else f'n/a <span class="muted">({html.escape(why)})</span>'
-            rows.append(f'<tr><td><a href="{html.escape(src)}">{html.escape(names.get(pid, pid))}</a></td><td data-label="Category">{html.escape(cat)}</td><td data-label="Entry tier">{html.escape(lc(e.get("name")))}</td>'
-                        f'<td data-label="Price">{price}</td><td data-label="Normalized $/1k requests" class="num">{norm}</td><td class="muted mono" data-label="Checked">{html.escape(str(c.get("checked_at") or ""))}</td></tr>')
-    return ('<table id="curated-prices" class="dt"><thead><tr><th>Provider</th><th>Category</th><th>Entry tier</th><th>Price</th><th>Normalized $/1k requests</th><th>Checked</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table>'
-            '<p class="muted">Each price is read by hand from the linked vendor pricing page on the date shown.</p>')
-
-def history_slot():
-    if not (cfg.get("pricing") or {}).get("show_history"): return ""
-    return '<h2>Price history</h2><div id="prices" data-page="prices"><p class="nodata">No data yet.</p></div>'
 
 def page_head(title, desc, path):
     u = html.escape(SITE_URL + path); t = html.escape(f"{title} · AgentWebIndex"); d = html.escape(desc)
@@ -132,26 +80,26 @@ def bench_csv():
 
 shutil.rmtree(D,ignore_errors=True); D.mkdir()
 layout=(S/"_layout.html").read_text(); pages=[]
-NAV=[("/","Leaderboard"),("/prices/","Prices"),("/methodology/","Methodology"),("/data/","Data"),("/disclosures/","Disclosures"),("/newsletter/","Newsletter"),("/sponsors/","Sponsors")]
-BENCH=R/"data/benchmarks/latest.json"; status=render.status_strip(BENCH)
-for f in S.glob("*.html"):
+ctx=type("Ctx",(),{})()
+ctx.latest=json.loads((R/"data/benchmarks/latest.json").read_text()); ctx.pricing=P.load_pricing(PRICING)
+ctx.providers=json.loads(PROVIDERS.read_text())["providers"]; ctx.doc=copydoc.load(); ctx.alt=copydoc.alt_texts()
+ctx.pins=PINS; ctx.newsletter=newsletter_slot(); ctx.charts=S/"charts"
+SLOTS=render.slots(ctx); META=render.page_meta(ctx); FOOTER=render.footer_html(ctx)
+for f in sorted(S.glob("*.html")):
     if f.name.startswith("_"): continue
-    body=(f.read_text().replace("{{newsletter_slot}}",newsletter_slot()).replace("{{exclusions}}",exclusion_note())
-          .replace("{{curated_prices}}",curated_prices(PRICING)).replace("{{price_history}}",history_slot())
-          .replace("{{leaderboard}}",render.leaderboard(BENCH,PROVIDERS) if "{{leaderboard}}" in f.read_text() else ""))
-    m=re.match(r"<!--title:(.*?)-->",body); title=m.group(1) if m else f.stem
-    dm=re.search(r"<!--desc:(.*?)-->",body); desc=dm.group(1) if dm else "AgentWebIndex: cited prices and benchmarks for agent web APIs."; body=re.sub(r"<!--desc:.*?-->\n?","",body)
-    body=re.sub(r"<!--title:.*?-->\n?","",body)
+    body=f.read_text()
+    for k,val in SLOTS.items(): body=body.replace("{{%s}}"%k,val)
+    assert "{{" not in body, f"unfilled slot in {f.name}"
+    title,desc=META[f.stem]
     path="/" if f.stem=="index" else f"/{f.stem}/"; pages.append(path)
-    if f.stem!="index": body=f'<div class="prose">{body}</div>'
-    nav="".join(f'<li><a href="{u}"{' aria-current="page"' if u==path else ""}>{n}</a></li>' for u,n in NAV)
     out=D/"index.html" if f.stem=="index" else D/f.stem/"index.html"; out.parent.mkdir(exist_ok=True)
-    out.write_text(layout.replace("{{title}}",title).replace("{{head}}",page_head(title,desc,path)).replace("{{status}}",status).replace("{{nav}}",nav).replace("{{body}}",body))
+    out.write_text(layout.replace("{{title}}",html.escape(title)).replace("{{head}}",page_head(title,desc,path)).replace("{{nav}}",render.nav_html(path)).replace("{{footer}}",FOOTER).replace("{{body}}",body))
 pages.sort(key=lambda p:(p!="/",p))
 (D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")
 (D/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+"".join(f"<url><loc>{SITE_URL}{p}</loc></url>\n" for p in pages)+"</urlset>\n")
 for a in ("style.css","app.js","favicon.svg"): shutil.copy(S/a,D/a)
 shutil.copytree(S/"fonts",D/"assets"/"fonts")
+shutil.copytree(S/"charts",D/"assets"/"charts")   # byte-identical copies of the pinned chart SVGs and their fonts
 if (R/"data").exists(): shutil.copytree(R/"data",D/"data",ignore=lambda d,n:[x for x in n if x in ("cache","_upstream")],dirs_exist_ok=True)
 def public_bench():
     """Published latest.json: exclusions reduced to EXCLUSION_PUBLIC; the vendored data/ copy is left unchanged."""
@@ -161,5 +109,5 @@ def public_bench():
     p.write_text(json.dumps(d,indent=1))
 public_bench()
 n=price_exports(); nb=bench_csv()
-(D/"llms.txt").write_text("# AgentWebIndex\nMachine-readable data: /data/benchmarks/latest.json, /data/benchmarks/latest.csv (CC BY 4.0), /data/prices.json, /data/prices.csv, /data/prices/<provider>.json\nPages: /, /prices/, /methodology/, /data/, /sponsors/, /disclosures/, /newsletter/\n")
+(D/"llms.txt").write_text("# AgentWebIndex\nMachine-readable data: /data/benchmarks/latest.json, /data/benchmarks/latest.csv (CC BY 4.0), /data/prices.json, /data/prices.csv, /data/prices/<provider>.json\nPages: /, /prices/, /methodology/, /data/, /sponsors/, /disclosures/, /newsletter/, /tell-us/\n")
 print("built",D,"price rows:",n,"benchmark csv rows:",nb)
