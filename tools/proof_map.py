@@ -41,6 +41,11 @@ ROWS = [
             ("d", "test_pin_check_function_cases"), ("s", "test_data_pin_moved")]),
     ("R7 (no 'cheapest tier covering 100k' claim)", [("d", "test_no_cheapest_tier_100k_claim_anywhere"), ("d", "test_prices_shows_only_tavily_entry_tier")]),
     ("AC2", [("s", "test_tavily_price_matches_pricing_yaml")]),
+    ("R9.1 (inlined = file minus prolog; files byte-identical)", [("d", "test_inlined_svg_is_file_minus_prolog_with_only_ids_renamed"), ("d", "test_charts_byte_identical_to_pin")]),
+    ("R9.2 (chart text in Inter, woff2)", [("d", "test_fonts_cover_chart_text_and_page"), ("b", "check_fonts")]),
+    ("R9.3 (no duplicate ids; rename keeps text and geometry)", [("d", "test_no_duplicate_ids_on_any_page_and_build_fails_on_one"), ("b", "check_rename_geometry")]),
+    ("R9.4 (role=img, QUERIES.md alt name)", [("d", "test_charts_alt_title_caption"), ("b", "check_charts")]),
+    ("R9.5 (CSS picks one variant)", [("d", "test_chart_variants_and_css"), ("b", "check_charts")]),
     ("390px readability", [("b", "check_readability")]),
 ]
 

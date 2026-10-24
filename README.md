@@ -8,7 +8,7 @@ Sponsors, Newsletter, Tell us and the "For agents" links (latest.json, prices, l
 - `src/*.html` are slot templates; `render.py` fills them. All static text comes verbatim from `content/copy.md` (via `copydoc.py`);
   numbers (pass rates, costs, latency, price dates) are computed from `data/benchmarks/latest.json` and `data/_upstream/pricing.yaml`
   through `prices.py` (`priced_*`, `price_rows`, `untested_providers`, `fmt_pct/usd/ms`, half-up rounding). Never from `data/prices/<pid>.json` `fetched_at`.
-- Charts: the pinned SVGs in `src/charts/` are copied byte-identical to `dist/assets/charts/` and served via four `<img>` per chart
+- Charts: the pinned SVGs in `src/charts/` are copied byte-identical to `dist/assets/charts/` and (R9, option c) inlined into `/` as four `<svg>` per chart, each in a `role="img"` wrapper whose `aria-label` is the QUERIES.md alt text, so the page's Inter/Space Grotesk woff2 fonts draw the chart `<text>`. Inlined markup = file minus the XML prolog/doctype, with ids, `href="#…"` and `url(#…)` prefixed per variant (`<name>-<width>-<scheme>--`; matplotlib's repeated unreferenced `wilson-ci` gid gets `--dupN`). The build fails on any duplicate id on a page. Each file's `<style>` (`*{stroke-linejoin: round; stroke-linecap: butt}`) is kept verbatim and so applies page-wide; it only affects SVG strokes. Four variants per chart
   (720/350 wide x light/dark); CSS shows one (>=768px the 720 file, below it the 350 file; dark default, light under
   `prefers-color-scheme: light` or the theme toggle). Never edit these files.
 - Brand tokens (cyan `#5FC4D6`, olive `#616512`/`#8B901A`, Space Grotesk / Inter / IBM Plex Mono) are CSS variables at the top of `src/style.css`.
@@ -52,7 +52,7 @@ python3 -m tests.test_ship
 - `run_tests.sh`: build, JS smoke test (`tests/app_smoke.js`, theme toggle), `tests/run_dist.py` (requires exactly `EXPECTED` tests in
   `tests/test_dist.py` and exactly `EXPECTED_CANARIES` canaries that inject real defects and must be caught; bump the counts by hand when
   tests change), `tests/test_dist.py` (set `AWI_DATA_REPO` to a local agentwebindex clone and the pre-Phase-0 pin test re-vendors a real 6b8bd87 tree with `sync_data.sh` in a temp copy; without it the case is built by editing the temp copy's SOURCE and pins.json), then `tests/browser_check.py` (headless Chrome over the DevTools protocol: one visible chart variant
-  per chart at 390/720/1440 in both colour schemes, served chart SVG bytes vs pinned sha256, C2 stacked under C1, no sideways scroll, body >=16px and
+  per chart at 390/720/1440 in both colour schemes, hidden variants display:none, role=img + alt-text name, served chart SVG bytes vs pinned sha256, C2 stacked under C1; chart `<text>` computed font-family Inter via document.fonts and rendered with Inter only (CDP CSS.getPlatformFontsForNode); id rename leaves every element's text and box unchanged vs the original file markup; no sideways scroll, body >=16px and
   tap targets >=44px at 390px; screenshots go to a temp /tmp/awi-shots.* dir that is deleted on exit unless AWI_KEEP_SHOTS=1, which keeps it and prints the path; prints SKIP without Chrome).
 - `tests/test_ship.py`: SHIP gates, run separately, all must pass: `test_no_placeholders` (no `[[LINDSAY-PLACEHOLDER]]` in dist), Tavily price equals
   pricing.yaml, `test_tavily_date_is_phase0` (R3: rendered Tavily date == 2026-10-24) and `test_data_pin_moved` (R4/R8: pin is not 6b8bd87, no Tavily input before `phase0_date`).
@@ -63,8 +63,8 @@ python3 -m tests.test_ship
 Fonts: all self-hosted as woff2 under `/assets/fonts/` (`src/fonts/`), licensed SIL OFL 1.1, one notice per family: `src/fonts/OFL-Inter.txt`, `OFL-SpaceGrotesk.txt`, `OFL-IBMPlexMono.txt` (copyright lines taken from each font's name table). IBM Plex Mono 400/500/600 are the upstream Latin files.
 Inter 400/600/700 and Space Grotesk 600 (`inter-{400,600,700}-latin.woff2`, `space-grotesk-600-latin.woff2`, 17.3, 17.9, 17.9 and 10.9 KB) were subset from the TrueType fonts
 of the 2c28c0a charts with fontTools, Latin range. Those TrueType files are not in the repo or in `dist/`. Weights kept are the ones the CSS uses (Inter 700 is the default `<b>` weight).
-Charts (R8, AC14): `dist/assets/charts` holds exactly the 8 pinned SVGs, byte-identical; fonts are not byte-checked. A test fails if any font file in the repo
-(`git ls-files`) or in `dist/` is over 100 KB or is a TrueType/OpenType file.
+Charts (R9 supersedes the R8 font bullet; AC14): `dist/assets/charts` holds exactly the 8 pinned SVGs, byte-identical, and the same markup is inlined on `/`; fonts are not byte-checked. A test fails if any font file in the repo
+(`git ls-files`) or in `dist/` is over 100 KB (102,400 bytes) or is a TrueType/OpenType file.
 Newsletter: beehiiv embed when `site.config.json` -> `beehiiv_embed_url` is set, otherwise a disabled "Coming soon" form.
 
 PR proof map: `python3 tools/proof_map.py` prints the "Proof by AC" section with line numbers read from the test names.

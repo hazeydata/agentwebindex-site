@@ -197,29 +197,76 @@ def section_run(ctx):
             f'<p class="lcopy">{inline(d.para("Home: findings", "One run."))}</p></div></div></section>')
 
 
-def chart_dims(ctx, name, width):
-    """(w, h) displayed size for a chart variant, from the vendored SVG's viewBox."""
-    svg = (ctx.charts / f"awi-{name}-{width}-dark.svg").read_text()
-    vb = [float(x) for x in re.search(r'viewBox="([^"]+)"', svg).group(1).split()]
-    return width, round(width * vb[3] / vb[2])
+PROLOG_RE = re.compile(r"\A<\?xml[^>]*\?>\s*(?:<!DOCTYPE[^>]*>\s*)?")
+ID_RE = re.compile(r'(\bid="|\bhref="#|url\(#)([^"\)]+)')
 
 
-def chart_imgs(ctx, name):
-    """Four <img> (720/350 x light/dark); CSS shows exactly one. Charts are served as files, byte-identical."""
+def strip_prolog(svg):
+    """The SVG file minus its XML declaration and doctype (R9.1); everything from <svg on is kept byte for byte."""
+    m = PROLOG_RE.match(svg)
+    if not m or not svg[m.end():].startswith("<svg"):
+        raise ValueError("chart SVG does not start with an XML prolog followed by <svg")
+    return svg[m.end():]
+
+
+def id_prefix(name, width, scheme):
+    return f"{name}-{width}-{scheme}--"
+
+
+DUP_SUFFIX = re.compile(r"--dup\d+$")
+
+
+def prefix_ids(svg, prefix):
+    """Build-time id rename (R9.3): id="x", href="#x" (incl. xlink:href) and url(#x) -> prefix + x. An id repeated inside one file
+    (matplotlib writes gid "wilson-ci" three times per pass-rate SVG) gets "--dupN" on its 2nd+ use; such ids must be unreferenced."""
+    counts, refs = {}, set(re.findall(r'(?:\bhref="#|url\(#)([^"\)]+)', svg))
+
+    def sub(m):
+        kind, x = m.groups()
+        if kind != 'id="':
+            return kind + prefix + x
+        n = counts[x] = counts.get(x, 0) + 1
+        if n > 1 and x in refs:
+            raise ValueError(f"chart id {x!r} is repeated and referenced; cannot rename safely")
+        return kind + prefix + x + (f"--dup{n}" if n > 1 else "")
+    return ID_RE.sub(sub, svg)
+
+
+def unprefix_ids(svg, prefix):
+    """Inverse of prefix_ids (used by the R9.1 equality test)."""
+    def sub(m):
+        kind, x = m.groups()
+        if not x.startswith(prefix):
+            return m.group(0)
+        x = x[len(prefix):]
+        return kind + (DUP_SUFFIX.sub("", x) if kind == 'id="' else x)
+    return ID_RE.sub(sub, svg)
+
+
+def duplicate_ids(page):
+    seen, dups = set(), set()
+    for i in re.findall(r'\bid="([^"]*)"', page):
+        (dups if i in seen else seen).add(i)
+    return sorted(dups)
+
+
+def chart_svgs(ctx, name):
+    """Four inlined SVGs (720/350 x light/dark), each in a role=img wrapper named by the QUERIES.md alt text; CSS shows exactly one.
+    The served files in /assets/charts stay byte-identical; inlined markup = file minus prolog, with ids prefixed per variant."""
     alt = e(ctx.alt[name], quote=True)
     out = []
     for width in CHART_WIDTHS:
-        w, h = chart_dims(ctx, name, width)
         for scheme in SCHEMES:
-            out.append(f'<img class="ch ch-{width} ch-{scheme}" src="/assets/charts/awi-{name}-{width}-{scheme}.svg" alt="{alt}" '
-                       f'width="{w}" height="{h}" loading="lazy" decoding="async">')
+            f = f"awi-{name}-{width}-{scheme}.svg"
+            svg = prefix_ids(strip_prolog((ctx.charts / f).read_text()), id_prefix(name, width, scheme))
+            out.append(f'<div class="ch ch-{width} ch-{scheme}" role="img" aria-label="{alt}" data-file="{f}" data-prefix="{id_prefix(name, width, scheme)}">{svg}</div>')
     return "".join(out)
 
 
 def section_chart(ctx, sid, intro_key, name, title, caption):
     intro = ctx.doc.blocks("Home: section intros", intro_key)[0][1]
     return (f'<section id="{sid}"><div class="wrap"><div class="col"><h2>{e(intro_key)}</h2><p class="lcopy">{inline(intro)}</p></div>'
-            f'<figure class="chart" id="chart-{sid}"><h3>{e(title)}</h3>{chart_imgs(ctx, name)}<figcaption>{e(caption)}</figcaption></figure>'
+            f'<figure class="chart" id="chart-{sid}"><h3>{e(title)}</h3>{chart_svgs(ctx, name)}<figcaption>{e(caption)}</figcaption></figure>'
             '</div></section>')
 
 

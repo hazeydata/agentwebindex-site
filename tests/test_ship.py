@@ -55,7 +55,7 @@ class Ship(unittest.TestCase):
         alt = copydoc.alt_texts()["cost-per-success"]
         self.assertIn(f"Tavily {passed_cost}", alt)
         self.assertIn(f"Tavily {list1k}", alt)
-        self.assertEqual(page("/").count(f'alt="{alt}"'), 4)
+        self.assertEqual(page("/").count(f'role="img" aria-label="{alt}"'), 4)   # R9.4: inlined charts
         row = next(r for r in LATEST["tables"]["search"] if r["provider"] == "tavily" and r["run_date"] == LATEST["run_date"])
         self.assertEqual(Decimal(str(row["entry_tier_cost_per_1k"]["v"])), per_credit * cpc * 1000)   # latest.json cost input == pricing.yaml
 

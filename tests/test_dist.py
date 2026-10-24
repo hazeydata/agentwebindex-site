@@ -506,6 +506,8 @@ class Shell(unittest.TestCase):
             self.assertIn('<main id="main">', s)
             for img in Dom(s).imgs:
                 self.assertTrue(img.get("alt"), p)
+            for lab in re.findall(r'role="img"([^>]*)>', s):   # inlined charts (R9.4): role=img needs a non-empty name
+                self.assertRegex(lab, r'aria-label="[^"]+"', p)
 
     def test_canonical_robots_sitemap_goatcounter(self):  # AC24, AC26
         base = json.loads((R / "tests/agent_surface_baseline.json").read_text())
@@ -641,27 +643,69 @@ class Results(unittest.TestCase):
             self.assertIn(f'"{alt}"', queries)
             sec = self.s[self.s.index(f'id="{sid}"'):]
             sec = sec[:sec.index("</section>")]
-            imgs = re.findall(r"<img\b[^>]*>", sec)
-            self.assertEqual(len(imgs), 4)
-            for img in imgs:
-                self.assertEqual(html.unescape(re.search(r'alt="([^"]*)"', img).group(1)), alt)
+            labels = re.findall(r'<div class="ch [^"]*" role="img" aria-label="([^"]*)"', sec)   # R9.4
+            self.assertEqual(len(labels), 4)
+            for lab in labels:
+                self.assertEqual(html.unescape(lab), alt)
             fig = sec[sec.index("<figure"):]
             self.assertEqual(text_of(re.search(r"<h3>(.*?)</h3>", fig).group(1)), doc.field("Chart briefs", "Title", sub=sub))
             self.assertEqual(text_of(re.search(r"<figcaption>(.*?)</figcaption>", fig).group(1)), doc.field("Chart briefs", "Caption", sub=sub))
             self.assertIn(f'<h3>', fig)
 
-    def test_chart_variants_and_css(self):  # AC16 (static half; real rendering in browser_check.py)
+    def test_chart_variants_and_css(self):  # AC16 / R9.5 (static half; real rendering in browser_check.py)
         for name in ("pass-rate", "cost-per-success"):
-            imgs = [i for i in Dom(self.s).imgs if f"awi-{name}-" in i["src"]]
-            self.assertEqual(sorted(i["src"] for i in imgs), sorted(f"/assets/charts/awi-{name}-{w}-{c}.svg" for w in (720, 350) for c in ("light", "dark")))
-            for i in imgs:
-                self.assertTrue(int(i["width"]) > 0 and int(i["height"]) > 0)   # explicit size: no layout shift
-                self.assertIn(f"ch-{i['src'].split('-')[-2]}", i["class"].split())
+            wraps = re.findall(r'<div class="(ch ch-(\d+) ch-(\w+))" role="img"[^>]*data-file="([^"]+)"', self.s)
+            mine = [w for w in wraps if w[3].startswith(f"awi-{name}-")]
+            self.assertEqual(sorted(w[3] for w in mine), sorted(f"awi-{name}-{w}-{c}.svg" for w in (720, 350) for c in ("light", "dark")))
+            for cls, width, scheme, f in mine:
+                self.assertEqual(f, f"awi-{name}-{width}-{scheme}.svg")
+        self.assertNotIn("<img", self.s[self.s.index('id="chart-pass-rate"'):self.s.index('id="chart-cost"') + 20000].split("</section>")[0])
         css = (D / "style.css").read_text()
         self.assertIn(".ch { display: none;", css)
         self.assertIn("@media (min-width: 768px) { .ch-720.ch-dark { display: block; } }", css)
         self.assertIn("@media (max-width: 767.98px) { .ch-350.ch-dark { display: block; } }", css)
+        self.assertIn("@media (prefers-color-scheme: light)", css)
         self.assertIn("max-width: 100%", css[css.index(".ch {"):css.index(".ch {") + 80])
+
+    def test_inlined_svg_is_file_minus_prolog_with_only_ids_renamed(self):  # R9.1
+        n = 0
+        for f, meta in PINS["charts_sha256"].items():
+            raw = (R / "src/charts" / f).read_text()
+            self.assertEqual(hashlib.sha256((R / "src/charts" / f).read_bytes()).hexdigest(), meta["sha256"])
+            name, width, scheme = f[4:-4].rsplit("-", 2)
+            pre = render.id_prefix(name, int(width), scheme)
+            m = re.search(r'<div class="ch ch-%s ch-%s" role="img" aria-label="[^"]*" data-file="%s" data-prefix="%s">(<svg.*?</svg>\s*)</div>' % (width, scheme, re.escape(f), re.escape(pre)), self.s, re.S)
+            self.assertIsNotNone(m, f)
+            body = raw[raw.index("<svg"):]
+            self.assertTrue(raw[:raw.index("<svg")].startswith("<?xml"))
+            self.assertNotIn("<svg", raw[:raw.index("<svg")])
+            self.assertEqual(render.unprefix_ids(m.group(1), pre), body, f)   # only ids/refs differ ...
+            self.assertEqual(re.sub(r'(\bid="|href="#|url\(#)[^"\)]*', "", m.group(1)), re.sub(r'(\bid="|href="#|url\(#)[^"\)]*', "", body))   # ... nothing else
+            n += 1
+        self.assertEqual(n, 8)
+
+    def test_no_duplicate_ids_on_any_page_and_build_fails_on_one(self):  # R9.3
+        for p in PAGES:
+            ids = re.findall(r'\bid="([^"]*)"', page(p))
+            self.assertEqual(len(ids), len(set(ids)), (p, sorted({i for i in ids if ids.count(i) > 1})))
+        self.assertGreaterEqual(page("/").count("<svg"), 8)
+        with tempfile.TemporaryDirectory(prefix="awi-dup.") as t:
+            w = Path(t) / "w"
+            copy_repo(w)
+            r = w / "render.py"
+            r.write_text(r.read_text().replace('return f"{name}-{width}-{scheme}--"', 'return f"{name}--"'))   # rename that collides
+            b = build_in(w)
+            self.assertNotEqual(b.returncode, 0)
+            self.assertIn("duplicate id attributes", b.stderr)
+
+    def test_fonts_cover_chart_text_and_page(self):  # R9.2 (static half; browser_check proves the rendered font)
+        css = (D / "style.css").read_text()
+        faces = set(re.findall(r'@font-face \{ font-family: "([^"]+)"; font-style: normal; font-weight: (\d+);[^}]*url\("/assets/fonts/[^"]+\.woff2"\)', css))
+        svgs = "".join((R / "src/charts" / f).read_text() for f in PINS["charts_sha256"])
+        for fam in set(re.findall(r"font-family: '([^']+)'", svgs)):
+            self.assertTrue(any(f == fam for f, _ in faces), fam)
+        self.assertIn(("Inter", "400"), faces)
+        self.assertFalse(list((D / "assets").rglob("*.ttf")))
 
     def test_charts_stacked_in_one_column_markup(self):  # AC17 (static half)
         self.assertLess(self.s.index('id="chart-pass-rate"'), self.s.index('id="chart-cost"'))

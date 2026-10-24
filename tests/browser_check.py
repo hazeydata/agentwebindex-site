@@ -1,4 +1,4 @@
-"""Headless-Chrome checks of the built dist/ (AC14 served bytes, AC16, AC17, mobile readability). Stdlib only.
+"""Headless-Chrome checks of the built dist/ (AC14 served bytes, AC16, AC17, R9.2-R9.5, mobile readability). Stdlib only.
 
 Serves dist/ from a local HTTP server on a free port, starts Chrome with one throwaway --user-data-dir, and drives it
 over the DevTools protocol with a minimal websocket client. Chrome, its profile directory and the server are always
@@ -7,7 +7,7 @@ is printed for the human readability check. Prints SKIP and exits 0 when Chrome 
 
 Run after `python3 build.py`:  python3 -m tests.browser_check
 """
-import base64, hashlib, http.client, json, os, shutil, signal, socket, struct, subprocess, sys, tempfile, threading, time, urllib.request
+import base64, hashlib, http.client, json, os, re, shutil, signal, socket, struct, subprocess, sys, tempfile, threading, time, urllib.request
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -18,6 +18,9 @@ CHROME = shutil.which("google-chrome") or "/usr/bin/google-chrome"
 PINS = json.loads((R / "pins.json").read_text())
 PAGES = ["/", "/prices/", "/methodology/", "/data/", "/disclosures/", "/sponsors/", "/newsletter/", "/tell-us/"]
 CHARTS = {"chart-pass-rate": "pass-rate", "chart-cost": "cost-per-success"}
+sys.path.insert(0, str(R))
+import copydoc  # noqa: E402
+ALTS = copydoc.alt_texts()
 VIEWPORTS = [(390, 844), (720, 900), (1440, 900)]
 
 
@@ -123,11 +126,36 @@ def sha_of_url(base, path):
 
 MEASURE = """(() => { const out = {};
 for (const id of %s) { const fig = document.getElementById(id);
-  out[id] = [...fig.querySelectorAll('img')].map(i => { const cs = getComputedStyle(i), r = i.getBoundingClientRect();
-    return {src: i.getAttribute('src'), currentSrc: i.currentSrc, display: cs.display, visible: cs.display !== 'none' && i.offsetParent !== null && r.width > 0,
-            top: r.top + scrollY, bottom: r.bottom + scrollY, left: r.left, right: r.right, width: r.width, nw: i.naturalWidth}; }); }
+  out[id] = [...fig.querySelectorAll('.ch')].map(i => { const cs = getComputedStyle(i), r = i.getBoundingClientRect(), svg = i.querySelector('svg');
+    return {file: i.dataset.file, display: cs.display, visible: cs.display !== 'none' && r.width > 0 && r.height > 0,
+            role: i.getAttribute('role'), label: i.getAttribute('aria-label'),
+            top: r.top + scrollY, bottom: r.bottom + scrollY, left: r.left, right: r.right, width: r.width, svgw: svg ? svg.getBoundingClientRect().width : 0}; }); }
 return JSON.stringify(out); })()"""
-REVEAL = """(() => { for (const i of document.querySelectorAll('.chart img')) { if (getComputedStyle(i).display !== 'none' && !(i.complete && i.naturalWidth > 0)) { i.scrollIntoView({block: 'center'}); return 0; } } return 1; })()"""
+# page ready = load fired, the site stylesheet is applied (its .ch rule hides variants) and fonts settled; the 390px flake was
+# measuring before style.css applied (all 4 <img> variants visible) plus lazy <img> decode races. Inline SVGs remove the decode wait.
+READY = """(async () => { for (let k = 0; k < 200; k++) { const sheet = [...document.styleSheets].find(s => s.href && s.href.endsWith('/style.css'));
+  let ok = false; try { ok = !!sheet && sheet.cssRules.length > 0; } catch (e) {}
+  if (ok && document.readyState === 'complete') { await document.fonts.ready; await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; }
+  await new Promise(r => setTimeout(r, 50)); } return false; })()"""
+# R9.3 geometry/text equality: snapshot every drawn element of the visible variant, then swap in the ORIGINAL file markup
+# (prolog removed, ids not renamed) with every other chart removed so its ids are unique, and snapshot again.
+SNAP = """(() => { const vis = [...document.querySelectorAll('#%s .ch')].find(e => getComputedStyle(e).display !== 'none');
+  const root = vis.querySelector('svg'), o = root.getBoundingClientRect();
+  return JSON.stringify([[o.width, o.height]].concat([...root.querySelectorAll('*')].filter(e => e.getBBox && !e.closest('defs, metadata, clipPath')).map(e => { const b = e.getBBox(), r = e.getBoundingClientRect();
+    return [e.tagName, e.tagName === 'text' ? e.textContent : '', +b.x.toFixed(2), +b.y.toFixed(2), +b.width.toFixed(2), +b.height.toFixed(2),
+            +(r.left - o.left).toFixed(2), +(r.top - o.top).toFixed(2), +r.width.toFixed(2), +r.height.toFixed(2)]; }))); })()"""
+SWAP = """(async () => { const vis = [...document.querySelectorAll('#%s .ch')].find(e => getComputedStyle(e).display !== 'none');
+  const txt = await (await fetch('/assets/charts/' + vis.dataset.file)).text();
+  const i = txt.indexOf('<svg'); document.querySelectorAll('.ch').forEach(e => { if (e !== vis) e.remove(); });
+  vis.innerHTML = txt.slice(i); await document.fonts.ready; await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const seen = new Set(), dup = new Set(); document.querySelectorAll('[id]').forEach(e => (seen.has(e.id) ? dup : seen).add(e.id));
+  return JSON.stringify([vis.dataset.file, [...dup]]); })()"""
+FONT = """(() => { const vis = [...document.querySelectorAll('#%s .ch')].find(e => getComputedStyle(e).display !== 'none');
+  const t = [...vis.querySelectorAll('text')].find(e => /Inter/.test(e.getAttribute('style') || '') && e.textContent.trim());
+  t.setAttribute('data-font-probe', '1'); const cs = getComputedStyle(t);
+  const face = [...document.fonts].find(f => f.family.replace(/"/g, '') === 'Inter' && f.weight === '400');
+  return JSON.stringify({family: cs.fontFamily, weight: cs.fontWeight, check: document.fonts.check(cs.fontSize + ' Inter'),
+                         face: face ? face.status : 'missing', text: t.textContent}); })()"""
 READ = """(() => { const sel = 'nav.top a, .site-footer a, button, summary, .btn';
 const small = [...document.querySelectorAll(sel)].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.height < 43.99; }).map(e => e.tagName + ' ' + (e.textContent || '').trim().slice(0, 30) + ' h=' + e.getBoundingClientRect().height.toFixed(1));
 return JSON.stringify({scrollWidth: document.documentElement.scrollWidth, bodyScrollWidth: document.body.scrollWidth, font: parseFloat(getComputedStyle(document.body).fontSize), small}); })()"""
@@ -136,47 +164,48 @@ return JSON.stringify({scrollWidth: document.documentElement.scrollWidth, bodySc
 def open_page(cdp, base, path, width, height, scheme, theme=None):
     cdp.call("Emulation.setDeviceMetricsOverride", width=width, height=height, deviceScaleFactor=1, mobile=False)
     cdp.call("Emulation.setEmulatedMedia", features=[{"name": "prefers-color-scheme", "value": scheme}])
-    cdp.events.clear()
-    cdp.call("Page.navigate", url=base + path)
-    cdp.wait_event("Page.loadEventFired")
+    for attempt in range(3):
+        cdp.events.clear()
+        cdp.call("Page.navigate", url=base + path)
+        cdp.wait_event("Page.loadEventFired")
+        if cdp.js(READY):
+            break
+    else:
+        raise RuntimeError(f"{path}: style.css never applied after 3 loads")
     if theme:
         cdp.js(f"document.documentElement.setAttribute('data-theme','{theme}')")
-
-
-def measure_charts(cdp):
-    cdp.js(REVEAL)
-    for _ in range(120):   # up to ~30 s: a loaded box can be slow to decode the SVGs
-        data = json.loads(cdp.js(MEASURE % json.dumps(list(CHARTS))))
-        if all(i["nw"] > 0 for imgs in data.values() for i in imgs if i["visible"]):
-            return data
-        cdp.js(REVEAL)
-        time.sleep(0.25)
-    return data
+        cdp.js("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
 
 
 def check_charts(cdp, base, errs):
+    """AC16/AC17/R9.5: at every viewport x scheme (and data-theme override) exactly one of the 4 inlined variants per chart is
+    visible, the rest display:none; it is the right file; it fits 390px; C2 is stacked under C1. R9.4: role=img + alt-text name."""
     n = 0
     cases = [(w, h, s, None) for (w, h) in VIEWPORTS for s in ("dark", "light")] + [(1440, 900, "dark", "light"), (1440, 900, "light", "dark"), (390, 844, "dark", "light")]
     for w, h, scheme, theme in cases:
         open_page(cdp, base, "/", w, h, scheme, theme)
-        data = measure_charts(cdp)
+        data = json.loads(cdp.js(MEASURE % json.dumps(list(CHARTS))))
         eff = theme or scheme
         size = 720 if w >= 768 else 350
         for cid, name in CHARTS.items():
             vis = [i for i in data[cid] if i["visible"]]
             tag = f"{cid} @{w} {scheme}{'+data-theme=' + theme if theme else ''}"
+            hidden = [i for i in data[cid] if not i["visible"]]
+            if len(data[cid]) != 4 or any(i["display"] != "none" for i in hidden):
+                errs.append(f"{tag}: expected 4 variants with the hidden ones display:none, got {[(i['file'], i['display']) for i in data[cid]]}")
             if len(vis) != 1:
                 errs.append(f"{tag}: {len(vis)} visible variants, expected 1")
                 continue
-            want = f"/assets/charts/awi-{name}-{size}-{eff}.svg"
-            got = vis[0]["src"]
+            want = f"awi-{name}-{size}-{eff}.svg"
+            got = vis[0]["file"]
             if got != want:
                 errs.append(f"{tag}: visible {got}, expected {want}")
-            served = sha_of_url(base, got)
-            pin = PINS["charts_sha256"][got.rsplit("/", 1)[1]]["sha256"]
-            if served != pin:
+            if vis[0]["role"] != "img" or vis[0]["label"] != ALTS[name]:
+                errs.append(f"{tag}: visible chart role/name {vis[0]['role']!r}/{vis[0]['label']!r} != img/QUERIES.md alt")
+            served = sha_of_url(base, "/assets/charts/" + got)
+            if served != PINS["charts_sha256"][got]["sha256"]:
                 errs.append(f"{tag}: served bytes of {got} differ from pinned sha256")
-            if vis[0]["nw"] <= 0:
+            if vis[0]["svgw"] <= 0:
                 errs.append(f"{tag}: {got} did not render")
             if w == 390 and vis[0]["right"] > 390 + 0.5:
                 errs.append(f"{tag}: chart overflows the 390px viewport (right={vis[0]['right']})")
@@ -187,6 +216,69 @@ def check_charts(cdp, base, errs):
                 errs.append(f"@{w}: C2 top {b[0]['top']} above C1 bottom {a[0]['bottom']} (not stacked)")
             if abs(b[0]["left"] - a[0]["left"]) > 0.5:
                 errs.append(f"@{w}: C1 and C2 left edges differ ({a[0]['left']} vs {b[0]['left']})")
+    return n
+
+
+def check_fonts(cdp, base, errs):
+    """R9.2: chart <text> resolves to Inter (computed style + document.fonts) and Chrome renders it with Inter only (no fallback)."""
+    cdp.call("DOM.enable")
+    cdp.call("CSS.enable")
+    n = 0
+    for w, h in ((390, 844), (1440, 900)):
+        for scheme in ("dark", "light"):
+            open_page(cdp, base, "/", w, h, scheme)
+            for cid in CHARTS:
+                tag = f"{cid} @{w} {scheme}"
+                r = json.loads(cdp.js(FONT % cid))
+                if not r["family"].replace('"', "").replace("'", "").startswith("Inter") or not r["check"] or r["face"] != "loaded":
+                    errs.append(f"{tag}: chart text font {r}")
+                doc = cdp.call("DOM.getDocument", depth=0)["root"]["nodeId"]
+                node = cdp.call("DOM.querySelector", nodeId=doc, selector="[data-font-probe]")["nodeId"]
+                fonts = [f["familyName"] for f in cdp.call("CSS.getPlatformFontsForNode", nodeId=node)["fonts"]]
+                if fonts != ["Inter"]:
+                    errs.append(f"{tag}: chart text {r['text']!r} rendered with {fonts}, expected only Inter")
+                cdp.js("document.querySelector('[data-font-probe]').removeAttribute('data-font-probe'); 1")
+                n += 1
+    return n
+
+
+def file_dup_ids(path):
+    ids = re.findall(r'\bid="([^"]*)"', path.read_text())
+    return {i for i in ids if ids.count(i) > 1}
+
+
+def same_drawing(a, b, tol=0.05):
+    """Equal tag, text and SVG bbox; client-rect offsets within tol px (sub-pixel rounding of the page offset only)."""
+    if len(a) != len(b):
+        return False
+    for x, y in zip(a, b):
+        if len(x) == 2:   # svg root size
+            if any(abs(p - q) > tol for p, q in zip(x, y)):
+                return False
+            continue
+        if x[:6] != y[:6] or any(abs(p - q) > tol for p, q in zip(x[6:], y[6:])):
+            return False
+    return True
+
+
+def check_rename_geometry(cdp, base, errs):
+    """R9.3: the build-time id rename changes nothing drawn: every element's text and box match the original file markup."""
+    n = 0
+    for w, h in ((390, 844), (1440, 900)):
+        for scheme in ("dark", "light"):
+            for cid in CHARTS:
+                open_page(cdp, base, "/", w, h, scheme)
+                before = json.loads(cdp.js(SNAP % cid))
+                f, dup = json.loads(cdp.js(SWAP % cid))
+                own = file_dup_ids(D / "assets/charts" / f)   # ids the source file itself repeats (matplotlib gid), allowed only here
+                if set(dup) - own:
+                    errs.append(f"{cid} @{w} {scheme}: ids {sorted(set(dup) - own)} collide after swapping in the original markup")
+                after = json.loads(cdp.js(SNAP % cid))
+                if not before or not same_drawing(before, after):
+                    diff = next((i for i, (x, y) in enumerate(zip(before, after)) if not same_drawing([x], [y])), min(len(before), len(after)))
+                    errs.append(f"{cid} @{w} {scheme}: renamed vs original differ ({len(before)} vs {len(after)} elements; first diff #{diff}: "
+                                f"{before[diff] if diff < len(before) else None} vs {after[diff] if diff < len(after) else None})")
+                n += 1
     return n
 
 
@@ -204,7 +296,6 @@ def check_readability(cdp, base, shots, errs):
     for w, h in ((390, 844), (1440, 900)):
         for p in PAGES:
             open_page(cdp, base, p, w, h, "dark")
-            cdp.js("document.querySelectorAll('img').forEach(i=>{i.loading='eager'}); 1")
             time.sleep(0.4)
             shot = cdp.call("Page.captureScreenshot", format="png", captureBeyondViewport=True)
             name = ("index" if p == "/" else p.strip("/")) + f"-{w}.png"
@@ -242,8 +333,11 @@ def main():
         cdp.call("Page.enable")
         cdp.call("Runtime.enable")
         n = check_charts(cdp, base, errs)
+        nf = check_fonts(cdp, base, errs)
+        ng = check_rename_geometry(cdp, base, errs)
         check_readability(cdp, base, shots, errs)
         print(f"browser_check: {n} chart/viewport/scheme combinations checked; readability checked on {len(PAGES)} pages x 2 schemes at 390px")
+        print(f"browser_check: chart text font Inter-only in {nf} chart/viewport/scheme cases; id-rename text+geometry equal in {ng}")
         if os.environ.get("AWI_KEEP_SHOTS") == "1":
             print(f"browser_check: screenshots (390 and 1440) for a human readability check: {shots}")
     finally:

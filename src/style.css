@@ -104,11 +104,14 @@ main section h2 { margin-bottom: var(--s2); }
 .findings { margin-top: var(--s2); }
 .rows + .col { margin-top: var(--s2); }
 
-/* charts: four <img> per chart, CSS shows exactly one (>=768px the 720 file, below it the 350 file; dark default) */
+/* charts: four inlined <svg> per chart (R9), CSS shows exactly one (>=768px the 720 file, below it the 350 file; dark default) */
 .chart { margin: var(--s2) 0 0; }
 .chart h3 { margin-bottom: var(--s1); max-width: 45ch; }
 .chart figcaption { margin-top: var(--s1); color: var(--muted); font-size: var(--fs-1); max-width: 65ch; }
 .ch { display: none; max-width: 100%; height: auto; }
+.ch svg { display: block; width: 100%; height: auto; }
+.ch-720 { max-width: 720px; }
+.ch-350 { max-width: 350px; }
 @media (min-width: 768px) { .ch-720.ch-dark { display: block; } }
 @media (max-width: 767.98px) { .ch-350.ch-dark { display: block; } }
 @media (prefers-color-scheme: light) {
@@ -150,7 +153,7 @@ details > p, details > ul, details > h4 { max-width: 65ch; }
 .btn.ghost { background: none; color: var(--text); border: 1px solid var(--text); }
 .sponsor { border: 1px solid var(--line); border-left: 4px solid var(--acc-tint); border-radius: var(--radius); padding: var(--s1) var(--s2); color: var(--muted); font-size: var(--fs-1); margin-bottom: var(--s3); }
 .sponsor a { display: inline-flex; align-items: center; min-height: var(--hit); }
-#beehiiv-embed { margin-top: var(--s2); max-width: 100%; }
+.beehiiv-embed { margin-top: var(--s2); max-width: 100%; }
 #signup input, #signup button { min-height: var(--hit); }
 
 /* footer */

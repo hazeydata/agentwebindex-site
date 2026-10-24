@@ -5,7 +5,7 @@ and src/charts (vendored at the commits pinned in pins.json).
 Guards first: pins.check() fails the build (non-zero exit) on the pre-Phase-0 data pin, a Tavily input date in the pinned pricing.yaml before pins.json phase0_date (R8),
 or when the vendored data, copy or chart SVG bytes differ from pins.json.
 src/*.html (slot templates filled by render.py) wrapped in src/_layout.html -> dist/<page>/index.html;
-chart SVGs (byte-identical) -> dist/assets/charts, src/fonts (woff2 + OFL-*.txt) -> dist/assets/fonts; data/ (minus data/cache and data/_upstream) -> dist/data;
+chart SVGs (byte-identical) -> dist/assets/charts and inlined into / (prolog removed, ids prefixed; build fails on duplicate ids), src/fonts (woff2 + OFL-*.txt) -> dist/assets/fonts; data/ (minus data/cache and data/_upstream) -> dist/data;
 generates dist/data/prices.csv + prices.json from data/prices/history/*.jsonl and dist/data/benchmarks/latest.csv;
 llms.txt, robots.txt, sitemap.xml; reads site.config.json."""
 import csv, html, json, re, shutil, sys
@@ -28,10 +28,10 @@ def newsletter_slot():
     m=re.match(r"https://subscribe-forms\.beehiiv\.com/([0-9a-f-]{36})/?$",url)
     if m:   # official beehiiv script embed, plain link fallback without JS
         fid=m.group(1); u=html.escape(url)
-        return (f'<div id="beehiiv-embed" data-test-id="beehiiv-embed"><script async src="https://subscribe-forms.beehiiv.com/v3/loader.js" '
+        return (f'<div class="beehiiv-embed" data-test-id="beehiiv-embed"><script async src="https://subscribe-forms.beehiiv.com/v3/loader.js" '
                 f'data-beehiiv-form="{fid}"></script><noscript><a href="{u}">Subscribe to the newsletter</a></noscript></div>')
     if url.startswith("https://"):
-        return (f'<iframe id="beehiiv-embed" src="{html.escape(url)}" data-test-id="beehiiv-embed" '
+        return (f'<iframe class="beehiiv-embed" src="{html.escape(url)}" data-test-id="beehiiv-embed" '
                 'width="100%" height="320" frameborder="0" scrolling="no" style="border:0;max-width:100%"></iframe>')
     return ('<form id="signup" onsubmit="return false" aria-disabled="true"><input type="email" placeholder="you@example.com" disabled>'
             '<button disabled>Coming soon</button></form><p class="muted">Placeholder: no form endpoint is connected and nothing is submitted.</p>')
@@ -94,7 +94,10 @@ for f in sorted(S.glob("*.html")):
     title,desc=META[f.stem]
     path="/" if f.stem=="index" else f"/{f.stem}/"; pages.append(path)
     out=D/"index.html" if f.stem=="index" else D/f.stem/"index.html"; out.parent.mkdir(exist_ok=True)
-    out.write_text(layout.replace("{{title}}",html.escape(title)).replace("{{head}}",page_head(title,desc,path)).replace("{{nav}}",render.nav_html(path)).replace("{{footer}}",FOOTER).replace("{{body}}",body))
+    page=layout.replace("{{title}}",html.escape(title)).replace("{{head}}",page_head(title,desc,path)).replace("{{nav}}",render.nav_html(path)).replace("{{footer}}",FOOTER).replace("{{body}}",body)
+    dups=render.duplicate_ids(page)
+    if dups: sys.exit(f"build failed: duplicate id attributes on {path}: {dups[:10]}")   # R9.3
+    out.write_text(page)
 pages.sort(key=lambda p:(p!="/",p))
 (D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")
 (D/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+"".join(f"<url><loc>{SITE_URL}{p}</loc></url>\n" for p in pages)+"</urlset>\n")
