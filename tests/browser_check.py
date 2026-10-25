@@ -302,6 +302,41 @@ def check_readability(cdp, base, shots, errs):
             (shots / name).write_bytes(base64.b64decode(shot["data"]))
 
 
+LAYOUT = """(() => { const r = e => e ? e.getBoundingClientRect() : null;
+const ps = [...document.querySelectorAll('.steps li > p')].map(e => r(e).width);
+const f = document.querySelector('iframe.beehiiv-embed'); const fb = r(f); const box = f ? r(f.parentElement) : null;
+const pad = f ? parseFloat(getComputedStyle(f.parentElement).paddingLeft) + parseFloat(getComputedStyle(f.parentElement).paddingRight) : 0;
+const cta = document.querySelector('.cta-hero');
+return JSON.stringify({header: r(document.querySelector('.site-header')).height, stepMin: ps.length ? Math.min(...ps) : null,
+  iframe: f ? {w: fb.width, h: fb.height, inner: box.width - pad - 2, src: f.getAttribute('src'), loading: f.getAttribute('loading')} : null,
+  ctaTop: cta ? r(cta).top + scrollY : null}); })()"""
+
+
+def check_layout(cdp, base, errs):
+    """AWI-PAGE-POLISH-001: header <= 88px at 390; Methodology paragraphs are not squeezed into the number column (P0);
+    the signup iframe fills its box (width 100%, >= 240px tall) on /newsletter/ and at the end of Results (P0); hero CTA above the fold."""
+    n = 0
+    for w, h in ((390, 844), (1440, 900)):
+        for p in PAGES:
+            open_page(cdp, base, p, w, h, "dark")
+            m = json.loads(cdp.js(LAYOUT))
+            tag = f"{p} @{w}"
+            if w == 390 and m["header"] > 88.5:
+                errs.append(f"{tag}: header {m['header']}px > 88px")
+            if p == "/methodology/" and (m["stepMin"] is None or m["stepMin"] < (480 if w >= 768 else 300)):
+                errs.append(f"{tag}: Methodology step paragraph only {m['stepMin']}px wide")
+            if p in ("/", "/newsletter/"):
+                f = m["iframe"]
+                if not f or f["h"] < 239.5 or abs(f["w"] - f["inner"]) > 1.5 or not f["src"] or f["loading"] == "lazy":
+                    errs.append(f"{tag}: signup iframe not full-width / >=240px / eager: {f}")
+            if p in ("/", "/prices/", "/methodology/", "/data/", "/disclosures/"):
+                lim = 420 if w >= 768 else 560
+                if m["ctaTop"] is None or m["ctaTop"] > lim:
+                    errs.append(f"{tag}: hero CTA top {m['ctaTop']} > {lim}px")
+            n += 1
+    return n
+
+
 def main():
     if not Path(CHROME).exists():
         print("browser_check: SKIP (google-chrome not installed)")
@@ -336,8 +371,10 @@ def main():
         nf = check_fonts(cdp, base, errs)
         ng = check_rename_geometry(cdp, base, errs)
         check_readability(cdp, base, shots, errs)
+        nl = check_layout(cdp, base, errs)
         print(f"browser_check: {n} chart/viewport/scheme combinations checked; readability checked on {len(PAGES)} pages x 2 schemes at 390px")
         print(f"browser_check: one non-title Inter chart text element rendered with Inter (no fallback) in {nf} chart/viewport/scheme cases; id-rename text+geometry equal in {ng}")
+        print(f"browser_check: layout (header <= 88px at 390, Methodology grid, signup iframe, hero CTA fold) checked on {nl} page/viewport cases")
         if os.environ.get("AWI_KEEP_SHOTS") == "1":
             print(f"browser_check: screenshots (390 and 1440) for a human readability check: {shots}")
     finally:

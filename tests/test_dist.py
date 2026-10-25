@@ -524,13 +524,21 @@ class Shell(unittest.TestCase):
         self.assertTrue(robots.startswith("User-agent: *\nAllow: /\n"))
         self.assertTrue(robots.endswith(f"Sitemap: {site}/sitemap.xml\n"))
 
-    def test_beehiiv_embed(self):
-        fid = CFG["beehiiv_embed_url"].rstrip("/").rsplit("/", 1)[1]
-        for p in ("/newsletter/", "/"):
+    def test_beehiiv_embed(self):  # AWI-PAGE-POLISH-001 P0: the form at the end of Results rendered empty with the loader.js embed
+        url = CFG["beehiiv_embed_url"]
+        for p, box in (("/newsletter/", 'id="signup"'), ("/", 'id="signup-end"')):
             s = page(p)
-            self.assertIn(f'data-beehiiv-form="{fid}"', s)
-            self.assertIn('src="https://subscribe-forms.beehiiv.com/v3/loader.js"', s)
-            self.assertIn(f'<noscript><a href="{CFG["beehiiv_embed_url"]}">', s)
+            frames = re.findall(r"<iframe\b[^>]*>", s)
+            self.assertEqual(len(frames), 1, p)
+            f = frames[0]
+            self.assertIn(f'src="{url}"', f)
+            self.assertIn('loading="eager"', f)
+            self.assertNotIn("loader.js", s)
+            self.assertLess(s.index(box), s.index("<iframe"), p)   # inside its CTA box
+        css = (D / "style.css").read_text()
+        rule = re.search(r"\.beehiiv-embed \{([^}]*)\}", css).group(1)
+        self.assertIn("width: 100%", rule)
+        self.assertIn("min-height: 240px", rule)
 
     def test_no_external_fonts_or_cdn(self):
         allowed = {"https://subscribe-forms.beehiiv.com/v3/loader.js", "https://gc.zgo.at/count.js"}
@@ -933,6 +941,79 @@ class AgentSurfaces(unittest.TestCase):
                     self.assertNotIn(marker, t2, f"marker leaked into {f.name}")
                     self.assertNotIn("internal_x", t2, f"key leaked into {f.name}")
 
+
+
+class Polish(unittest.TestCase):
+    """AWI-PAGE-POLISH-001 guards: numbers, ranking, row count, banned names, repeated claims, CTA label, chart titles, Methodology grid."""
+    NUM = re.compile(r"\$?\d[\d,]*(?:\.\d+)?%?")
+    CLAIM_TAVILY = "Tavily passed 69% of our 100 evergreen checks, Exa 40%; Browserless passed 66% of 120 scrape checks"
+
+    def test_no_number_added_or_changed(self):
+        base = json.loads((R / "tests/numbers_baseline.json").read_text())["pages"]
+        for p in PAGES:
+            now = set(self.NUM.findall(text_of(re.sub(r"<svg\b.*?</svg>", " ", page(p), flags=re.S))))   # chart SVGs: pinned by sha256
+            self.assertEqual(sorted(now - set(base[p])), [], p)
+        home = text_of(page("/"))
+        for k, val in expected_numbers().items():
+            self.assertIn(val, home, k)
+
+    def test_exactly_three_results_rows_unranked(self):
+        s = page("/")
+        run = s[s.index('id="run"'):]
+        run = run[:run.index("</section>")]
+        self.assertEqual(re.findall(r'<div class="row" role="listitem" data-provider="([^"]+)"', run), ["exa", "tavily", "browserless"])
+        for p in PAGES:
+            self.assertNotRegex(text_of(page(p)), r"(?i)\b(rank(ed|ing)?|winner|best|top pick|#1|1st place|leader)\b", p)
+        self.assertNotRegex(run, r'(?i)class="[^"]*\b(badge|rank|winner|highlight)\b')
+
+    def test_banned_names_absent_from_built_site(self):
+        hits = []
+        for f in D.rglob("*"):
+            if f.is_file() and re.search(rb"(?i)keenable|context\.dev", f.read_bytes()):
+                hits.append(str(f.relative_to(D)))
+        self.assertEqual(hits, [])
+
+    def test_each_claim_once(self):
+        site = " ".join(text_of(page(p)) for p in PAGES)
+        self.assertEqual(site.count(self.CLAIM_TAVILY + "."), 1)          # the #run line; the chart h3 carries it as a title (no period)
+        self.assertEqual(text_of(page("/")).count(self.CLAIM_TAVILY), 2)   # sentence + chart h3, nothing else
+        self.assertEqual(text_of(page("/disclosures/")).count("No provider pays us"), 1)
+        for p in PAGES:
+            if p != "/disclosures/":
+                self.assertNotIn("No provider pays us", text_of(page(p)), p)
+
+    def test_cta_label_same_on_every_page(self):
+        want = copydoc.load().field("CTA boxes", "Button")
+        self.assertEqual(want, "Get the results by email")
+        for p in PAGES:
+            s = page(p)
+            labels = [text_of(x) for x in re.findall(r'<a class="btn cta-btn"[^>]*>(.*?)</a>', s)]
+            self.assertTrue(set(labels) <= {want}, (p, labels))
+            if p != "/newsletter/":   # the Newsletter page is the form itself
+                self.assertGreaterEqual(len(labels), 1, p)
+            self.assertNotRegex(text_of(s), r"Get price updates by email", p)
+
+    def test_chart_h3_equals_svg_aria_label(self):
+        s = page("/")
+        for sid in ("pass-rate", "cost"):
+            fig = s[s.index(f'id="chart-{sid}"'):]
+            fig = fig[:fig.index("</figure>")]
+            h3 = text_of(re.search(r"<h3>(.*?)</h3>", fig).group(1))
+            labels = [html.unescape(x) for x in re.findall(r'<svg role="img" aria-label="([^"]*)"', fig)]
+            self.assertEqual(len(labels), 4, sid)
+            for lab in labels:
+                self.assertEqual(lab, h3, sid)
+                self.assertFalse(lab.endswith("."), sid)
+
+    def test_methodology_steps_grid(self):  # P0: a bare text node in .steps li became its own grid item in the 48px number column
+        s = page("/methodology/")
+        steps = re.findall(r'<li id="m-[^"]+">(.*?)</li>', s[s.index('<ol class="steps">'):s.index("</ol>")], re.S)
+        self.assertEqual(len(steps), 8)
+        for li in steps:
+            self.assertRegex(li, r"^<h2>.*?</h2>\s*<p>.*</p>$")   # only element children: h2 then p
+        css = (D / "style.css").read_text()
+        self.assertIn("grid-template-columns: 56px minmax(0, 68ch)", css)
+        self.assertIn(".steps li > * { grid-column: 2; }", css)
 
 if __name__ == "__main__":
     unittest.main()
