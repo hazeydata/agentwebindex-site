@@ -4,44 +4,44 @@
  "phase0_date": "2026-10-24",
  "copy": "AWI-PAGE-POLISH-001 copy-cuts.md",
  "copy_sha256": "65bb082d8edf1569e4a3381812ffc00d7f2c4f4946c7800621d992113459c06d",
- "copy_cuts": "content/copy-cuts.md: verbatim copy of Lindsay's final copy-cuts.md (1:35 AM, hero card lead-ins); content/copy.md carries its strings",
+ "copy_cuts": "Lindsay's final copy-cuts.md (1:35 AM, hero card lead-ins), recorded only: not vendored, because it quotes the retired Prices label that AC-29 bans from the repo; content/copy.md carries its strings",
  "copy_cuts_sha256": "c645dfaaff6bb88f2471ea7d7656a3fa99f061eb4d02d09b30814bb414e35a7b",
  "queries": "agentwebindex-meta 2c28c0a cycles/2026-10-24-page-redo/her/QUERIES.md",
  "queries_sha256": "a58e77acb9e96cd923da665d77dfa74329dcbad95035801ad09c03e380ac526f",
  "chart_alt_sha256": "f0590fb5d596dd7de20031e62e3e145c08b756d7e0eb4148597b704cf634be28",
- "charts": "e18a54a",
+ "charts": "2e6e0cb",
  "charts_sha256": {
   "awi-cost-per-success-350-dark.svg": {
    "her_original": "her/her-cost-per-success-350-dark.svg",
-   "sha256": "d949f633488e3adac3dc8a779d2c4286a225a34adb8e5e749b44c491c7509964"
+   "sha256": "9b097d9e8332370aaff23276ff4478eea5b644e30b8870c70b927e1a3a42f1f2"
   },
   "awi-cost-per-success-350-light.svg": {
    "her_original": "her/her-cost-per-success-350-light.svg",
-   "sha256": "5cc6118cdc13158992433a0a3a2541888f52dc72986544dc2292f0ec05ad4eb5"
+   "sha256": "0dc95c1535763aeddddf785565b36c6402d8f011c2f77cf86809be401512b61a"
   },
   "awi-cost-per-success-720-dark.svg": {
    "her_original": "her/her-cost-per-success-720-dark.svg",
-   "sha256": "32af11d5e8488797a6b593746e1a845fd21c7124e74580052579df25d93826c5"
+   "sha256": "52e31a8ad06c43b42b85061a2509251264c9baeb7ca93d4ac4415e54fb3b9998"
   },
   "awi-cost-per-success-720-light.svg": {
    "her_original": "her/her-cost-per-success-720-light.svg",
-   "sha256": "9c172828b8e72c6e219269c6a581b50b60faf02739a9b38b35eb5dc473ca4606"
+   "sha256": "1b1441e35931af72fabfc26203818e24c3b4861c5574e7200ac2209dff7308a4"
   },
   "awi-pass-rate-350-dark.svg": {
    "her_original": "her/her-pass-rate-350-dark.svg",
-   "sha256": "55b24c03a58004583268ed7411e69583dc3953e0648459e9bf0c28a4acd26cd1"
+   "sha256": "1c7b3633f6fa788442638a3daafb8c2ee2160e24401610ce41daef48124f5df6"
   },
   "awi-pass-rate-350-light.svg": {
    "her_original": "her/her-pass-rate-350-light.svg",
-   "sha256": "dac0d4df5b5589960a8d875de017057eaf3e2602008e02c4e7847c84897175fc"
+   "sha256": "0cc0c0044e181f0a25eeec113b2ff2bbd476490cc62a550a3146c280c4fd28de"
   },
   "awi-pass-rate-720-dark.svg": {
    "her_original": "her/her-pass-rate-720-dark.svg",
-   "sha256": "18c0db6a0237911db268dc66edb4daac48bc33901a71a17f42f96b388ca59b34"
+   "sha256": "2e1eafa1bf863d8d1392f3617f78ce39b3d6378cc2562906f401c0d78f64fa6f"
   },
   "awi-pass-rate-720-light.svg": {
    "her_original": "her/her-pass-rate-720-light.svg",
-   "sha256": "3a3d6a20d20daab174e1da25729805ab4563dba8d4c9e7fab34f85dcafe4657b"
+   "sha256": "0214f9a3c16bb2873ea8b3d1f520d5c909d5bbf51848834420bff8d741ed6958"
   }
  },
  "layout": "76b8b23"
