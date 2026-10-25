@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="518.4pt" height="318.8025pt" viewBox="0 0 518.4 318.8025" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-24T14:14:08.872767</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 318.8025 
+L 518.4 318.8025 
+L 518.4 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 93.312 201.3075 
+L 466.56 201.3075 
+L 466.56 93.3075 
+L 93.312 93.3075 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <defs>
+       <path id="m874401be0b" d="M 0 0 
+L 0 3 
+" style="stroke: #999999; stroke-width: 0.6"/>
+      </defs>
+      <g>
+       <use xlink:href="#m874401be0b" x="93.312" y="201.3075" style="fill: #999999; stroke: #999999; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #333333" x="93.312" y="216.52625" transform="rotate(-0 93.312 216.52625)">$0</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <g>
+       <use xlink:href="#m874401be0b" x="182.180571" y="201.3075" style="fill: #999999; stroke: #999999; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #333333" x="182.180571" y="216.52625" transform="rotate(-0 182.180571 216.52625)">$5</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3">
+      <g>
+       <use xlink:href="#m874401be0b" x="271.049143" y="201.3075" style="fill: #999999; stroke: #999999; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_3">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #333333" x="271.049143" y="216.52625" transform="rotate(-0 271.049143 216.52625)">$10</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4">
+      <g>
+       <use xlink:href="#m874401be0b" x="359.917714" y="201.3075" style="fill: #999999; stroke: #999999; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_4">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #333333" x="359.917714" y="216.52625" transform="rotate(-0 359.917714 216.52625)">$15</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5">
+      <g>
+       <use xlink:href="#m874401be0b" x="448.786286" y="201.3075" style="fill: #999999; stroke: #999999; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_5">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #333333" x="448.786286" y="216.52625" transform="rotate(-0 448.786286 216.52625)">$20</text>
+     </g>
+    </g>
+    <g id="text_6">
+     <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #333333" x="279.936" y="231.900273" transform="rotate(-0 279.936 231.900273)">US$ per 1,000 calls</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_6"/>
+     <g id="text_7">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #333333" transform="translate(37.631687 172.450622)">Browserless</text>
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #333333" transform="translate(29.497937 183.340271)">scrape, n=120</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_7"/>
+     <g id="text_8">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #333333" transform="translate(65.220906 141.593479)">Tavily</text>
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #333333" transform="translate(29.558406 152.483128)">search, n=100</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_8"/>
+     <g id="text_9">
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #333333" transform="translate(74.434656 110.736336)">Exa</text>
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #333333" transform="translate(29.558406 121.625985)">search, n=100</text>
+     </g>
+    </g>
+   </g>
+   <g id="line2d_9">
+    <path d="M 217.728 111.821786 
+L 404.352 111.821786 
+" clip-path="url(#p05b94474bc)" style="fill: none; stroke: #999999; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_10">
+    <path d="M 235.501714 142.678929 
+L 299.38405 142.678929 
+" clip-path="url(#p05b94474bc)" style="fill: none; stroke: #999999; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_11">
+    <path d="M 115.529143 173.536071 
+L 127.059559 173.536071 
+" clip-path="url(#p05b94474bc)" style="fill: none; stroke: #999999; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 93.312 201.3075 
+L 466.56 201.3075 
+" style="fill: none; stroke: #999999; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="PathCollection_1">
+    <defs>
+     <path id="m2b364c3bc7" d="M 0 2.54951 
+C 0.676138 2.54951 1.324674 2.280877 1.802776 1.802776 
+C 2.280877 1.324674 2.54951 0.676138 2.54951 0 
+C 2.54951 -0.676138 2.280877 -1.324674 1.802776 -1.802776 
+C 1.324674 -2.280877 0.676138 -2.54951 0 -2.54951 
+C -0.676138 -2.54951 -1.324674 -2.280877 -1.802776 -1.802776 
+C -2.280877 -1.324674 -2.54951 -0.676138 -2.54951 0 
+C -2.54951 0.676138 -2.280877 1.324674 -1.802776 1.802776 
+C -1.324674 2.280877 -0.676138 2.54951 0 2.54951 
+z
+" style="stroke: #999999; stroke-width: 1.1"/>
+    </defs>
+    <g clip-path="url(#p05b94474bc)">
+     <use xlink:href="#m2b364c3bc7" x="217.728" y="111.821786" style="fill: #ffffff; stroke: #999999; stroke-width: 1.1"/>
+    </g>
+   </g>
+   <g id="text_10">
+    <text style="font-weight: 600; font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #0072b2" x="413.238857" y="115.277596" transform="rotate(-0 413.238857 115.277596)">$17.50</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #999999" x="208.841143" y="114.913827" transform="rotate(-0 208.841143 114.913827)">$7.00</text>
+   </g>
+   <g id="PathCollection_2">
+    <g clip-path="url(#p05b94474bc)">
+     <use xlink:href="#m2b364c3bc7" x="235.501714" y="142.678929" style="fill: #ffffff; stroke: #999999; stroke-width: 1.1"/>
+    </g>
+   </g>
+   <g id="text_12">
+    <text style="font-weight: 600; font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #0072b2" x="308.270907" y="146.134739" transform="rotate(-0 308.270907 146.134739)">$11.59</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #999999" x="226.614857" y="145.77097" transform="rotate(-0 226.614857 145.77097)">$8.00</text>
+   </g>
+   <g id="PathCollection_3">
+    <g clip-path="url(#p05b94474bc)">
+     <use xlink:href="#m2b364c3bc7" x="115.529143" y="173.536071" style="fill: #ffffff; stroke: #999999; stroke-width: 1.1"/>
+    </g>
+   </g>
+   <g id="text_14">
+    <text style="font-weight: 600; font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #0072b2" x="135.946416" y="176.991882" transform="rotate(-0 135.946416 176.991882)">$1.90</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 8px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #999999" x="115.529143" y="192.286071" transform="rotate(-0 115.529143 192.286071)">list $1.25</text>
+   </g>
+   <g id="PathCollection_4">
+    <defs>
+     <path id="mae98c4d15d" d="M 0 2.915476 
+C 0.773193 2.915476 1.514823 2.608283 2.061553 2.061553 
+C 2.608283 1.514823 2.915476 0.773193 2.915476 0 
+C 2.915476 -0.773193 2.608283 -1.514823 2.061553 -2.061553 
+C 1.514823 -2.608283 0.773193 -2.915476 0 -2.915476 
+C -0.773193 -2.915476 -1.514823 -2.608283 -2.061553 -2.061553 
+C -2.608283 -1.514823 -2.915476 -0.773193 -2.915476 0 
+C -2.915476 0.773193 -2.608283 1.514823 -2.061553 2.061553 
+C -1.514823 2.608283 -0.773193 2.915476 0 2.915476 
+z
+" style="stroke: #0072b2"/>
+    </defs>
+    <g clip-path="url(#p05b94474bc)">
+     <use xlink:href="#mae98c4d15d" x="404.352" y="111.821786" style="fill: #0072b2; stroke: #0072b2"/>
+    </g>
+   </g>
+   <g id="PathCollection_5">
+    <g clip-path="url(#p05b94474bc)">
+     <use xlink:href="#mae98c4d15d" x="299.38405" y="142.678929" style="fill: #0072b2; stroke: #0072b2"/>
+    </g>
+   </g>
+   <g id="PathCollection_6">
+    <g clip-path="url(#p05b94474bc)">
+     <use xlink:href="#mae98c4d15d" x="127.059559" y="173.536071" style="fill: #0072b2; stroke: #0072b2"/>
+    </g>
+   </g>
+  </g>
+  <g id="text_16">
+   <text style="font-weight: 600; font-size: 11px; font-family: 'Space Grotesk'; fill: #333333" transform="translate(20.736 22.022028)">Exa lists cheaper than Tavily ($7.00 vs $8.00 per 1,000 calls) but costs more per</text>
+   <text style="font-weight: 600; font-size: 11px; font-family: 'Space Grotesk'; fill: #333333" transform="translate(20.736 38.163428)">1,000 passed checks ($17.50 vs $11.59)</text>
+  </g>
+  <g id="text_17">
+   <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(20.736 55.260625)">Cost per 1,000 passed checks, at entry-tier list price (filled dots); list price per 1,000 calls (open</text>
+   <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(20.736 66.755254)">grey). One run, 2026-10-23. Free credits don't lower it.</text>
+  </g>
+  <g id="text_18">
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(20.736 247.510273)">Passed checks exclude ToS skips (Browserless: 30 anti-bot URLs) and HTTP 429 replies (none on Oct 23); failed</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(20.736 259.410508)">calls' cost is spread over the successes. Browserless (scrape) loads a known URL; Exa and Tavily find it.</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(20.736 271.758242)">Different jobs, not substitutes. Volume-tier cost per 1,000 passed checks, where published: Tavily $10.87,</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(20.736 283.857852)">Browserless $1.06. Left out: short news weeks 42/43, Apify (paid-tier price not captured) and Browserless</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(20.736 295.996211)">browser (no Oct 23 run).</text>
+   <text style="font-size: 8px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(20.736 307.736445)">Source: hazeydata/agentwebindex data/benchmarks/latest.json @ 6b8bd87</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p05b94474bc">
+   <rect x="93.312" y="93.3075" width="373.248" height="108"/>
+  </clipPath>
+ </defs>
+</svg>

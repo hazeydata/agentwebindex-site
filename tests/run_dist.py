@@ -8,28 +8,30 @@
 import os, re, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
-EXPECTED = 42  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
+EXPECTED = 62  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
 
 R = Path(__file__).resolve().parent.parent
-LPP_KEEP = 'if r["provider"] not in best or k > best[r["provider"]][0]:'
-LPP_RET = "return [r for _, r in best.values()]"
-# name -> (exact text in render.py, defect replacement, tests that must fail)
-LPP = {"test_one_row_per_provider_single_week_title", "test_same_week_later_run_date_wins", "test_week_compared_numerically"}
+# name -> (exact text in the file, defect replacement, tests that must fail[, file])
 CANARIES = {
-    "dedupe_removed": (LPP_RET, "return list(rows)", LPP | {
-        "test_latest_providers_exactly_once", "test_values_match_json", "test_browserless_own_set_label",
-        "test_figures_no_legend_wilson_caption_title", "test_sets_published_only_shown_sets",
-        "test_freshness_latest_week_per_provider", "test_freshness_latest_week_file_order_reversed"}),
-    "first_in_file_wins": (LPP_KEEP, 'if r["provider"] not in best:', LPP | {
-        "test_browserless_own_set_label", "test_freshness_latest_week_file_order_reversed"}),
-    "last_in_file_wins": (LPP_KEEP, "if True:", LPP | {"test_freshness_latest_week_per_provider"}),
-    # a real pack sample value rendered into every category panel must be caught as a leak
-    "pack_sample_leak": ('<p class="lb-foot">', '<p class="lb-foot">$0.80 per 1,000 pages · ', {"test_no_pack_sample_values"}),
+    # the priced date must be the OLDEST input (Q4); the newest would hide a stale input
+    "date_max_not_min": ("return min(ins.values())", "return max(ins.values())",
+                         {"test_checked_at_is_min_of_inputs_and_inputs_are_only_used_fields", "test_tavily_named_case_dates"}, "prices.py"),
+    # banker's rounding would turn 68.5% into 68%
+    "banker_rounding": ("return f\"{(_D(x) * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP)}%\"",
+                        "return f\"{(_D(x) * 100).quantize(Decimal(1), rounding=\"ROUND_HALF_EVEN\")}%\"", {"test_rounding_cases_half_up"}, "prices.py"),
+    # chart accessible name dropped
+    "chart_alt_dropped": ("alt = e(ctx.alt[name], quote=True)", "alt = ''", {"test_charts_alt_title_caption", "test_one_h1_skip_link_main_and_img_alts"}),
+    # a real pack sample value leaking into a page must be caught
+    "pack_sample_leak": ('<p><a href="/methodology/">Methodology and limits</a></p>', '<p>$0.80 per 1,000 pages · <a href="/methodology/">Methodology and limits</a></p>',
+                         {"test_no_pack_sample_values"}),
+    # a 'cheapest tier covering 100k/month' claim reaching any page must be caught (R7)
+    "cheapest_tier_claim": ('<p><a href="/methodology/">Methodology and limits</a></p>', '<p>Cheapest tier covering 100k/month · <a href="/methodology/">Methodology and limits</a></p>',
+                            {"test_no_cheapest_tier_100k_claim_anywhere"}),
     # published exclusions must use the allowlist; a denylist of just "note" leaks any other internal key
     "exclusion_denylist": ("{k:x[k] for k in EXCLUSION_PUBLIC if k in x}", '{k:v for k,v in x.items() if k!="note"}',
                            {"test_unknown_exclusion_key_never_published"}, "build.py"),
 }
-EXPECTED_CANARIES = 5  # emptying or trimming CANARIES fails the runner
+EXPECTED_CANARIES = 6  # emptying or trimming CANARIES fails the runner
 
 
 def real_run():
