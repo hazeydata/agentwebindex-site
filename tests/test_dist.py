@@ -993,10 +993,36 @@ class Polish(unittest.TestCase):
         self.assertEqual(got, want)
         self.assertEqual(got, base["rows"])
         self.assertEqual(len(got), 3)   # what 303efdf4 produces; update with the baseline if the pin moves
+        # Full "Every row" table: every non-mock attempted row in latest.json (all run dates), in latest.json order per table.
+        want_t = []
+        for cat in ("search", "scrape", "browser"):
+            for r in L.get("tables", {}).get(cat, []):
+                if not r.get("mock") and (r.get("attempted") or {}).get("v") is not None:
+                    want_t.append([names.get(r["provider"], r["provider"]), cat, r["set"], r.get("run_date") or ""])
+        t = s[s.index('id="every-row"'):]
+        t = t[:t.index("</table>")]
+        got_t = [[text_of(x) for x in tr] for tr in re.findall(
+            r'<tr><th scope="row"[^>]*>(.*?)</th><td[^>]*>(.*?)</td><td[^>]*>(.*?)</td><td[^>]*>(.*?)</td>', t)]
+        self.assertEqual(got_t, want_t)
+        self.assertEqual(got_t, base["table"])
+        self.assertEqual((len(got_t), len({r[0] for r in got_t}), sum(r[0] == "Apify" for r in got_t)), (11, 4, 2))   # R-9 at 303efdf4
         for p in PAGES:
             self.assertNotRegex(text_of(page(p)), r"(?i)\b(rank(ed|ing)?|winner|best|top pick|#1|1st place|leader)\b", p)
         self.assertNotRegex(run, r'(?i)class="[^"]*\b(badge|rank|winner|highlight)\b')
         self.assertNotRegex((R / "render.py").read_text().split("def run_rows")[1].split("\ndef ")[0], r"success_rate|cost")
+
+    def test_cyan_only_charts_and_focus(self):  # AC-15: --cyan appears only in focus styles (charts carry their own colours)
+        css = re.sub(r"/\*.*?\*/", "", (D / "style.css").read_text(), flags=re.S)
+        for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            if "var(--cyan)" in body:
+                self.assertRegex(sel.strip(), r"^[^,]*:focus(-visible)?(\s*,\s*[^,]*:focus(-visible)?)*$", sel)
+
+    def test_prose_max_width_68ch(self):  # AC-20: no body-text rule below or above 68ch (the 40ch headline and 45ch chart h3 are headings)
+        css = re.sub(r"/\*.*?\*/", "", (D / "style.css").read_text(), flags=re.S)
+        for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            for m in re.findall(r"max-width:\s*(\d+)ch", body):
+                if m != "68":
+                    self.assertRegex(sel.strip(), r"^\.(headline|chart h3)$", (sel, m))
 
     def test_no_raw_hex_in_button_rules(self):  # AC-15 (Tobias): buttons take colours from tokens only
         css = (D / "style.css").read_text()

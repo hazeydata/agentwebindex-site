@@ -163,6 +163,7 @@ return JSON.stringify({scrollWidth: document.documentElement.scrollWidth, bodySc
 
 def open_page(cdp, base, path, width, height, scheme, theme=None):
     cdp.call("Emulation.setDeviceMetricsOverride", width=width, height=height, deviceScaleFactor=1, mobile=False)
+    cdp.call("Emulation.setScrollbarsHidden", hidden=width < 768)   # phones overlay scrollbars; a 15px desktop gutter would shrink the 390 layout to 375
     cdp.call("Emulation.setEmulatedMedia", features=[{"name": "prefers-color-scheme", "value": scheme}])
     for attempt in range(3):
         cdp.events.clear()
@@ -312,7 +313,11 @@ const f = document.querySelector('iframe.beehiiv-embed'); const fb = r(f); const
 const pad = f ? parseFloat(getComputedStyle(f.parentElement).paddingLeft) + parseFloat(getComputedStyle(f.parentElement).paddingRight) : 0;
 const cta = document.querySelector('.cta-hero');
 const vals = [...document.querySelectorAll('.rows .row .mono')].map(e => ({h: r(e).height, f: getComputedStyle(e).fontSize, ff: getComputedStyle(e).fontFamily}));
-return JSON.stringify({steps, vals, hpad: getComputedStyle(document.querySelector('.site-header .wrap')).paddingTop, header: r(document.querySelector('.site-header')).height, stepMin: ps.length ? Math.min(...ps) : null,
+const probe = document.createElement('span'); probe.style.cssText = 'position:absolute;visibility:hidden;width:68ch';
+const pw = [...document.querySelectorAll('main p:not(.headline)')].filter(p => p.offsetParent).map(p => { p.appendChild(probe); probe.style.font = getComputedStyle(p).font;
+  const want = probe.getBoundingClientRect().width; probe.remove(); return {mw: getComputedStyle(p).maxWidth, want, cls: p.className}; });
+const ctext = [...document.querySelectorAll('.ch svg text')].filter(t => t.getClientRects().length).map(t => parseFloat(getComputedStyle(t).fontSize) * t.getScreenCTM().a);
+return JSON.stringify({pw, ctext, steps, vals, hpad: getComputedStyle(document.querySelector('.site-header .wrap')).paddingTop, header: r(document.querySelector('.site-header')).height, stepMin: ps.length ? Math.min(...ps) : null,
   iframe: f ? {w: fb.width, h: fb.height, inner: box.width - pad - 2, src: f.getAttribute('src'), loading: f.getAttribute('loading')} : null,
   ctaTop: cta ? r(cta).top + scrollY : null}); })()"""
 
@@ -336,6 +341,14 @@ def check_layout(cdp, base, errs):
                         errs.append(f"{tag}: run-row value not a Plex Mono 13px label:value line (<= 2 lines): {v}")
             if p == "/methodology/" and (m["stepMin"] is None or m["stepMin"] < (480 if w >= 768 else 300)):
                 errs.append(f"{tag}: Methodology step paragraph only {m['stepMin']}px wide")
+            for q in m["pw"]:   # AC-20: every visible body paragraph is capped at 68ch of its own font
+                if not q["mw"].endswith("px") or abs(float(q["mw"][:-2]) - q["want"]) > 1:
+                    errs.append(f"{tag}: paragraph .{q['cls']} max-width {q['mw']} != 68ch ({q['want']:.1f}px)")
+                    break
+            if w == 390 and p == "/":   # AC-25/39: every rendered chart text element >= 12px at 390
+                small = [round(x, 2) for x in m["ctext"] if x < 11.995]
+                if not m["ctext"] or small:
+                    errs.append(f"{tag}: chart text below 12px: {small[:5]} ({len(small)} of {len(m['ctext'])})")
             if p == "/methodology/" and w == 390:   # AC-5 at 390: number and h2 on one line; every paragraph full content width (+-1px)
                 for i, st in enumerate(m["steps"]):
                     if st["beforeRow"] != "1" or abs(st["h2Top"]) > 1 or st["h2Left"] < 8:
