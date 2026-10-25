@@ -154,17 +154,47 @@ def latency_sentence(ctx):
     return ", ".join(f"{r['_name']} {r['_cat']} {P.fmt_ms(v(r['p50_latency_ms']))}" for r in run_rows(ctx) if v(r.get("p50_latency_ms")) is not None) + "."
 
 
+# ---------------------------------------------------------------- CTA boxes (AWI-PAGE-POLISH-001)
+# Lead-ins and the single button label come from copy.md "CTA boxes" (Lindsay). The button links to the signup:
+# on Results to the on-page form (#signup-end), elsewhere to /newsletter/.
+
+def cta_label(ctx):
+    return ctx.doc.field("CTA boxes", "Button")
+
+
+def cta_btn(ctx, href="/newsletter/"):
+    return f'<a class="btn cta-btn" href="{href}">{e(cta_label(ctx))}</a>'
+
+
+def cta_card(ctx, key=None, href="/newsletter/"):
+    """Compact hero card: right column at >=768px, one lead+button row under the lede below it."""
+    lead = f'<p class="cta-lead">{e(ctx.doc.field("CTA boxes", key))}</p>' if key else ""
+    return f'<aside class="cta cta-hero" aria-label="Newsletter">{lead}{cta_btn(ctx, href)}</aside>'
+
+
+def cta_end(ctx, key, form=False):
+    """Full-width repeat at the end of a page; `form` embeds the signup itself instead of a button."""
+    body = ctx.newsletter if form else cta_btn(ctx)
+    return (f'<section class="cta-end-wrap"><div class="wrap"><div class="cta cta-end"{' id="signup-end"' if form else ''}>'
+            f'<p class="cta-lead">{e(ctx.doc.field("CTA boxes", key))}</p>{body}</div></div></section>')
+
+
+def hero(top, rest="", aside=""):
+    """Hero grid: areas top/cta/rest. >=768px: [top rest] left (max 560px), cta right; below: top, cta, rest."""
+    return (f'<section class="hero"><div class="wrap"><div class="hero-grid{" has-cta" if aside else ""}">'
+            f'<div class="hero-top">{top}</div>{aside}{f"<div class=\"hero-rest\">{rest}</div>" if rest else ""}</div></div></section>')
+
+
 # ---------------------------------------------------------------- Results
 
 def hero_results(ctx):
     d = ctx.doc
-    return ('<section class="hero"><div class="wrap"><div class="col">'
-            '<p class="kicker">Logged runs, cited prices</p><h1>Results</h1>'
-            f'<p class="headline">{inline(d.field("Home: hero", "Headline"))}</p>'
-            f'<p class="lede">{inline(d.field("Home: hero", "Lede"))}</p>'
+    top = ('<p class="kicker">Logged runs, cited prices</p><h1>Results</h1>'
+           f'<p class="headline">{inline(d.field("Home: hero", "Headline"))}</p>')
+    rest = (f'<p class="lede body-lede">{inline(d.field("Home: hero", "Lede"))}</p>'
             f'<p class="byline">{inline(d.para("Home: hero", "Built by"))}</p>'
-            '<ul class="meta"><li class="chip">Data CC BY 4.0</li><li class="chip">No paid placement</li></ul>'
-            '</div></div></section>')
+            '<ul class="meta"><li class="chip">Data CC BY 4.0</li><li class="chip">No paid placement</li></ul>')
+    return hero(top, rest, cta_card(ctx, "Results top", "#signup-end"))
 
 
 def results_row(ctx, r):
@@ -265,8 +295,8 @@ def section_chart(ctx, sid, intro_key, name, title, caption):
 
 def section_not_tested(ctx):
     t = ctx.doc.blocks("Home: section intros", "Not tested")[0][1]
-    return ('<section id="not-tested"><div class="wrap"><div class="col"><h2>Not tested</h2>'
-            f'<p class="lcopy">{inline(t)}</p><p><a href="/methodology/">Methodology and limits</a></p></div></div></section>')
+    return ('<section id="not-tested" class="notes"><div class="wrap"><details id="notes"><summary>Notes</summary><h3>Not tested</h3>'
+            f'<p>{inline(t)}</p><p><a href="/methodology/">Methodology and limits</a></p></details></div></section>')
 
 
 def earlier_runs(ctx):
@@ -321,9 +351,11 @@ def section_details(ctx):
 def section_sponsor(ctx):
     one = ctx.doc.lines("Layout slot: newsletter")
     line = next(l.strip() for l in one if l.strip())
-    return ('<section id="sponsor-newsletter"><div class="wrap"><div class="col">'
+    return ('<section id="sponsor-newsletter"><div class="wrap">'
             '<aside id="sponsor-banner" class="sponsor"><b>Sponsored</b> <a href="/sponsors/">No sponsors yet</a></aside>'
-            f'<h2>Newsletter</h2><p class="lcopy">{inline(line)}</p>{ctx.newsletter}</div></div></section>')
+            f'<h2>Newsletter</h2><p class="lcopy">{inline(line)}</p>'
+            f'<div class="cta cta-end" id="signup-end"><p class="cta-lead">{e(ctx.doc.field("CTA boxes", "Results end"))}</p>{ctx.newsletter}</div>'
+            '</div></section>')
 
 
 # ---------------------------------------------------------------- Prices
@@ -340,10 +372,9 @@ def prices_body(ctx):
                     f'<div class="mono checked">Last checked <time datetime="{e(r["checked_at"])}">{e(r["checked_at"])}</time> · '
                     f'<a href="{e(r["source_url"])}">pricing page</a></div></div>')
     also = next(l.strip() for l in d.lines("Prices page: also priced") if l.strip())
-    return ('<section class="hero"><div class="wrap"><div class="col"><p class="kicker">Entry-tier list price</p><h1>Prices</h1>'
-            f'<p class="lede">{inline(lede)}</p></div></div></section>'
-            f'<section><div class="wrap"><div class="rows" role="list" id="price-rows">{"".join(rows)}</div>'
-            f'<div class="col"><p class="lcopy" id="also-priced">{inline(also)}</p></div></div></section>')
+    return (hero(f'<p class="kicker">Entry-tier list price</p><h1>Prices</h1><p class="lede">{inline(lede)}</p>', "", cta_card(ctx, "Prices top"))
+            + f'<section><div class="wrap"><div class="rows" role="list" id="price-rows">{"".join(rows)}</div>'
+            f'<div class="col"><p class="lcopy" id="also-priced">{inline(also)}</p></div></div></section>' + cta_end(ctx, "Prices end"))
 
 
 # ---------------------------------------------------------------- Methodology
@@ -351,22 +382,29 @@ def prices_body(ctx):
 def methodology_body(ctx):
     d = ctx.doc
     lede = next(l.strip() for l in d.lines("Layout slot: methodology lede") if l.strip())
-    steps, limits, tail, mode = [], [], [], "steps"
+    steps, limits, tail, toc, mode = [], [], [], [], "steps"
     for kind, t in d.blocks("Methodology and limits"):
         if t.startswith("**Limits, plainly.**"):
             mode = "limits"
         elif mode == "steps":
             if t.startswith("**Latency (p50)"):
                 t = f"**Latency (p50), {day_label(ctx.latest['run_date'])} run:** {latency_sentence(ctx)} Yours will differ."
-            steps.append(f"<li>{inline(t)}</li>")
+            m = re.match(r"^\*\*(.+?)\*\*\s*(.*)$", t)
+            label, rest = (m.group(1), m.group(2)) if m else ("", t)
+            sid = "m-" + re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")
+            toc.append(f'<li><a href="#{sid}">{e(label.rstrip(".:"))}</a></li>')
+            steps.append(f'<li id="{sid}"><h2>{inline(label)}</h2>\n<p>{inline(rest)}</p></li>')
         elif kind == "li":
             limits.append(f"<li>{inline(t)}</li>")
         else:
             tail.append(f"<p>{inline(t)}</p>")
-    return ('<section class="hero"><div class="wrap"><div class="col"><p class="kicker">Methodology and limits</p><h1>Methodology</h1>'
-            f'<p class="lede">{inline(lede)}</p></div></div></section>'
-            f'<section><div class="wrap"><div class="col"><ol class="steps">{"".join(steps)}</ol></div></div></section>'
-            f'<section><div class="wrap"><div class="col"><h2>Limits, plainly.</h2><ul>{"".join(limits)}</ul>{"".join(tail)}</div></div></section>')
+    toc.append('<li><a href="#limits">Limits, plainly</a></li>')
+    return (hero(f'<p class="kicker">Methodology and limits</p><h1>Methodology</h1><p class="lede">{inline(lede)}</p>', "", cta_card(ctx, "Methodology top"))
+            + '<section class="major"><div class="wrap mlayout">'
+            f'<nav class="toc" aria-label="On this page"><ul>{"".join(toc)}</ul></nav>'
+            f'<div class="mbody"><ol class="steps">{"".join(steps)}</ol>'
+            f'<div class="limits" id="limits"><h2>Limits, plainly.</h2><ul>{"".join(limits)}</ul>{"".join(tail)}</div></div></div></section>'
+            + cta_end(ctx, "Methodology end"))
 
 
 # ---------------------------------------------------------------- Data, Tell us, Disclosures, Sponsors, Newsletter
@@ -378,10 +416,12 @@ DATA_FILES = [("latest.json", "/data/benchmarks/latest.json"), ("latest.csv", "/
 
 def data_body(ctx):
     lede = next(l.strip() for l in ctx.doc.lines("Data page") if l.strip())
-    items = "".join(f'<li><a class="mono" href="{u}">{e(n)}</a></li>' for n, u in DATA_FILES)
-    return ('<section class="hero"><div class="wrap"><div class="col"><p class="kicker">CC BY 4.0</p><h1>Data</h1>'
-            f'<p class="lede">{inline(lede)}</p></div></div></section>'
-            f'<section><div class="wrap"><div class="col"><div class="card"><ul class="files">{items}</ul></div></div></div></section>')
+    items = "".join(f'<li><a class="mono" href="{u}">{e(n)}</a></li>' for n, u in DATA_FILES[2:])
+    dl = (f'<p class="actions"><a class="btn" href="{DATA_FILES[0][1]}">Download latest.json</a>'
+          f'<a class="btn ghost" href="{DATA_FILES[1][1]}">or latest.csv</a></p>')   # labels: Lindsay copy-cuts, Data
+    return (hero(f'<p class="kicker">CC BY 4.0</p><h1>Data</h1><p class="lede">{inline(lede)}</p>{dl}', "", cta_card(ctx))
+            + f'<section><div class="wrap"><div class="col"><div class="card"><h2 class="card-h">Other files</h2><ul class="files">{items}</ul></div></div></div></section>'
+            + cta_end(ctx, "Data end"))
 
 
 def tell_us_body(ctx):
@@ -389,37 +429,41 @@ def tell_us_body(ctx):
     about, tell = bl[0][1], next(t for _, t in bl if t.startswith("Spot a wrong number"))
     return ('<section class="hero"><div class="wrap"><div class="col"><h1>Tell us</h1>'
             f'<p class="lede">{inline(about)}</p><p class="lcopy">{inline(tell)}</p>'
-            f'<p><a class="btn" href="{ISSUES}">Open an issue</a> <a class="btn ghost" href="mailto:fred@hazeydata.ai">fred@hazeydata.ai</a></p>'
-            '</div></div></section>')
+            f'<p class="actions"><a class="btn" href="{ISSUES}">Open an issue</a><a class="btn ghost" href="mailto:fred@hazeydata.ai">Email Fred</a></p>'
+            '</div></div></section>' + cta_end(ctx, "Tell us end"))
 
 
-def field_page(ctx, prefix):
-    """Kicker, Title (h1), Intro, then each (ID) field; the ID is structure only and never rendered."""
+def field_page(ctx, prefix, aside="", hero_extra="", end_key=None, after_first=""):
+    """Kicker, Title (h1), Intro, then each (ID) field as a label|text row; the ID is structure only and never rendered."""
     d = ctx.doc
-    out = [f'<section class="hero"><div class="wrap"><div class="col"><p class="kicker">{e(d.field(prefix, "Kicker"))}</p>'
-           f'<h1>{e(d.field(prefix, "Title"))}</h1>']
+    top = f'<p class="kicker">{e(d.field(prefix, "Kicker"))}</p><h1>{e(d.field(prefix, "Title"))}</h1>'
     bl = d.blocks(prefix)
     intro = [t for _, t in bl if t.startswith("**Intro:**")]
     if intro:
-        out.append(f'<p class="lede">{inline(intro[0].split(":**", 1)[1].strip())}</p>')
-    out.append('</div></div></section><section><div class="wrap"><div class="col prose">')
+        top += f'<p class="lede">{inline(intro[0].split(":**", 1)[1].strip())}</p>'
+    out = [hero(top + hero_extra, "", aside), '<section><div class="wrap"><div class="prose fields">']
     for kind, t in bl:
         m = re.match(r"^\*\*([A-Za-z][A-Za-z -]*?)(?: \(([^)]*)\))?:\*\*\s*(.*)$", t)
         if m and m.group(1) in ("Kicker", "Title", "Intro"):
             continue
         if m:
             label = m.group(2) or (None if re.fullmatch(r"[A-Z]+-[A-Z]+", m.group(1)) else m.group(1))   # IDs are structure only
-            out.append((f"<h2>{e(label)}</h2>" if label else "") + f"<p>{inline(m.group(3))}</p>")
+            out.append(f'<div class="field">{f"<h2>{e(label)}</h2>" if label else ""}<p>{inline(m.group(3))}</p></div>')
         else:
-            out.append(f"<p>{inline(t)}</p>")
+            out.append(f'<div class="field"><p>{inline(t)}</p></div>')
+    if after_first and len(out) > 2:
+        out.insert(3, after_first)
     out.append("</div></div></section>")
+    if end_key:
+        out.append(cta_end(ctx, end_key))
     return "".join(out)
 
 
 def newsletter_body(ctx):
     line = next(l.strip() for l in ctx.doc.lines("Layout slot: newsletter") if l.strip())
     return ('<section class="hero"><div class="wrap"><div class="col"><p class="kicker">Newsletter</p><h1>Newsletter</h1>'
-            f'<p class="lede">{inline(line)}</p>{ctx.newsletter}</div></div></section>')
+            f'<p class="lede">{inline(line)}</p><div class="cta cta-news" id="signup">'
+            f'<p class="cta-lead">{e(ctx.doc.field("CTA boxes", "Newsletter box"))}</p>{ctx.newsletter}</div></div></div></section>')
 
 
 # ---------------------------------------------------------------- shell
@@ -465,5 +509,9 @@ def slots(ctx):
         "not_tested": section_not_tested(ctx), "details": section_details(ctx), "sponsor": section_sponsor(ctx),
         "prices_body": prices_body(ctx), "methodology_body": methodology_body(ctx), "data_body": data_body(ctx),
         "tell_us_body": tell_us_body(ctx), "newsletter_body": newsletter_body(ctx),
-        "disclosures_body": field_page(ctx, "Disclosures page"), "sponsors_body": field_page(ctx, "Sponsors page"),
+        "disclosures_body": field_page(ctx, "Disclosures page", aside=cta_card(ctx), end_key="Disclosures end",
+                                       hero_extra=f'<p class="inline-links"><a href="{ISSUES}">Open an issue</a> · <a href="mailto:fred@hazeydata.ai">Email fred@hazeydata.ai</a></p>'),
+        "sponsors_body": field_page(ctx, "Sponsors page", end_key="Sponsors end",
+                                    after_first=f'<div class="cta cta-inline"><p class="cta-lead">{e(d.field("CTA boxes", "Sponsors top"))}</p>'
+                                               '<a class="btn" href="mailto:fred@hazeydata.ai">Email Fred</a></div>'),
     }
