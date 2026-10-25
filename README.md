@@ -26,7 +26,7 @@ Re-pin data: `./sync_data.sh <full 40-hex agentwebindex sha> [repo-url-or-path] 
 `tests/data_pin_manifest.json` through `tools/data_manifest.py`), then edit `pins.json` `data` to the same sha. `data/_upstream/SOURCE` always records a URL, never a local path: with a local clone as the second
 argument it records the third argument, else `$AWI_RECORD_URL`, else `https://github.com/hazeydata/agentwebindex.git`. A sha that is on no branch
 (a PR head) is fetched by sha. Current pin: data `303efdf4` (agentwebindex main, merge commit of #25 whose head 8ab7ccc re-verified Tavily 2026-10-24).
-Charts pin: agentwebindex-meta `2e6e0cb` (`cycles/2026-10-24-page-redo/her/her-*.svg`, re-rendered at data 303efdf4; source line checked by `test_chart_source_line_names_data_pin`; titles removed from the SVGs, root `role=img` + `aria-label`; no hard-coded heights). Copy pin: `AWI-PAGE-POLISH-001 copy-cuts.md`.
+Charts pin: agentwebindex-meta `b748147` (350 variants re-rendered so chart text is >=12px at 390; `cycles/2026-10-24-page-redo/her/her-*.svg`, re-rendered at data 303efdf4; source line checked by `test_chart_source_line_names_data_pin`; titles removed from the SVGs, root `role=img` + `aria-label`; no hard-coded heights). Copy pin: `AWI-PAGE-POLISH-001 copy-cuts.md`.
 Re-pin copy/charts: replace `content/copy.md`, `content/chart-alt.md` or `src/charts/*` and update the sha256 values in `pins.json`.
 Never hand-edit `data/`.
 - `content/chart-alt.md` holds only the `## Alt text` section of Her?'s `QUERIES.md` (agentwebindex-meta 2c28c0a, `cycles/2026-10-24-page-redo/her/QUERIES.md`),
@@ -77,8 +77,8 @@ Page polish (AWI-PAGE-POLISH-001):
   end box (`.cta.cta-end`). The hero signup button links to `#signup-end` on pages that have the end form (only Results), otherwise to
   `/newsletter/` (`test_hero_button_target`). Data and Disclosures hero cards are not signups (`.cta-info`): Data holds the latest.json/latest.csv
   buttons, Disclosures the Open an issue / Email links, each under one lead-in from copy-cuts "Hero card lead-ins" (`test_hero_lead_ins_from_copy_cuts`). Lead-ins and the button label come from the `## CTA boxes` section of `content/copy.md`; the button text is
-  exactly "Get the results by email" on every page (`test_cta_label_same_on_every_page`). Buttons use `--acc`/`--acc-tint`, links `--link`;
-  cyan is only for charts and focus.
+  exactly "Get the results by email" on every page (`test_cta_label_same_on_every_page`). Buttons use `--acc` with `--on-acc` text, links `--link`; brand, nav current and the h1 underline use `--acc-tint`;
+  the skip link uses `--acc`/`--on-acc`. `--cyan` is only for charts and focus outlines (`test_cyan_only_charts_and_focus`).
 - Methodology: each step is `<li id="m-…"><h2>label</h2><p>text</p></li>` in a `56px minmax(0, 68ch)` grid with every child in column 2. The old
   `<b>label</b> text` markup put the bare text node into the 48px number column as an anonymous grid item (~55px wide paragraphs).
 - Layout: 64px section padding (48px under 768px), 80px only on major Results/Methodology sections; mobile header: 8px vertical padding, 44px
@@ -88,10 +88,12 @@ Page polish (AWI-PAGE-POLISH-001):
 - Lindsay's final copy-cuts.md is recorded by `pins.json` `copy_cuts_sha256` (not vendored: it quotes the retired Prices label);
   `content/copy.md` carries the strings. Methodology limits: the Firecrawl sentence is Lindsay's AC-10 ruling (it differs from copy-cuts item 9).
 - Guards in `test_dist.Polish`: numbers on each page are a subset of `tests/numbers_baseline.json` (built from main 385a6e3, chart SVGs
-  excluded), unranked Results rows equal to what the data pin produces, in main's order (`tests/results_rows_baseline.json`; 3 at 303efdf4: Exa, Tavily, Browserless), no raw hex in button rules (`--on-acc` token), neither excluded provider name (the AC-4 list; the test assembles its pattern so the repo itself stays clean) in any tracked file or `dist/` file, the Tavily claim once
+  excluded), unranked Results rows equal to what the data pin produces, in main's order (`tests/results_rows_baseline.json`; at 303efdf4: run summary 3 rows (Exa, Tavily, Browserless) and the full Every row table 11 rows / 4 providers, Apify 2 rows), no raw hex in button rules (`--on-acc` token), neither excluded provider name (the AC-4 list; the test assembles its pattern so the repo itself stays clean) in any tracked file or `dist/` file, the Tavily claim once
   (in `#run`) and "No provider pays us" once (Disclosures), chart `<h3>` == every SVG root `aria-label`, no trailing period.
   `browser_check.check_layout`: header <=88px with 8px padding at 390, run-row values Plex Mono 13px <=2 lines, Methodology paragraphs >=480px (1440) / >=300px (390), signup iframe fills its box and
   is >=240px tall, hero CTA top <=420px (1440) / <=560px (390).
+  Every visible `main p` except `.headline` is capped at 68ch of its own font (AC-20; also `test_prose_max_width_68ch`), and every rendered
+  chart `<text>` is >=12px at 390 (font-size x screen CTM scale; 390 runs with overlay scrollbars as on phones).
 
 PR proof map: `python3 tools/proof_map.py` prints the "Proof by AC" section with line numbers read from the test names.
 
