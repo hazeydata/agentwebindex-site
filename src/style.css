@@ -71,11 +71,13 @@ nav.top a:hover { color: var(--text); }
 .theme-toggle { width: var(--hit); height: var(--hit); display: inline-flex; align-items: center; justify-content: center; background: none; color: var(--text); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .theme-toggle svg { width: 22px; height: 22px; display: none; }
 .theme-toggle[data-mode=light] .i-sun, .theme-toggle[data-mode=dark] .i-moon, .theme-toggle[data-mode=auto] .i-auto { display: block; }
-@media (max-width: 767.98px) {   /* 2 rows, header <= 88px (Tobias addendum 5): 44px brand row + 44px nav row, rule drawn as a shadow */
+@media (max-width: 767.98px) {   /* 2 rows, header <= 88px with 8px vertical padding (addendum 5, CEO R-5): 8 + 44 brand row + 28 nav row + 8.
+     Nav links keep a 44px hit area: the nav row has -8px block margins, so each link box spans into the padding below and 8px into the
+     brand row's left side (the toggle sits at the right edge, so no two targets overlap). Rule drawn as a shadow. */
   .site-header { border-bottom: 0; box-shadow: 0 1px 0 var(--line); }
-  .site-header .wrap { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .site-header .wrap { display: grid; grid-template-columns: 1fr auto; align-items: center; padding-top: var(--s0); padding-bottom: var(--s0); }
   .brand { min-height: var(--hit); }
-  nav.top { grid-column: 1 / -1; grid-row: 2; }
+  nav.top { grid-column: 1 / -1; grid-row: 2; margin: calc(-1 * var(--s0)) 0; }
   nav.top ul { column-gap: var(--s1); flex-wrap: nowrap; }
   nav.top a { font-size: .9375rem; padding: 0; }
 }
@@ -112,7 +114,7 @@ main section h2 { margin-bottom: var(--s2); }
 /* charts: four inlined <svg> per chart (R9), CSS shows exactly one (>=768px the 720 file, below it the 350 file; dark default) */
 .chart { margin: var(--s2) 0 0; }
 .chart h3 { margin-bottom: var(--s1); max-width: 45ch; }
-.chart figcaption { margin-top: var(--s1); color: var(--muted); font-size: var(--fs-1); max-width: 65ch; }
+.notes .footnote { color: var(--muted); font-size: var(--fs-1); line-height: 20px; }   /* chart footnotes live in Notes (addendum 9) */
 .ch { display: none; max-width: 100%; height: auto; }
 .ch svg { display: block; width: 100%; height: auto; }
 .ch-720 { max-width: 720px; }
@@ -190,7 +192,7 @@ h1 { font-size: 2.25rem; line-height: 44px; } h2 { font-size: 1.75rem; line-heig
   .hero { padding: var(--s6) 0 var(--s5); }
   main > section.major, #run, #pass-rate, #cost { padding: calc(var(--s5) + var(--s1)) 0; }   /* 80px: major sections, Results and Methodology only */
 }
-.sub, .chart figcaption, .cta-lead { font-size: var(--fs-1); line-height: 20px; }
+.sub, .notes .footnote, .cta-lead { font-size: var(--fs-1); line-height: 20px; }
 
 .hero-grid { display: grid; grid-template-areas: "top" "cta" "rest"; }
 .hero-top, .hero-rest { max-width: 560px; }
@@ -240,3 +242,9 @@ h1 { font-size: 2.25rem; line-height: 44px; } h2 { font-size: 1.75rem; line-heig
 @media (min-width: 768px) { .row.price-row { grid-template-columns: 200px minmax(0, 1fr) 260px; } }
 .checked { white-space: nowrap; }
 @media (max-width: 767.98px) { .row { gap: var(--s0); padding: var(--s1); } .checked { white-space: normal; } }
+
+/* Results run rows at 390 (brief Results 390, CEO R-5): stacked label:value rows, provider label first, values in Plex Mono 13px */
+@media (max-width: 767.98px) {
+  .rows .row { display: grid; grid-template-columns: 1fr; gap: var(--s-1); }
+  .rows .row .val-pass, .rows .row .val-cost { font: 400 13px/20px var(--font-mono); font-variant-numeric: tabular-nums; }
+}
