@@ -780,7 +780,7 @@ class OtherPages(unittest.TestCase):
         s = page("/prices/")
         line = text_of(re.search(r'<p class="lcopy" id="also-priced">(.*?)</p>', s, re.S).group(1))
         self.assertEqual(s.count('id="also-priced"'), 1)
-        self.assertTrue(line.startswith("Also priced, no published results yet: "))
+        self.assertTrue(line.startswith("Priced, not yet tested: "))
         listed = {n.strip() for n in line.split(": ", 1)[1].rstrip(".").split(", ")}
         un = P.untested_providers(PRICING, LATEST, PROVIDERS)
         self.assertEqual(listed, set(un))
@@ -792,7 +792,7 @@ class OtherPages(unittest.TestCase):
         s = text_of(page("/methodology/"))
         rows = {(r["provider"], c): r for c, rr in LATEST["tables"].items() for r in rr if r["run_date"] == LATEST["run_date"]}
         for (pid, cat) in (("exa", "search"), ("tavily", "search"), ("browserless", "scrape")):
-            self.assertIn(f"{NAMES[pid]} {cat} {P.fmt_ms(rows[(pid, cat)]['p50_latency_ms']['v'])}.", s)
+            self.assertRegex(s, re.escape(f"{NAMES[pid]} {cat} {P.fmt_ms(rows[(pid, cat)]['p50_latency_ms']['v'])}") + r"[,.]")
         self.assertIn("Freshness: not measured yet", s)   # the single copy line; no chart, table or id
         self.assertIn("Latency (p50)", s)
 

@@ -10,7 +10,7 @@ Every number below is PENDING FACT CHECK by Lucille. Display rule (owner ruling)
 ## Home: hero
 **Headline:** Which web API gets your agent the right result? We test it and show the logs.
 
-**Lede:** We send the same frozen questions and URLs to each search, scrape and browser API, then publish how often each passed our check, and what that cost. Every result traces to our run logs; prices come from providers' published pricing pages.
+**Lede:** Same frozen questions and URLs for every search, scrape and browser API. We publish each pass rate and its cost, traced to our run logs and providers' published prices.
 
 Built by Fred and his team of AI bots.
 
@@ -19,9 +19,9 @@ Our first $0 free-tier run, on Oct 23, 2026, used frozen test sets.
 
 Tavily passed 69% of our 100 evergreen checks, Exa 40%; Browserless passed 66% of 120 scrape checks.
 
-- **Search, 100 evergreen questions.** Tavily passed our check on 69 of 100 (69%). Exa passed on 40 of 100 (40%).
-- **Cost per 1,000 passed checks, at entry-tier list price.** Tavily $11.59. Exa $17.50. Exa's list price is lower ($7.00 vs $8.00 per 1,000 calls), but it passed fewer checks, so each pass costs more.
-- **Scrape, Browserless.** 150 URLs; 30 skipped by design under Browserless's terms; 79 of 120 tested passed (66%), at $1.90 per 1,000 successful calls.
+- **Search, 100 evergreen questions.**
+- **Cost per 1,000 passed checks, entry-tier list price:** Tavily $11.59, Exa $17.50. Exa lists lower ($7.00 vs $8.00 per 1,000 calls) but passed fewer, so each pass costs more.
+- **Scrape, Browserless:** 79 of 120 tested passed (66%), $1.90 per 1,000 successful calls. 150 URLs; 30 skipped by design under its terms.
 
 One run. Early signal, not a verdict. Older, smaller runs are in Earlier runs below.
 
@@ -33,7 +33,7 @@ How often each API passed our check, on our test set. One dot per API, with the 
 List price divided by passes. A cheap call that misses isn't cheap.
 
 ### Not tested
-Brave's terms forbid benchmarking, so we don't test it. Bright Data's collector is ready but hasn't run. Firecrawl had no key for this run. Apify sat out the Oct 23 run to save its free monthly credit for the weekly news runs.
+Brave's terms forbid benchmarking. Bright Data's collector hasn't run yet. Firecrawl had no key this run. Apify skipped Oct 23 to save its free monthly credit for weekly news runs.
 
 ## Earlier runs (collapsed by default)
 **Summary line:** Earlier runs: short news weeks, below or near our minimum. Tap to open.
@@ -58,7 +58,7 @@ Weekly news sets, before the frozen sets, plus Apify and Browserless browser run
 - **Shows:** success_rate per provider for the 2026-10-23 run, one panel for search (search_evergreen) and one for scrape (scrape_urls). Dots, labelled "passed/attempted" and whole percent.
 - **Data:** data/benchmarks/latest.json, tables.search[] and tables.scrape[] where run_date = 2026-10-23; fields provider, set, success_rate.v, passed.v, attempted.v, flags.
 - **File:** assets/charts/awi-pass-rate-{350,720}-{light,dark}.svg
-- **Caption:** Pass rate on our test set, Oct 23, 2026 run. Search: Tavily 69%, Exa 40% (n=100). Scrape: Browserless 66% (79 of 120 tested; 150 URLs, 30 skipped by design under Browserless's terms).
+- **Caption:** Pass rate on our test set, Oct 23, 2026 run. Values in the chart.
 - **Alt text:** Dot chart with 95% intervals, pass rate on our test set, Oct 23, 2026 run. Search, 100 evergreen questions: Tavily 69% (69/100), Exa 40% (40/100). Scrape, 120 of 150 URLs tested, 30 skipped under Browserless's terms: Browserless 66% (79 of 120).
 
 ### Chart 2: Cost per 1,000 passed checks
@@ -67,7 +67,7 @@ Weekly news sets, before the frozen sets, plus Apify and Browserless browser run
 - **Shows:** entry_tier_cost_per_successful_1k per provider, same run, with list price per 1,000 calls as an open dot.
 - **Data:** data/benchmarks/latest.json, same rows; fields entry_tier_cost_per_successful_1k.v and .display, entry_tier_cost_per_1k.v and .display, tier, lower_bound. Price sources in data/prices/{exa,tavily,browserless}.json.
 - **File:** assets/charts/awi-cost-per-success-{350,720}-{light,dark}.svg
-- **Caption:** What 1,000 passed checks cost at entry-tier list price. Free credits don't lower it.
+- **Caption:** Cost of 1,000 passed checks at entry-tier list price. Free credits don't count.
 - **Alt text:** Dot chart. Cost per 1,000 passed checks at entry-tier list price: Exa $17.50, Tavily $11.59, Browserless (scrape) $1.90. Open dots show list price per 1,000 calls: Exa $7.00, Tavily $8.00, Browserless $1.25.
 
 ### Chart 3 (optional, skipped by dataviz): Prices
@@ -79,33 +79,33 @@ Weekly news sets, before the frozen sets, plus Apify and Browserless browser run
 - **Alt text:** Dot chart of list price per 1,000 calls: Exa $7.00, Tavily $8.00, Browserless $1.25, with dots marking dates their pricing pages changed.
 
 ## Methodology and limits
-**How we test.** Each provider gets the same frozen set. Evergreen search (100 questions) passes on one check per question: the exact expected URL in the top 10 (42 questions), the expected domain in the top 5 (15), or the expected text in a top-5 title or snippet (43). News search passes on the expected URL in the top 10, or a same-outlet article in the top 5, published within 72 h. Scrape passes when the expected content marker is found, the text meets a minimum length, and there's no challenge page.
+**How we test.** Same frozen set for each provider. Evergreen search (100 questions), one check each: exact URL in the top 10 (42), domain in the top 5 (15), or text in a top-5 title or snippet (43). News search: expected URL in the top 10, or a same-outlet article in the top 5 published within 72 h. Scrape: content marker found, minimum length met, no challenge page.
 
-**What a check is.** For search: the exact URL, the right domain, or the right text. For scrape: content, length and no challenge page.
+**What a check is.** Search: exact URL, right domain or right text. Scrape: content, length, no challenge page.
 
-**Pass rate on our test set** is passed divided by attempted. Attempted leaves out calls skipped under a provider's terms and HTTP 429 rate-limited calls.
+**Pass rate on our test set** = passed ÷ attempted. Attempted excludes calls skipped under a provider's terms and HTTP 429 rate-limited calls.
 
-**Scrape set.** 150 URLs; 30 skipped by design under Browserless's terms; 79 of 120 tested passed. The 30 are the anti-bot URLs, which Browserless's terms forbid, so this score never faced anti-bot pages.
+**Scrape set.** 150 URLs; 79 of 120 tested passed. The 30 skipped are anti-bot URLs, which Browserless's terms forbid, so this score never faced anti-bot pages.
 
-**Grading.** Search is re-graded with grader canon-2026-10-20. Scrape and browser are scored straight from the run log.
+**Grading.** Search re-graded with grader canon-2026-10-20. Scrape and browser scored straight from the run log.
 
-**Cost.** Entry-tier list price read from each provider's pricing page, with the date we last checked it: list price times calls, divided by passes. Free credits never lower it.
+**Cost.** Entry-tier list price from each provider's pricing page, dated when we last checked: list price × calls ÷ passes. Free credits never lower it.
 
 **Freshness:** not measured yet (one probe, 16 queries); coming once re-probes run.
 
-**Latency (p50), Oct 23, 2026 run.** Exa search 1,262 ms. Tavily search 1,632 ms. Browserless scrape 1,618 ms. Yours will differ.
+**Latency (p50), Oct 23, 2026 run:** Exa search 1,262 ms, Tavily search 1,632 ms, Browserless scrape 1,618 ms. Yours will differ.
 
 **Limits, plainly.**
 - One run, Oct 23, 2026. The plan is three runs a week, averaged. We're not there yet.
-- Four providers have rows in these results (Exa, Tavily, Browserless, Apify). Firecrawl ran on Oct 15, 2026, but its row isn't shown: rate limits hit 6 of its 16 calls, over our 20% cutoff. Of the other ten, eight aren't on our month-one free-tier list, Brave's terms forbid benchmarking, and Bright Data's collector hasn't run yet.
+- Four providers have rows: Exa, Tavily, Browserless, Apify. Firecrawl ran Oct 15, 2026, but rate limits hit 6 of its 16 calls, over our 20% cutoff, so its row is hidden. Of the other ten: eight aren't on our month-one free-tier list, Brave's terms forbid benchmarking, Bright Data's collector hasn't run.
 - A pass means the result passed our check. It says nothing about the quality of the rest of the results.
 
-Every result traces to our run logs; prices come from providers' published pricing pages. If one is wrong, it's on us, and we'll say so here.
+Results trace to our run logs; prices to providers' published pricing pages. If one is wrong, that's on us, and we'll say so here.
 
 ## About and tell us
 AgentWebIndex is built by Fred and his team of AI bots at HazeyData. No paid placement: sponsors appear only in labelled slots.
 
-**Tell us.** Spot a wrong number, a missing provider, or a test that's unfair? [Open an issue](https://github.com/hazeydata/agentwebindex-site/issues) and we'll fix it in public. Or email fred@hazeydata.ai.
+Spot a wrong number, a missing provider or an unfair test? [Open an issue](https://github.com/hazeydata/agentwebindex-site/issues) and we'll fix it in public, or email fred@hazeydata.ai.
 
 ## Data page
 The latest benchmark table is free to download today as CSV and JSON, under CC BY 4.0. Credit "AgentWebIndex" with a link.
@@ -120,10 +120,25 @@ Get updates. Sign up below.
 List prices are read from each provider's pricing page, with the date we last checked shown. Free credits never lower a cost.
 
 ## Prices page: also priced
-Also priced, no published results yet: Brave Search API, Linkup, Parallel, Serper, Firecrawl, Jina Reader, Bright Data Web Unlocker, Hyperbrowser, ScrapingBee, Browserbase, Steel.
+Priced, not yet tested: Brave Search API, Linkup, Parallel, Serper, Firecrawl, Jina Reader, Bright Data Web Unlocker, Hyperbrowser, ScrapingBee, Browserbase, Steel.
 
 ## Layout slot: methodology lede (optional, 200 chars max)
-Same frozen sets for every provider. A pass means the result passed our check. Every result traces to our run logs; prices come from providers' published pricing pages. Limits are listed below.
+Same frozen sets for every provider. A pass means the result passed our check. Results trace to our run logs; prices to providers' pricing pages. Limits below.
+
+## CTA boxes (AWI-PAGE-POLISH-001, Lindsay copy-cuts.md)
+**Button:** Get the results by email
+**Results top:** New runs, logs and prices, straight to your inbox.
+**Results end:** One email when a new run lands.
+**Prices top:** Prices change. We'll tell you when.
+**Prices end:** New prices and new runs, by email.
+**Methodology top:** Method changes go out by email first.
+**Methodology end:** Want the next run's logs?
+**Data end:** Hear when a new file drops.
+**Disclosures end:** New runs and any corrections, by email.
+**Newsletter box:** New runs, logs and prices. One email per run.
+**Sponsors top:** Want a labelled sponsor slot? Let's talk.
+**Sponsors end:** Not sponsoring? Get the results instead.
+**Tell us end:** Like the fixes? Get the next run.
 
 ## Disclosures page (fact-cleared, Lucille 6ae70a3)
 **Kicker:** Who pays us, if anyone
@@ -131,13 +146,13 @@ Same frozen sets for every provider. A pass means the result passed our check. E
 
 **Intro:** Short version: nobody. No provider pays us, and there are no sponsors yet. AgentWebIndex is made by Fred and his team of AI bots.
 
-**DISC-SPON (Current and past sponsors):** None yet. No provider pays us.
+**DISC-SPON (Current and past sponsors):** None yet.
 
 **DISC-AFF (Affiliate relationships):** None.
 
 **DISC-CRED (Free credits received):** Costs use list prices. Free credits never lower a cost, so a provider's free tier can't make it look cheaper here.
 
-**Who pays for testing:** We test on our own accounts. Every published result ran within the provider's public free plan. Costs are shown at list price; free credits never lower a cost. No provider pays us.
+**Who pays for testing:** We test on our own accounts, within each provider's public free plan. Costs use list price, not credits.
 
 **DISC-CORR (Corrections changelog):** No corrections yet. If we get one wrong, we'll fix it and log it here.
 

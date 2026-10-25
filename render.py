@@ -118,22 +118,21 @@ def findings(ctx):
     """The three findings bullets as (bold lead, rest) text pairs."""
     s, sc = search_rows(ctx), scrape_rows(ctx)
     n = v(s[0]["attempted"])
-    b1 = (f"Search, {n} evergreen questions.", " ".join(
-        f"{r['_name']} passed {'our check ' if i == 0 else ''}on {kn(r)[0]} of {kn(r)[1]} ({P.fmt_pct(v(r['success_rate']))})." for i, r in enumerate(s)))
+    b1 = (f"Search, {n} evergreen questions.", "")   # pass-rate claim cut as a repeat (copy-cuts item 2); stated once in the #run line
     by_cost = sorted(s, key=cost1k)
-    costs = " ".join(f"{r['_name']} {P.fmt_usd(cost1k(r))}." for r in by_cost)
+    costs = ", ".join(f"{r['_name']} {P.fmt_usd(cost1k(r))}" for r in by_cost) + "."
     cheaper_list = min(s, key=list1k)
     lead = by_cost[0]
     tail = ""
     if len(s) == 2 and cheaper_list is not lead:
-        tail = (f" {cheaper_list['_name']}'s list price is lower ({P.fmt_usd(list1k(cheaper_list))} vs {P.fmt_usd(list1k(lead))} per 1,000 calls), "
-                "but it passed fewer checks, so each pass costs more.")
-    b2 = ("Cost per 1,000 passed checks, at entry-tier list price.", costs + tail)
+        tail = (f" {cheaper_list['_name']} lists lower ({P.fmt_usd(list1k(cheaper_list))} vs {P.fmt_usd(list1k(lead))} per 1,000 calls) "
+                "but passed fewer, so each pass costs more.")
+    b2 = ("Cost per 1,000 passed checks, entry-tier list price:", costs + tail)
     out = [b1, b2]
     for r in sc:
         skip = (r.get("skipped_tos") or {}).get("count") or 0
-        out.append((f"Scrape, {r['_name']}.", f"{r.get('set_rows')} URLs; {skip} skipped by design under {r['_name']}'s terms; "
-                    f"{kn(r)[0]} of {kn(r)[1]} tested passed ({P.fmt_pct(v(r['success_rate']))}), at {P.fmt_usd(cost1k(r))} per 1,000 successful calls."))
+        out.append((f"Scrape, {r['_name']}:", f"{kn(r)[0]} of {kn(r)[1]} tested passed ({P.fmt_pct(v(r['success_rate']))}), {P.fmt_usd(cost1k(r))} per 1,000 successful calls. "
+                    f"{r.get('set_rows')} URLs; {skip} skipped by design under its terms."))
     return out
 
 
@@ -146,19 +145,13 @@ def cost_title(ctx):
 
 
 def pass_caption(ctx):
-    s, sc = search_rows(ctx), scrape_rows(ctx)
-    srch = ", ".join(f"{r['_name']} {P.fmt_pct(v(r['success_rate']))}" for r in s)
-    out = f"Pass rate on our test set, {day_label(ctx.latest['run_date'])} run. Search: {srch} (n={v(s[0]['attempted'])})."
-    for r in sc:
-        skip = (r.get("skipped_tos") or {}).get("count") or 0
-        out += (f" Scrape: {r['_name']} {P.fmt_pct(v(r['success_rate']))} ({kn(r)[0]} of {kn(r)[1]} tested; "
-                f"{r.get('set_rows')} URLs, {skip} skipped by design under {r['_name']}'s terms).")
-    return out
+    # values cut as a repeat (copy-cuts item 5): the chart's data labels and the #run line carry them
+    return f"Pass rate on our test set, {day_label(ctx.latest['run_date'])} run. Values in the chart."
 
 
 def latency_sentence(ctx):
-    """'<Provider> <category> <n> ms.' for each row of the run (p50, whole ms, half up)"""
-    return " ".join(f"{r['_name']} {r['_cat']} {P.fmt_ms(v(r['p50_latency_ms']))}." for r in run_rows(ctx) if v(r.get("p50_latency_ms")) is not None)
+    """'<Provider> <category> <n> ms, ...' for each row of the run (p50, whole ms, half up), comma-joined, ending in '.'"""
+    return ", ".join(f"{r['_name']} {r['_cat']} {P.fmt_ms(v(r['p50_latency_ms']))}" for r in run_rows(ctx) if v(r.get("p50_latency_ms")) is not None) + "."
 
 
 # ---------------------------------------------------------------- Results
@@ -188,7 +181,7 @@ def results_row(ctx, r):
 def section_run(ctx):
     d = ctx.doc
     rows = "".join(results_row(ctx, r) for r in run_rows(ctx))
-    bullets = "".join(f"<li><b>{e(a)}</b> {e(b)}</li>" for a, b in findings(ctx))
+    bullets = "".join(f"<li><b>{e(a)}</b>{' ' + e(b) if b else ''}</li>" for a, b in findings(ctx))
     return ('<section id="run"><div class="wrap"><div class="col">'
             f'<h2>Results, {e(day_label(ctx.latest["run_date"]))} run</h2>'
             f'<p class="lcopy">{e(intro_sentence(ctx))}</p><p class="lcopy strong">{e(headline_sentence(ctx))}.</p></div>'
@@ -364,7 +357,7 @@ def methodology_body(ctx):
             mode = "limits"
         elif mode == "steps":
             if t.startswith("**Latency (p50)"):
-                t = f"**Latency (p50), {day_label(ctx.latest['run_date'])} run.** {latency_sentence(ctx)} Yours will differ."
+                t = f"**Latency (p50), {day_label(ctx.latest['run_date'])} run:** {latency_sentence(ctx)} Yours will differ."
             steps.append(f"<li>{inline(t)}</li>")
         elif kind == "li":
             limits.append(f"<li>{inline(t)}</li>")
@@ -393,7 +386,7 @@ def data_body(ctx):
 
 def tell_us_body(ctx):
     bl = ctx.doc.blocks("About and tell us")
-    about, tell = bl[0][1], next(t for _, t in bl if t.startswith("**Tell us.**"))
+    about, tell = bl[0][1], next(t for _, t in bl if t.startswith("Spot a wrong number"))
     return ('<section class="hero"><div class="wrap"><div class="col"><h1>Tell us</h1>'
             f'<p class="lede">{inline(about)}</p><p class="lcopy">{inline(tell)}</p>'
             f'<p><a class="btn" href="{ISSUES}">Open an issue</a> <a class="btn ghost" href="mailto:fred@hazeydata.ai">fred@hazeydata.ai</a></p>'
