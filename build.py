@@ -26,13 +26,12 @@ EXCLUSION_PUBLIC=("provider","reason","quote","terms_url","checked_at")  # allow
 def newsletter_slot():
     url=(cfg.get("beehiiv_embed_url") or "").strip()
     m=re.match(r"https://subscribe-forms\.beehiiv\.com/([0-9a-f-]{36})/?$",url)
-    if m:   # official beehiiv script embed, plain link fallback without JS
-        fid=m.group(1); u=html.escape(url)
-        return (f'<div class="beehiiv-embed" data-test-id="beehiiv-embed"><script async src="https://subscribe-forms.beehiiv.com/v3/loader.js" '
-                f'data-beehiiv-form="{fid}"></script><noscript><a href="{u}">Subscribe to the newsletter</a></noscript></div>')
-    if url.startswith("https://"):
-        return (f'<iframe class="beehiiv-embed" src="{html.escape(url)}" data-test-id="beehiiv-embed" '
-                'width="100%" height="320" frameborder="0" scrolling="no" style="border:0;max-width:100%"></iframe>')
+    if m or url.startswith("https://"):
+        # Direct iframe, loaded eagerly (AWI-PAGE-POLISH-001 P0): with the v3 loader.js script embed the form at the end of Results
+        # rendered empty. The loader decides when and how big to inject its iframe; a plain eager iframe with a fixed src removes
+        # that dependency. Width 100%, min-height 240px (style.css).
+        return (f'<iframe class="beehiiv-embed" src="{html.escape(url)}" title="Newsletter signup" data-test-id="beehiiv-embed" '
+                'loading="eager" width="100%" height="320" frameborder="0" scrolling="no"></iframe>')
     return ('<form id="signup" onsubmit="return false" aria-disabled="true"><input type="email" placeholder="you@example.com" disabled>'
             '<button disabled>Coming soon</button></form><p class="muted">Placeholder: no form endpoint is connected and nothing is submitted.</p>')
 
