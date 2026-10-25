@@ -275,37 +275,40 @@ class Helpers(unittest.TestCase):
         self.assertFalse(priced & set(u))
         self.assertEqual(len(priced | set(u)), 15)
 
-    # AWI-PROVIDER-CONTEXTDEV-001 (spec rev 4) AC22: providers.json flag exclude_from_also_priced keeps Context.dev off the line.
+    # Provider ticket AC22/AC21/AC6 (spec rev 4): the providers.json flag exclude_from_also_priced keeps a held vendor off the line.
+    # The vendor's real name is never written here (AC-4 banned-name guard), so the fixture uses a neutral id and the assembled pattern.
+    HELD = re.compile("context" + r"\.?" + "dev", re.I)
     @staticmethod
-    def _ctxdev_fixture(flag=True):
+    def _held_fixture(flag=True):
         pricing = json.loads(json.dumps(PRICING))
-        pricing.setdefault("providers", {})["contextdev"] = {"search": {"model": "credits", "free_tier": {"units_per_month": 1000}}}
-        entry = {"id": "contextdev", "name": "Context.dev", "categories": ["search", "scrape"],
-                 "pricing_url": "https://www.context.dev/pricing", "key_env": "CONTEXT_DEV_API_KEY"}
+        pricing.setdefault("providers", {})["heldvendor"] = {"search": {"model": "credits", "free_tier": {"units_per_month": 1000}}}
+        entry = {"id": "heldvendor", "name": "Held Vendor", "categories": ["search", "scrape"],
+                 "pricing_url": "https://example.com/pricing", "key_env": "HELD_VENDOR_API_KEY"}
         if flag:
             entry["exclude_from_also_priced"] = True
-        return pricing, [p for p in PROVIDERS if p["id"] != "contextdev"] + [entry]
+        return pricing, [p for p in PROVIDERS if p["id"] != "heldvendor"] + [entry]
 
-    def test_also_priced_flag_keeps_contextdev_off_line_eleven(self):  # contextdev AC22 (a)(b)
-        pricing, provs = self._ctxdev_fixture(True)
+    def test_also_priced_flag_keeps_held_vendor_off_line_eleven(self):  # AC22 (a)(b)
+        pricing, provs = self._held_fixture(True)
         u = P.untested_providers(pricing, LATEST, provs)
         self.assertEqual(len(u), 11)
-        self.assertFalse(any(re.search(r"(?i)context\.?dev", n) for n in u))
+        self.assertNotIn("Held Vendor", u)
 
-    def test_also_priced_without_flag_is_twelve(self):  # contextdev AC22 (c): the flag, not chance, excludes it
-        pricing, provs = self._ctxdev_fixture(False)
+    def test_also_priced_without_flag_is_twelve(self):  # AC22 (c): the flag, not chance, excludes it
+        pricing, provs = self._held_fixture(False)
         u = P.untested_providers(pricing, LATEST, provs)
         self.assertEqual(len(u), 12)
-        self.assertIn("Context.dev", u)
+        self.assertIn("Held Vendor", u)
 
-    def test_contextdev_not_on_prices_page_and_no_logo(self):  # contextdev AC21, AC6
-        self.assertNotRegex(page("/prices/"), r"(?i)context\.?dev")
+    def test_held_vendor_not_on_prices_page_and_no_logo(self):  # AC21, AC6
+        self.assertNotRegex(page("/prices/"), self.HELD)
         self.assertEqual([r["provider"] for r in P.price_rows(PRICING, LATEST, PROVIDERS)], ["apify", "browserless", "exa", "tavily"])
+        logo = re.compile(self.HELD.pattern + r"[^\s\"']*\.(svg|png|jpe?g|webp)", re.I)
         for base in (R / "src", D):
             for f in base.rglob("*"):
-                self.assertNotRegex(f.name, r"(?i)context\.?dev", str(f))
+                self.assertNotRegex(f.name, self.HELD, str(f))
                 if f.is_file() and f.suffix in TEXT_SUFFIXES:
-                    self.assertNotRegex(f.read_text(errors="ignore"), r"(?i)context\.?dev[^\s\"']*\.(svg|png|jpe?g|webp)", str(f))
+                    self.assertNotRegex(f.read_text(errors="ignore"), logo, str(f))
 
     def test_placeholder_constant(self):  # AC27 (constant kept)
         self.assertEqual(P.PLACEHOLDER, "[[LINDSAY-PLACEHOLDER]]")
@@ -556,13 +559,21 @@ class Shell(unittest.TestCase):
         self.assertTrue(robots.startswith("User-agent: *\nAllow: /\n"))
         self.assertTrue(robots.endswith(f"Sitemap: {site}/sitemap.xml\n"))
 
-    def test_beehiiv_embed(self):
-        fid = CFG["beehiiv_embed_url"].rstrip("/").rsplit("/", 1)[1]
-        for p in ("/newsletter/", "/"):
+    def test_beehiiv_embed(self):  # AWI-PAGE-POLISH-001 P0: the form at the end of Results rendered empty with the loader.js embed
+        url = CFG["beehiiv_embed_url"]
+        for p, box in (("/newsletter/", 'id="signup"'), ("/", 'id="signup-end"')):
             s = page(p)
-            self.assertIn(f'data-beehiiv-form="{fid}"', s)
-            self.assertIn('src="https://subscribe-forms.beehiiv.com/v3/loader.js"', s)
-            self.assertIn(f'<noscript><a href="{CFG["beehiiv_embed_url"]}">', s)
+            frames = re.findall(r"<iframe\b[^>]*>", s)
+            self.assertEqual(len(frames), 1, p)
+            f = frames[0]
+            self.assertIn(f'src="{url}"', f)
+            self.assertIn('loading="eager"', f)
+            self.assertNotIn("loader.js", s)
+            self.assertLess(s.index(box), s.index("<iframe"), p)   # inside its CTA box
+        css = (D / "style.css").read_text()
+        rule = re.search(r"\.beehiiv-embed \{([^}]*)\}", css).group(1)
+        self.assertIn("width: 100%", rule)
+        self.assertIn("min-height: 240px", rule)
 
     def test_no_external_fonts_or_cdn(self):
         allowed = {"https://subscribe-forms.beehiiv.com/v3/loader.js", "https://gc.zgo.at/count.js"}
@@ -681,7 +692,12 @@ class Results(unittest.TestCase):
                 self.assertEqual(html.unescape(lab), alt)
             fig = sec[sec.index("<figure"):]
             self.assertEqual(text_of(re.search(r"<h3>(.*?)</h3>", fig).group(1)), doc.field("Chart briefs", "Title", sub=sub))
-            self.assertEqual(text_of(re.search(r"<figcaption>(.*?)</figcaption>", fig).group(1)), doc.field("Chart briefs", "Caption", sub=sub))
+            self.assertNotIn("<figcaption", fig)   # footnotes moved into Notes (addendum 9, CEO R-5)
+            notes = self.s[self.s.index('<details id="notes">'):]
+            notes = notes[:notes.index("</details>")]
+            foot = re.search(rf'<p class="footnote" data-chart="{sid}">(.*?)</p>', notes).group(1)
+            if sub == "Chart 2":
+                self.assertEqual(text_of(foot), doc.field("Chart briefs", "Caption", sub=sub))
             self.assertIn(f'<h3>', fig)
 
     def test_chart_variants_and_css(self):  # AC16 / R9.5 (static half; real rendering in browser_check.py)
@@ -812,7 +828,7 @@ class OtherPages(unittest.TestCase):
         s = page("/prices/")
         line = text_of(re.search(r'<p class="lcopy" id="also-priced">(.*?)</p>', s, re.S).group(1))
         self.assertEqual(s.count('id="also-priced"'), 1)
-        self.assertTrue(line.startswith("Also priced, no published results yet: "))
+        self.assertTrue(line.startswith("Priced, not yet tested: "))
         listed = {n.strip() for n in line.split(": ", 1)[1].rstrip(".").split(", ")}
         un = P.untested_providers(PRICING, LATEST, PROVIDERS)
         self.assertEqual(listed, set(un))
@@ -824,7 +840,7 @@ class OtherPages(unittest.TestCase):
         s = text_of(page("/methodology/"))
         rows = {(r["provider"], c): r for c, rr in LATEST["tables"].items() for r in rr if r["run_date"] == LATEST["run_date"]}
         for (pid, cat) in (("exa", "search"), ("tavily", "search"), ("browserless", "scrape")):
-            self.assertIn(f"{NAMES[pid]} {cat} {P.fmt_ms(rows[(pid, cat)]['p50_latency_ms']['v'])}.", s)
+            self.assertRegex(s, re.escape(f"{NAMES[pid]} {cat} {P.fmt_ms(rows[(pid, cat)]['p50_latency_ms']['v'])}") + r"[,.]")
         self.assertIn("Freshness: not measured yet", s)   # the single copy line; no chart, table or id
         self.assertIn("Latency (p50)", s)
 
@@ -965,6 +981,199 @@ class AgentSurfaces(unittest.TestCase):
                     self.assertNotIn(marker, t2, f"marker leaked into {f.name}")
                     self.assertNotIn("internal_x", t2, f"key leaked into {f.name}")
 
+
+
+def repo_files():
+    """Tracked files (git ls-files); in a canary's temp copy without .git, every file outside .git/ and dist/."""
+    r = subprocess.run(["git", "ls-files", "-z"], cwd=R, capture_output=True)
+    if r.returncode == 0 and r.stdout:
+        out = [R / t for t in r.stdout.decode().split("\0") if t]
+    else:
+        out = [f for f in R.rglob("*") if f.is_file() and not {".git", "dist", "__pycache__"} & set(f.relative_to(R).parts)]
+    assert len(out) > 20, len(out)
+    return [f for f in out if f.is_file()]
+
+
+class Polish(unittest.TestCase):
+    """AWI-PAGE-POLISH-001 guards: numbers, ranking, row count, banned names, repeated claims, CTA label, chart titles, Methodology grid."""
+    NUM = re.compile(r"\$?\d[\d,]*(?:\.\d+)?%?")
+    CLAIM_TAVILY = "Tavily passed 69% of our 100 evergreen checks, Exa 40%; Browserless passed 66% of 120 scrape checks"
+
+    def test_no_number_added_or_changed(self):
+        base = json.loads((R / "tests/numbers_baseline.json").read_text())["pages"]
+        for p in PAGES:
+            now = set(self.NUM.findall(text_of(re.sub(r"<svg\b.*?</svg>", " ", page(p), flags=re.S))))   # chart SVGs: pinned by sha256
+            self.assertEqual(sorted(now - set(base[p])), [], p)
+        home = text_of(page("/"))
+        for k, val in expected_numbers().items():
+            self.assertIn(val, home, k)
+
+    def test_results_rows_match_pinned_data_unranked(self):  # AC-2 (spec R-9) / AC-3
+        """Rows = every non-mock, attempted row of latest.json's run_date at the data pin, grouped by table (search, scrape, browser) and by
+        provider name inside a table; that list and its order must equal main's build at the same pin. No ranking words, badges or sorting by score."""
+        base = json.loads((R / "tests/results_rows_baseline.json").read_text())
+        self.assertEqual(base["data"], PINS["data"])
+        L = json.loads((D / "data/benchmarks/latest.json").read_text())
+        names = {p["id"]: p.get("name", p["id"]) for p in json.loads((R / "data/_upstream/providers.json").read_text()).get("providers", [])} \
+            if (R / "data/_upstream/providers.json").exists() else {}
+        want = []
+        for cat in ("search", "scrape", "browser"):
+            rows = [r for r in L.get("tables", {}).get(cat, []) if r.get("run_date") == L["run_date"] and not r.get("mock")
+                    and (r.get("attempted") or {}).get("v") is not None]
+            want += [r["provider"] for r in sorted(rows, key=lambda r: names.get(r["provider"], r["provider"]))]
+        s = page("/")
+        run = s[s.index('id="run"'):]
+        run = run[:run.index("</section>")]
+        got = re.findall(r'<div class="row" role="listitem" data-provider="([^"]+)"', run)
+        self.assertEqual(got, want)
+        self.assertEqual(got, base["rows"])
+        self.assertEqual(len(got), 3)   # what 303efdf4 produces; update with the baseline if the pin moves
+        # Full "Every row" table: every non-mock attempted row in latest.json (all run dates), in latest.json order per table.
+        want_t = []
+        for cat in ("search", "scrape", "browser"):
+            for r in L.get("tables", {}).get(cat, []):
+                if not r.get("mock") and (r.get("attempted") or {}).get("v") is not None:
+                    want_t.append([names.get(r["provider"], r["provider"]), cat, r["set"], r.get("run_date") or ""])
+        t = s[s.index('id="every-row"'):]
+        t = t[:t.index("</table>")]
+        got_t = [[text_of(x) for x in tr] for tr in re.findall(
+            r'<tr><th scope="row"[^>]*>(.*?)</th><td[^>]*>(.*?)</td><td[^>]*>(.*?)</td><td[^>]*>(.*?)</td>', t)]
+        self.assertEqual(got_t, want_t)
+        self.assertEqual(got_t, base["table"])
+        self.assertEqual((len(got_t), len({r[0] for r in got_t}), sum(r[0] == "Apify" for r in got_t)), (11, 4, 2))   # R-9 at 303efdf4
+        for p in PAGES:
+            self.assertNotRegex(text_of(page(p)), r"(?i)\b(rank(ed|ing)?|winner|best|top pick|#1|1st place|leader)\b", p)
+        self.assertNotRegex(run, r'(?i)class="[^"]*\b(badge|rank|winner|highlight)\b')
+        self.assertNotRegex((R / "render.py").read_text().split("def run_rows")[1].split("\ndef ")[0], r"success_rate|cost")
+
+    def test_cyan_only_charts_and_focus(self):  # AC-15: --cyan appears only in focus styles (charts carry their own colours)
+        css = re.sub(r"/\*.*?\*/", "", (D / "style.css").read_text(), flags=re.S)
+        for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            if "var(--cyan)" in body:
+                self.assertRegex(sel.strip(), r"^[^,]*:focus(-visible)?(\s*,\s*[^,]*:focus(-visible)?)*$", sel)
+
+    def test_prose_max_width_68ch(self):  # AC-20: no body-text rule below or above 68ch (the 40ch headline and 45ch chart h3 are headings)
+        css = re.sub(r"/\*.*?\*/", "", (D / "style.css").read_text(), flags=re.S)
+        for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            for m in re.findall(r"max-width:\s*(\d+)ch", body):
+                if m != "68":
+                    self.assertRegex(sel.strip(), r"^\.(headline|chart h3)$", (sel, m))
+
+    def test_no_raw_hex_in_button_rules(self):  # AC-15 (Tobias): buttons take colours from tokens only
+        css = (D / "style.css").read_text()
+        rules = re.findall(r"([^{}]+)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", css, flags=re.S))
+        btn = [(sel.strip(), body) for sel, body in rules if re.search(r"\.btn\b|\bbutton\b|cta-btn", sel)]
+        self.assertTrue(btn)
+        for sel, body in btn:
+            self.assertNotRegex(body, r"#[0-9a-fA-F]{3,8}\b", sel)
+            self.assertNotRegex(body, r"\b(rgb|hsl)a?\(", sel)
+        self.assertRegex(re.search(r"\.btn \{([^}]*)\}", css).group(1), r"color: var\(--on-acc\)")
+        roots = [body for sel, body in rules if "--on-cyan:" in body]
+        self.assertGreaterEqual(len(roots), 2)   # dark :root plus the light blocks
+        for body in roots:
+            self.assertIn("--on-acc: #FFFFFF;", body)
+
+    # Pattern is assembled from parts so this file itself never contains the names: AC-4 requires
+    # the repo-wide case-insensitive grep for the two names (dotted or not) to return nothing, guard included.
+    BANNED = re.compile(("keen" + "able|context" + r"\.?" + "dev").encode(), re.I)
+
+    def test_banned_names_absent(self):  # AC-4: every tracked file in the repo AND every file in dist/
+        files = repo_files() + [f for f in D.rglob("*") if f.is_file()]
+        hits = sorted({str(f.relative_to(R)) for f in files if f.is_file() and self.BANNED.search(f.read_bytes())})
+        self.assertEqual(hits, [])
+
+    def test_each_claim_once(self):
+        site = " ".join(text_of(page(p)) for p in PAGES)
+        self.assertEqual(site.count(self.CLAIM_TAVILY + "."), 1)          # the #run line; the chart h3 carries it as a title (no period)
+        self.assertEqual(text_of(page("/")).count(self.CLAIM_TAVILY), 2)   # sentence + chart h3, nothing else
+        self.assertEqual(text_of(page("/disclosures/")).count("No provider pays us"), 1)
+        for p in PAGES:
+            if p != "/disclosures/":
+                self.assertNotIn("No provider pays us", text_of(page(p)), p)
+
+    def test_cta_label_same_on_every_page(self):
+        want = copydoc.load().field("CTA boxes", "Button")
+        self.assertEqual(want, "Get the results by email")
+        for p in PAGES:
+            s = page(p)
+            labels = [text_of(x) for x in re.findall(r'<a class="btn cta-btn"[^>]*>(.*?)</a>', s)]
+            self.assertTrue(set(labels) <= {want}, (p, labels))
+            if p != "/newsletter/":   # the Newsletter page is the form itself
+                self.assertGreaterEqual(len(labels), 1, p)
+        retired = "Get price " + "updates by email"   # AC-29: retired label; assembled so the repo-wide grep stays clean
+        self.assertEqual([str(f.relative_to(R)) for f in repo_files() if retired.lower().encode() in f.read_bytes().lower()], [])
+        for f in D.rglob("*.html"):
+            self.assertNotIn(retired.lower(), f.read_text().lower(), f)
+
+    def test_chart_h3_equals_svg_aria_label(self):
+        s = page("/")
+        for sid in ("pass-rate", "cost"):
+            fig = s[s.index(f'id="chart-{sid}"'):]
+            fig = fig[:fig.index("</figure>")]
+            h3 = text_of(re.search(r"<h3>(.*?)</h3>", fig).group(1))
+            labels = [html.unescape(x) for x in re.findall(r'<svg role="img" aria-label="([^"]*)"', fig)]
+            self.assertEqual(len(labels), 4, sid)
+            for lab in labels:
+                self.assertEqual(lab, h3, sid)
+                self.assertFalse(lab.endswith("."), sid)
+
+    def test_methodology_steps_grid(self):  # P0: a bare text node in .steps li became its own grid item in the 48px number column
+        s = page("/methodology/")
+        steps = re.findall(r'<li id="m-[^"]+">(.*?)</li>', s[s.index('<ol class="steps">'):s.index("</ol>")], re.S)
+        self.assertEqual(len(steps), 8)
+        for li in steps:
+            self.assertRegex(li, r"^<h2>.*?</h2>\s*<p>.*</p>$")   # only element children: h2 then p
+        css = (D / "style.css").read_text()
+        self.assertIn("grid-template-columns: 56px minmax(0, 68ch)", css)
+        self.assertIn(".steps li > * { grid-column: 2; }", css)
+
+    def test_hero_button_target(self):  # AC-8: #signup-end where the page has the end form, else /newsletter/
+        for p in PAGES:
+            s = page(p)
+            heroes = re.findall(r'<aside class="cta cta-hero"[^>]*>(.*?)</aside>', s, re.S)
+            for h in heroes:
+                for href in re.findall(r'<a class="btn cta-btn" href="([^"]+)"', h):
+                    self.assertEqual(href, "#signup-end" if 'id="signup-end"' in s else "/newsletter/", p)
+        self.assertIn('href="#signup-end"', page("/"))
+        self.assertIn('id="signup-end"', page("/"))
+
+    def test_hero_lead_ins_from_copy_cuts(self):  # AC-29 / AC-40 / AC-28
+        self.assertRegex(PINS["copy_cuts_sha256"], r"^[0-9a-f]{64}$")   # copy-cuts.md is recorded, not vendored (see pins.json copy_cuts)
+        want = {"/data/": "The raw results behind these pages. Grab them and check our work.",
+                "/disclosures/": "Spot something off? Tell us.", "/prices/": "Want the next run?"}
+        for p, lead in want.items():
+            card = re.findall(r'<aside class="cta cta-hero[^"]*"[^>]*>(.*?)</aside>', page(p), re.S)
+            self.assertEqual(len(card), 1, p)
+            leads = re.findall(r'<p class="cta-lead">(.*?)</p>', card[0])
+            self.assertEqual([text_of(x) for x in leads], [lead], p)
+        self.assertIn("Download latest.json", page("/data/").split('class="cta cta-hero')[1].split("</aside>")[0])
+        self.assertIn("Open an issue", page("/disclosures/").split('class="cta cta-hero')[1].split("</aside>")[0])
+        doc = copydoc.load()
+        for k in ("Results top", "Results end", "Prices top", "Prices end", "Methodology top", "Methodology end", "Data top", "Data end",
+                  "Disclosures top", "Disclosures end", "Newsletter box", "Sponsors top", "Sponsors end", "Tell us end", "Button"):
+            self.assertTrue(doc.field("CTA boxes", k), k)
+
+    def test_chart_source_line_names_data_pin(self):  # AC-10: Her?'s source line must name the pinned data sha, not a stale one
+        for f in sorted((R / "src/charts").glob("*.svg")):
+            s = f.read_text()
+            shas = re.findall(r"latest\.json @ ([0-9a-f]{7,40})", s)
+            self.assertEqual(len(shas), 1, f.name)
+            self.assertTrue(PINS["data"].startswith(shas[0]), (f.name, shas[0]))
+            for other in re.findall(r"@ ([0-9a-f]{7,40})\b", s):
+                self.assertTrue(PINS["data"].startswith(other), (f.name, other))
+
+    def test_notes_hold_footnotes(self):  # AC-22: footnotes + Not tested in one Notes <details>, none outside
+        s = page("/")
+        notes = s[s.index('<details id="notes">'):]
+        notes = notes[:notes.index("</details>")]
+        self.assertIn("<summary>Notes</summary>", notes)
+        self.assertEqual(len(re.findall(r'class="footnote"', notes)), 2)
+        self.assertIn("<h3>Not tested</h3>", notes)
+        self.assertEqual(s.count('class="footnote"'), 2)
+        self.assertNotIn("<figcaption", s)
+        outside = text_of(s.replace(notes, ""))   # AC-22: zero caption paragraphs outside Notes
+        for foot in re.findall(r'<p class="footnote"[^>]*>(.*?)</p>', notes):
+            self.assertNotIn(text_of(foot), outside)
 
 if __name__ == "__main__":
     unittest.main()

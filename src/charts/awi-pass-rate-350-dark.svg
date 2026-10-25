@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="252pt" height="608.04pt" viewBox="0 0 252 608.04" xmlns="http://www.w3.org/2000/svg" version="1.1">
+<svg role="img" aria-label="Tavily passed 69% of our 100 evergreen checks, Exa 40%; Browserless passed 66% of 120 scrape checks" xmlns:xlink="http://www.w3.org/1999/xlink" width="252pt" height="661.68pt" viewBox="0 0 252 661.68" xmlns="http://www.w3.org/2000/svg" version="1.1">
  <metadata>
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-10-24T14:15:25.168932</dc:date>
+    <dc:date>2026-10-25T01:54:49.292721</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -21,8 +21,8 @@
  </defs>
  <g id="figure_1">
   <g id="patch_1">
-   <path d="M 0 608.04 
-L 252 608.04 
+   <path d="M 0 661.68 
+L 252 661.68 
 L 252 0 
 L 0 0 
 z
@@ -30,10 +30,10 @@ z
   </g>
   <g id="axes_1">
    <g id="patch_2">
-    <path d="M 75.6 201.31875 
-L 176.4 201.31875 
-L 176.4 160.99875 
-L 75.6 160.99875 
+    <path d="M 75.6 160.02 
+L 176.4 160.02 
+L 176.4 119.7 
+L 75.6 119.7 
 z
 " style="fill: #03070f"/>
    </g>
@@ -52,29 +52,29 @@ z
     <g id="ytick_1">
      <g id="line2d_4"/>
      <g id="text_1">
-      <text style="font-size: 8px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="72.1" y="194.197386" transform="rotate(-0 72.1 194.197386)">Exa</text>
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="72.1" y="153.261918" transform="rotate(-0 72.1 153.261918)">Exa</text>
      </g>
     </g>
     <g id="ytick_2">
      <g id="line2d_5"/>
      <g id="text_2">
-      <text style="font-size: 8px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="72.1" y="175.870114" transform="rotate(-0 72.1 175.870114)">Tavily</text>
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="72.1" y="134.934645" transform="rotate(-0 72.1 134.934645)">Tavily</text>
      </g>
     </g>
    </g>
    <g id="wilson-ci">
-    <path d="M 135.448751 171.995114 
-L 153.4382 171.995114 
-" clip-path="url(#pc14dcb7b9e)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+    <path d="M 135.448751 130.696364 
+L 153.4382 130.696364 
+" clip-path="url(#p9ab217dfff)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
    </g>
    <g id="wilson-ci">
-    <path d="M 106.787494 190.322386 
-L 125.798321 190.322386 
-" clip-path="url(#pc14dcb7b9e)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+    <path d="M 106.787494 149.023636 
+L 125.798321 149.023636 
+" clip-path="url(#p9ab217dfff)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
    </g>
    <g id="line2d_6">
     <defs>
-     <path id="mbdb4d197ea" d="M 0 3 
+     <path id="m1434c6d8cf" d="M 0 3 
 C 0.795609 3 1.55874 2.683901 2.12132 2.12132 
 C 2.683901 1.55874 3 0.795609 3 0 
 C 3 -0.795609 2.683901 -1.55874 2.12132 -2.12132 
@@ -86,28 +86,28 @@ C -1.55874 2.683901 -0.795609 3 0 3
 z
 " style="stroke: #5fc4d6"/>
     </defs>
-    <g clip-path="url(#pc14dcb7b9e)">
-     <use xlink:href="#mbdb4d197ea" x="145.152" y="171.995114" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    <g clip-path="url(#p9ab217dfff)">
+     <use xlink:href="#m1434c6d8cf" x="145.152" y="130.696364" style="fill: #5fc4d6; stroke: #5fc4d6"/>
     </g>
    </g>
    <g id="text_3">
-    <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="179.424" y="175.087155" transform="rotate(-0 179.424 175.087155)">69/100 (69%)</text>
+    <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="179.424" y="133.970289" transform="rotate(-0 179.424 133.970289)">69/100 (69%)</text>
    </g>
    <g id="line2d_7">
-    <g clip-path="url(#pc14dcb7b9e)">
-     <use xlink:href="#mbdb4d197ea" x="115.92" y="190.322386" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    <g clip-path="url(#p9ab217dfff)">
+     <use xlink:href="#m1434c6d8cf" x="115.92" y="149.023636" style="fill: #5fc4d6; stroke: #5fc4d6"/>
     </g>
    </g>
    <g id="text_4">
-    <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="179.424" y="193.414427" transform="rotate(-0 179.424 193.414427)">40/100 (40%)</text>
+    <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="179.424" y="152.297562" transform="rotate(-0 179.424 152.297562)">40/100 (40%)</text>
    </g>
   </g>
   <g id="axes_2">
    <g id="patch_3">
-    <path d="M 75.6 295.38 
-L 176.4 295.38 
-L 176.4 275.22 
-L 75.6 275.22 
+    <path d="M 75.6 259.4475 
+L 176.4 259.4475 
+L 176.4 239.2875 
+L 75.6 239.2875 
 z
 " style="fill: #03070f"/>
    </g>
@@ -115,36 +115,36 @@ z
     <g id="xtick_4">
      <g id="line2d_8">
       <defs>
-       <path id="mce08951962" d="M 0 0 
+       <path id="m62b18552db" d="M 0 0 
 L 0 2 
 " style="stroke: #8796a8; stroke-width: 0.6"/>
       </defs>
       <g>
-       <use xlink:href="#mce08951962" x="75.6" y="295.38" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+       <use xlink:href="#m62b18552db" x="75.6" y="259.4475" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_5">
-      <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="75.6" y="309.114375" transform="rotate(-0 75.6 309.114375)">0%</text>
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="75.6" y="273.66625" transform="rotate(-0 75.6 273.66625)">0%</text>
      </g>
     </g>
     <g id="xtick_5">
      <g id="line2d_9">
       <g>
-       <use xlink:href="#mce08951962" x="126" y="295.38" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+       <use xlink:href="#m62b18552db" x="126" y="259.4475" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_6">
-      <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="126" y="309.114375" transform="rotate(-0 126 309.114375)">50%</text>
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="126" y="273.66625" transform="rotate(-0 126 273.66625)">50%</text>
      </g>
     </g>
     <g id="xtick_6">
      <g id="line2d_10">
       <g>
-       <use xlink:href="#mce08951962" x="176.4" y="295.38" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+       <use xlink:href="#m62b18552db" x="176.4" y="259.4475" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_7">
-      <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="176.4" y="309.114375" transform="rotate(-0 176.4 309.114375)">100%</text>
+      <text style="font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="176.4" y="273.66625" transform="rotate(-0 176.4 273.66625)">100%</text>
      </g>
     </g>
    </g>
@@ -152,91 +152,89 @@ L 0 2
     <g id="ytick_3">
      <g id="line2d_11"/>
      <g id="text_8">
-      <text style="font-size: 8px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="72.1" y="289.175" transform="rotate(-0 72.1 289.175)">Browserless</text>
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="72.1" y="253.605781" transform="rotate(-0 72.1 253.605781)">Browserless</text>
      </g>
     </g>
    </g>
    <g id="wilson-ci">
-    <path d="M 133.030462 285.3 
-L 149.899371 285.3 
-" clip-path="url(#pf641347851)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+    <path d="M 133.030462 249.3675 
+L 149.899371 249.3675 
+" clip-path="url(#p6739feefde)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
    </g>
    <g id="patch_4">
-    <path d="M 75.6 295.38 
-L 176.4 295.38 
+    <path d="M 75.6 259.4475 
+L 176.4 259.4475 
 " style="fill: none; stroke: #8796a8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="line2d_12">
-    <g clip-path="url(#pf641347851)">
-     <use xlink:href="#mbdb4d197ea" x="141.96" y="285.3" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    <g clip-path="url(#p6739feefde)">
+     <use xlink:href="#m1434c6d8cf" x="141.96" y="249.3675" style="fill: #5fc4d6; stroke: #5fc4d6"/>
     </g>
    </g>
    <g id="text_9">
-    <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(179.424 283.249707)">79 of 120 tested</text>
-    <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(179.424 293.534375)">(66%)</text>
+    <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(179.424 247.196602)">79 of 120 tested</text>
+    <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(179.424 258.08625)">(66%)</text>
    </g>
   </g>
   <g id="text_10">
-   <text style="font-weight: 600; font-size: 10px; font-family: 'Space Grotesk'; fill: #e6edf5" transform="translate(10.08 20.707312)">Tavily passed 69% of our 100 evergreen</text>
-   <text style="font-weight: 600; font-size: 10px; font-family: 'Space Grotesk'; fill: #e6edf5" transform="translate(10.08 35.381312)">checks, Exa 40%; Browserless passed 66% of</text>
-   <text style="font-weight: 600; font-size: 10px; font-family: 'Space Grotesk'; fill: #e6edf5" transform="translate(10.08 50.055312)">120 scrape checks</text>
+   <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 19.51875)">Pass rate on our test set (passed / attempted),</text>
+   <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 30.408398)">with 95% intervals. One run, 2026-10-23. Search</text>
+   <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 41.298047)">and scrape are different jobs; compare within a</text>
+   <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 52.187695)">panel. A search pass = the expected URL in the</text>
+   <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 63.077344)">top 10, the expected domain in the top 5, or</text>
+   <text style="font-size: 9px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 73.966992)">the expected text in a top-5 result.</text>
   </g>
   <g id="text_11">
-   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 64.383125)">Pass rate on our test set (passed / attempted), with</text>
-   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 74.667793)">95% intervals. One run, 2026-10-23. Search and</text>
-   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 84.952461)">scrape are different jobs; compare within a panel. A</text>
-   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 95.237129)">search pass = the expected URL in the top 10, the</text>
-   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 105.521797)">expected domain in the top 5, or the expected text</text>
-   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 115.806465)">in a top-5 result.</text>
+   <text style="font-weight: 600; font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="10.08" y="110.013926" transform="rotate(-0 10.08 110.013926)">Search APIs · 100 evergreen questions</text>
   </g>
   <g id="text_12">
-   <text style="font-weight: 600; font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="10.08" y="151.130791" transform="rotate(-0 10.08 151.130791)">Search APIs · 100 evergreen questions</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 176.005889)">Not tested: Brave (terms forbid benchmarking),</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 188.962725)">Linkup (not in month 1), Parallel (not in month</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 201.667314)">1), Serper (not in month 1)</text>
   </g>
   <g id="text_13">
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 216.049512)">Not tested: Brave (terms forbid benchmarking), Linkup (not</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 227.155371)">in month 1), Parallel (not in month 1), Serper (not in</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 238.471582)">month 1)</text>
+   <text style="font-weight: 600; font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="10.08" y="229.601426" transform="rotate(-0 10.08 229.601426)">Scrape APIs · URL set</text>
   </g>
   <g id="text_14">
-   <text style="font-weight: 600; font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="10.08" y="265.352041" transform="rotate(-0 10.08 265.352041)">Scrape APIs · URL set</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 300.684658)">30 skipped under Browserless's terms (anti-bot</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 313.389248)">URLs; skips, not failures). Not tested: Exa</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 326.420596)">(not built), Parallel (not in month 1),</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 338.982314)">Firecrawl (no key), Jina (not in month 1),</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 351.485928)">Apify (not built), Hyperbrowser (not in month</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 364.357314)">1), ScrapingBee (not in month 1), Bright Data</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 376.895107)">(not run yet)</text>
   </g>
   <g id="text_15">
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 335.354707)">30 skipped under Browserless's terms (anti-bot URLs;</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 346.244355)">skips, not failures). Not tested: Exa (not built),</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 357.291621)">Parallel (not in month 1), Firecrawl (no key), Jina (not</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 368.18127)">in month 1), Apify (not built), Hyperbrowser (not in month</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 379.041621)">1), ScrapingBee (not in month 1), Bright Data (not run</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 389.788301)">yet)</text>
+   <text style="font-weight: 600; font-size: 9px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="10.08" y="400.398926" transform="rotate(-0 10.08 400.398926)">Browser APIs</text>
   </g>
   <g id="text_16">
-   <text style="font-weight: 600; font-size: 8.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="10.08" y="413.874541" transform="rotate(-0 10.08 413.874541)">Browser APIs</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 426.807803)">No browser run on Oct 23: the browser-task set</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 438.730361)">file was missing at run time. Not tested:</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 451.715225)">Hyperbrowser (not in month 1), Browserbase (not</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 464.562686)">in month 1), Steel (not in month 1)</text>
   </g>
   <g id="text_17">
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 439.196309)">No browser run on Oct 23: the browser-task set file was</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 449.36291)">missing at run time. Not tested: Hyperbrowser (not in</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 460.576582)">month 1), Browserbase (not in month 1), Steel (not in</text>
-   <text style="font-size: 7.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 471.78498)">month 1)</text>
-  </g>
-  <g id="text_18">
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 491.549526)">Denominator = queries or URLs we graded: excludes ToS</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 502.208872)">skips and HTTP 429 rate-limit replies (none logged on Oct</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 512.956812)">23). Search graded with canon-2026-10-20; scrape pass/fail</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 523.383188)">from the run log (grader 'run-log'). Scrape set: 150 URLs;</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 534.075894)">Browserless's terms forbid the 30 anti-bot ones, so 120</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 544.562427)">were tested. No row is mock or partial. Left out on</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 555.185679)">purpose: the short news weeks 42 and 43 (n=16 and 40,</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 565.731821)">flagged), Apify (news weeks only) and Browserless browser</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 576.597339)">(no Oct 23 run).</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 586.870044)">Source: hazeydata/agentwebindex</text>
-   <text style="font-size: 7px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 597.498218)">data/benchmarks/latest.json @ 6b8bd87</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 491.399012)">Denominator = queries or URLs we graded:</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 504.68423)">excludes ToS skips and HTTP 429 rate-limit</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 518.158119)">replies (none logged on Oct 23). Search graded</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 531.197242)">with canon-2026-10-20; scrape pass/fail from</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 544.425038)">the run log (grader 'run-log'). Scrape set: 150</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 557.790919)">URLs; Browserless's terms forbid the 30</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 570.97975)">anti-bot ones, so 120 were tested. No row is</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 584.133033)">mock or partial. Left out on purpose: the short</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 597.360829)">news weeks 42 and 43 (n=16 and 40, flagged),</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 610.628956)">Apify (news weeks only) and Browserless browser</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 624.176674)">(no Oct 23 run).</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 637.017555)">Source: hazeydata/agentwebindex</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 650.302772)">data/benchmarks/latest.json @ 303efdf</text>
   </g>
  </g>
  <defs>
-  <clipPath id="pc14dcb7b9e">
-   <rect x="75.6" y="160.99875" width="100.8" height="40.32"/>
+  <clipPath id="p9ab217dfff">
+   <rect x="75.6" y="119.7" width="100.8" height="40.32"/>
   </clipPath>
-  <clipPath id="pf641347851">
-   <rect x="75.6" y="275.22" width="100.8" height="20.16"/>
+  <clipPath id="p6739feefde">
+   <rect x="75.6" y="239.2875" width="100.8" height="20.16"/>
   </clipPath>
  </defs>
 </svg>
