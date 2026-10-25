@@ -966,11 +966,15 @@ class Polish(unittest.TestCase):
             self.assertNotRegex(text_of(page(p)), r"(?i)\b(rank(ed|ing)?|winner|best|top pick|#1|1st place|leader)\b", p)
         self.assertNotRegex(run, r'(?i)class="[^"]*\b(badge|rank|winner|highlight)\b')
 
-    def test_banned_names_absent_from_built_site(self):
-        hits = []
-        for f in D.rglob("*"):
-            if f.is_file() and re.search(rb"(?i)keenable|context\.dev", f.read_bytes()):
-                hits.append(str(f.relative_to(D)))
+    # Pattern is assembled from parts so this file itself never contains the names: AC-4 requires
+    # the repo-wide case-insensitive grep for the two names (dotted or not) to return nothing, guard included.
+    BANNED = re.compile(("keen" + "able|context" + r"\.?" + "dev").encode(), re.I)
+
+    def test_banned_names_absent(self):  # AC-4: every tracked file in the repo AND every file in dist/
+        tracked = subprocess.run(["git", "ls-files", "-z"], cwd=R, capture_output=True, check=True).stdout.decode().split("\0")
+        self.assertGreater(len(tracked), 20)
+        files = [R / t for t in tracked if t] + [f for f in D.rglob("*") if f.is_file()]
+        hits = sorted({str(f.relative_to(R)) for f in files if f.is_file() and self.BANNED.search(f.read_bytes())})
         self.assertEqual(hits, [])
 
     def test_each_claim_once(self):
