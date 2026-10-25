@@ -307,7 +307,8 @@ const ps = [...document.querySelectorAll('.steps li > p')].map(e => r(e).width);
 const f = document.querySelector('iframe.beehiiv-embed'); const fb = r(f); const box = f ? r(f.parentElement) : null;
 const pad = f ? parseFloat(getComputedStyle(f.parentElement).paddingLeft) + parseFloat(getComputedStyle(f.parentElement).paddingRight) : 0;
 const cta = document.querySelector('.cta-hero');
-return JSON.stringify({header: r(document.querySelector('.site-header')).height, stepMin: ps.length ? Math.min(...ps) : null,
+const vals = [...document.querySelectorAll('.rows .row .mono')].map(e => ({h: r(e).height, f: getComputedStyle(e).fontSize, ff: getComputedStyle(e).fontFamily}));
+return JSON.stringify({vals, hpad: getComputedStyle(document.querySelector('.site-header .wrap')).paddingTop, header: r(document.querySelector('.site-header')).height, stepMin: ps.length ? Math.min(...ps) : null,
   iframe: f ? {w: fb.width, h: fb.height, inner: box.width - pad - 2, src: f.getAttribute('src'), loading: f.getAttribute('loading')} : null,
   ctaTop: cta ? r(cta).top + scrollY : null}); })()"""
 
@@ -323,6 +324,12 @@ def check_layout(cdp, base, errs):
             tag = f"{p} @{w}"
             if w == 390 and m["header"] > 88.5:
                 errs.append(f"{tag}: header {m['header']}px > 88px")
+            if w == 390 and m["hpad"] != "8px":
+                errs.append(f"{tag}: header vertical padding {m['hpad']} != 8px")
+            if w == 390 and p == "/":
+                for v in m["vals"]:
+                    if v["f"] != "13px" or "Plex Mono" not in v["ff"] or v["h"] > 40.5:
+                        errs.append(f"{tag}: run-row value not a Plex Mono 13px label:value line (<= 2 lines): {v}")
             if p == "/methodology/" and (m["stepMin"] is None or m["stepMin"] < (480 if w >= 768 else 300)):
                 errs.append(f"{tag}: Methodology step paragraph only {m['stepMin']}px wide")
             if p in ("/", "/newsletter/"):

@@ -657,7 +657,12 @@ class Results(unittest.TestCase):
                 self.assertEqual(html.unescape(lab), alt)
             fig = sec[sec.index("<figure"):]
             self.assertEqual(text_of(re.search(r"<h3>(.*?)</h3>", fig).group(1)), doc.field("Chart briefs", "Title", sub=sub))
-            self.assertEqual(text_of(re.search(r"<figcaption>(.*?)</figcaption>", fig).group(1)), doc.field("Chart briefs", "Caption", sub=sub))
+            self.assertNotIn("<figcaption", fig)   # footnotes moved into Notes (addendum 9, CEO R-5)
+            notes = self.s[self.s.index('<details id="notes">'):]
+            notes = notes[:notes.index("</details>")]
+            foot = re.search(rf'<p class="footnote" data-chart="{sid}">(.*?)</p>', notes).group(1)
+            if sub == "Chart 2":
+                self.assertEqual(text_of(foot), doc.field("Chart briefs", "Caption", sub=sub))
             self.assertIn(f'<h3>', fig)
 
     def test_chart_variants_and_css(self):  # AC16 / R9.5 (static half; real rendering in browser_check.py)
@@ -943,6 +948,17 @@ class AgentSurfaces(unittest.TestCase):
 
 
 
+def repo_files():
+    """Tracked files (git ls-files); in a canary's temp copy without .git, every file outside .git/ and dist/."""
+    r = subprocess.run(["git", "ls-files", "-z"], cwd=R, capture_output=True)
+    if r.returncode == 0 and r.stdout:
+        out = [R / t for t in r.stdout.decode().split("\0") if t]
+    else:
+        out = [f for f in R.rglob("*") if f.is_file() and not {".git", "dist", "__pycache__"} & set(f.relative_to(R).parts)]
+    assert len(out) > 20, len(out)
+    return [f for f in out if f.is_file()]
+
+
 class Polish(unittest.TestCase):
     """AWI-PAGE-POLISH-001 guards: numbers, ranking, row count, banned names, repeated claims, CTA label, chart titles, Methodology grid."""
     NUM = re.compile(r"\$?\d[\d,]*(?:\.\d+)?%?")
@@ -971,9 +987,7 @@ class Polish(unittest.TestCase):
     BANNED = re.compile(("keen" + "able|context" + r"\.?" + "dev").encode(), re.I)
 
     def test_banned_names_absent(self):  # AC-4: every tracked file in the repo AND every file in dist/
-        tracked = subprocess.run(["git", "ls-files", "-z"], cwd=R, capture_output=True, check=True).stdout.decode().split("\0")
-        self.assertGreater(len(tracked), 20)
-        files = [R / t for t in tracked if t] + [f for f in D.rglob("*") if f.is_file()]
+        files = repo_files() + [f for f in D.rglob("*") if f.is_file()]
         hits = sorted({str(f.relative_to(R)) for f in files if f.is_file() and self.BANNED.search(f.read_bytes())})
         self.assertEqual(hits, [])
 
@@ -995,7 +1009,10 @@ class Polish(unittest.TestCase):
             self.assertTrue(set(labels) <= {want}, (p, labels))
             if p != "/newsletter/":   # the Newsletter page is the form itself
                 self.assertGreaterEqual(len(labels), 1, p)
-            self.assertNotRegex(text_of(s), r"Get price updates by email", p)
+        retired = "Get price " + "updates by email"   # AC-29: retired label; assembled so the repo-wide grep stays clean
+        self.assertEqual([str(f.relative_to(R)) for f in repo_files() if retired.lower().encode() in f.read_bytes().lower()], [])
+        for f in D.rglob("*.html"):
+            self.assertNotIn(retired.lower(), f.read_text().lower(), f)
 
     def test_chart_h3_equals_svg_aria_label(self):
         s = page("/")
@@ -1018,6 +1035,44 @@ class Polish(unittest.TestCase):
         css = (D / "style.css").read_text()
         self.assertIn("grid-template-columns: 56px minmax(0, 68ch)", css)
         self.assertIn(".steps li > * { grid-column: 2; }", css)
+
+    def test_hero_button_target(self):  # AC-8: #signup-end where the page has the end form, else /newsletter/
+        for p in PAGES:
+            s = page(p)
+            heroes = re.findall(r'<aside class="cta cta-hero"[^>]*>(.*?)</aside>', s, re.S)
+            for h in heroes:
+                for href in re.findall(r'<a class="btn cta-btn" href="([^"]+)"', h):
+                    self.assertEqual(href, "#signup-end" if 'id="signup-end"' in s else "/newsletter/", p)
+        self.assertIn('href="#signup-end"', page("/"))
+        self.assertIn('id="signup-end"', page("/"))
+
+    def test_hero_lead_ins_from_copy_cuts(self):  # AC-29 / AC-40 / AC-28
+        cuts = (R / "content/copy-cuts.md").read_text()
+        self.assertEqual(hashlib.sha256(cuts.encode()).hexdigest(), PINS["copy_cuts_sha256"])
+        want = {"/data/": "The raw results behind these pages. Grab them and check our work.",
+                "/disclosures/": "Spot something off? Tell us.", "/prices/": "Want the next run?"}
+        for p, lead in want.items():
+            self.assertIn(f'"{lead}"', cuts)
+            card = re.findall(r'<aside class="cta cta-hero[^"]*"[^>]*>(.*?)</aside>', page(p), re.S)
+            self.assertEqual(len(card), 1, p)
+            leads = re.findall(r'<p class="cta-lead">(.*?)</p>', card[0])
+            self.assertEqual([text_of(x) for x in leads], [lead], p)
+        self.assertIn("Download latest.json", page("/data/").split('class="cta cta-hero')[1].split("</aside>")[0])
+        self.assertIn("Open an issue", page("/disclosures/").split('class="cta cta-hero')[1].split("</aside>")[0])
+        doc = copydoc.load()
+        for k in ("Results top", "Results end", "Prices top", "Prices end", "Methodology top", "Methodology end", "Data top", "Data end",
+                  "Disclosures top", "Disclosures end", "Newsletter box", "Sponsors top", "Sponsors end", "Tell us end", "Button"):
+            self.assertIn(doc.field("CTA boxes", k), cuts, k)
+
+    def test_notes_hold_footnotes(self):  # AC-22: footnotes + Not tested in one Notes <details>, none outside
+        s = page("/")
+        notes = s[s.index('<details id="notes">'):]
+        notes = notes[:notes.index("</details>")]
+        self.assertIn("<summary>Notes</summary>", notes)
+        self.assertEqual(len(re.findall(r'class="footnote"', notes)), 2)
+        self.assertIn("<h3>Not tested</h3>", notes)
+        self.assertEqual(s.count('class="footnote"'), 2)
+        self.assertNotIn("<figcaption", s)
 
 if __name__ == "__main__":
     unittest.main()
