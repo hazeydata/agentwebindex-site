@@ -304,11 +304,15 @@ def check_readability(cdp, base, shots, errs):
 
 LAYOUT = """(() => { const r = e => e ? e.getBoundingClientRect() : null;
 const ps = [...document.querySelectorAll('.steps li > p')].map(e => r(e).width);
+const steps = [...document.querySelectorAll('.steps li')].map(li => { const cs = getComputedStyle(li), b = getComputedStyle(li, '::before'), lr = r(li);
+  const inner = lr.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); const h2 = li.querySelector('h2');
+  return {beforeRow: b.gridRowStart, h2Row: getComputedStyle(h2).gridRowStart, h2Top: r(h2).top - lr.top - parseFloat(cs.paddingTop), h2Left: r(h2).left - lr.left,
+          pw: [...li.querySelectorAll(':scope > p')].map(p => r(p).width), inner}; });
 const f = document.querySelector('iframe.beehiiv-embed'); const fb = r(f); const box = f ? r(f.parentElement) : null;
 const pad = f ? parseFloat(getComputedStyle(f.parentElement).paddingLeft) + parseFloat(getComputedStyle(f.parentElement).paddingRight) : 0;
 const cta = document.querySelector('.cta-hero');
 const vals = [...document.querySelectorAll('.rows .row .mono')].map(e => ({h: r(e).height, f: getComputedStyle(e).fontSize, ff: getComputedStyle(e).fontFamily}));
-return JSON.stringify({vals, hpad: getComputedStyle(document.querySelector('.site-header .wrap')).paddingTop, header: r(document.querySelector('.site-header')).height, stepMin: ps.length ? Math.min(...ps) : null,
+return JSON.stringify({steps, vals, hpad: getComputedStyle(document.querySelector('.site-header .wrap')).paddingTop, header: r(document.querySelector('.site-header')).height, stepMin: ps.length ? Math.min(...ps) : null,
   iframe: f ? {w: fb.width, h: fb.height, inner: box.width - pad - 2, src: f.getAttribute('src'), loading: f.getAttribute('loading')} : null,
   ctaTop: cta ? r(cta).top + scrollY : null}); })()"""
 
@@ -332,6 +336,12 @@ def check_layout(cdp, base, errs):
                         errs.append(f"{tag}: run-row value not a Plex Mono 13px label:value line (<= 2 lines): {v}")
             if p == "/methodology/" and (m["stepMin"] is None or m["stepMin"] < (480 if w >= 768 else 300)):
                 errs.append(f"{tag}: Methodology step paragraph only {m['stepMin']}px wide")
+            if p == "/methodology/" and w == 390:   # AC-5 at 390: number and h2 on one line; every paragraph full content width (+-1px)
+                for i, st in enumerate(m["steps"]):
+                    if st["beforeRow"] != "1" or abs(st["h2Top"]) > 1 or st["h2Left"] < 8:
+                        errs.append(f"{tag}: step {i + 1} number and h2 not on one line: {st}")
+                    if not st["pw"] or any(abs(x - st["inner"]) > 1 for x in st["pw"]):
+                        errs.append(f"{tag}: step {i + 1} paragraph width {st['pw']} != content width {st['inner']}")
             if p in ("/", "/newsletter/"):
                 f = m["iframe"]
                 if not f or f["h"] < 239.5 or abs(f["w"] - f["inner"]) > 1.5 or not f["src"] or f["loading"] == "lazy":

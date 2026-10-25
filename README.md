@@ -88,7 +88,7 @@ Page polish (AWI-PAGE-POLISH-001):
 - Lindsay's final copy-cuts.md is recorded by `pins.json` `copy_cuts_sha256` (not vendored: it quotes the retired Prices label);
   `content/copy.md` carries the strings. Methodology limits: the Firecrawl sentence is Lindsay's AC-10 ruling (it differs from copy-cuts item 9).
 - Guards in `test_dist.Polish`: numbers on each page are a subset of `tests/numbers_baseline.json` (built from main 385a6e3, chart SVGs
-  excluded), exactly 3 unranked Results rows (Exa, Tavily, Browserless), neither excluded provider name (the AC-4 list; the test assembles its pattern so the repo itself stays clean) in any tracked file or `dist/` file, the Tavily claim once
+  excluded), unranked Results rows equal to what the data pin produces, in main's order (`tests/results_rows_baseline.json`; 3 at 303efdf4: Exa, Tavily, Browserless), no raw hex in button rules (`--on-acc` token), neither excluded provider name (the AC-4 list; the test assembles its pattern so the repo itself stays clean) in any tracked file or `dist/` file, the Tavily claim once
   (in `#run`) and "No provider pays us" once (Disclosures), chart `<h3>` == every SVG root `aria-label`, no trailing period.
   `browser_check.check_layout`: header <=88px with 8px padding at 390, run-row values Plex Mono 13px <=2 lines, Methodology paragraphs >=480px (1440) / >=300px (390), signup iframe fills its box and
   is >=240px tall, hero CTA top <=420px (1440) / <=560px (390).

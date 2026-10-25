@@ -1,0 +1,5 @@
+{
+ "_doc": "Results run-row provider order as built by main 385a6e3 at data pin 303efdf4 (AC-2 per spec R-9: rows = what the pinned data produces, in main's order). Regenerate only when the data pin moves, by building main's code on the new pin.",
+ "data": "303efdf4fa955e81697a92906d32d6ac125e3882",
+ "rows": ["exa", "tavily", "browserless"]
+}

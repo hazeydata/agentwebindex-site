@@ -973,14 +973,44 @@ class Polish(unittest.TestCase):
         for k, val in expected_numbers().items():
             self.assertIn(val, home, k)
 
-    def test_exactly_three_results_rows_unranked(self):
+    def test_results_rows_match_pinned_data_unranked(self):  # AC-2 (spec R-9) / AC-3
+        """Rows = every non-mock, attempted row of latest.json's run_date at the data pin, grouped by table (search, scrape, browser) and by
+        provider name inside a table; that list and its order must equal main's build at the same pin. No ranking words, badges or sorting by score."""
+        base = json.loads((R / "tests/results_rows_baseline.json").read_text())
+        self.assertEqual(base["data"], PINS["data"])
+        L = json.loads((D / "data/benchmarks/latest.json").read_text())
+        names = {p["id"]: p.get("name", p["id"]) for p in json.loads((R / "data/_upstream/providers.json").read_text()).get("providers", [])} \
+            if (R / "data/_upstream/providers.json").exists() else {}
+        want = []
+        for cat in ("search", "scrape", "browser"):
+            rows = [r for r in L.get("tables", {}).get(cat, []) if r.get("run_date") == L["run_date"] and not r.get("mock")
+                    and (r.get("attempted") or {}).get("v") is not None]
+            want += [r["provider"] for r in sorted(rows, key=lambda r: names.get(r["provider"], r["provider"]))]
         s = page("/")
         run = s[s.index('id="run"'):]
         run = run[:run.index("</section>")]
-        self.assertEqual(re.findall(r'<div class="row" role="listitem" data-provider="([^"]+)"', run), ["exa", "tavily", "browserless"])
+        got = re.findall(r'<div class="row" role="listitem" data-provider="([^"]+)"', run)
+        self.assertEqual(got, want)
+        self.assertEqual(got, base["rows"])
+        self.assertEqual(len(got), 3)   # what 303efdf4 produces; update with the baseline if the pin moves
         for p in PAGES:
             self.assertNotRegex(text_of(page(p)), r"(?i)\b(rank(ed|ing)?|winner|best|top pick|#1|1st place|leader)\b", p)
         self.assertNotRegex(run, r'(?i)class="[^"]*\b(badge|rank|winner|highlight)\b')
+        self.assertNotRegex((R / "render.py").read_text().split("def run_rows")[1].split("\ndef ")[0], r"success_rate|cost")
+
+    def test_no_raw_hex_in_button_rules(self):  # AC-15 (Tobias): buttons take colours from tokens only
+        css = (D / "style.css").read_text()
+        rules = re.findall(r"([^{}]+)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", css, flags=re.S))
+        btn = [(sel.strip(), body) for sel, body in rules if re.search(r"\.btn\b|\bbutton\b|cta-btn", sel)]
+        self.assertTrue(btn)
+        for sel, body in btn:
+            self.assertNotRegex(body, r"#[0-9a-fA-F]{3,8}\b", sel)
+            self.assertNotRegex(body, r"\b(rgb|hsl)a?\(", sel)
+        self.assertRegex(re.search(r"\.btn \{([^}]*)\}", css).group(1), r"color: var\(--on-acc\)")
+        roots = [body for sel, body in rules if "--on-cyan:" in body]
+        self.assertGreaterEqual(len(roots), 2)   # dark :root plus the light blocks
+        for body in roots:
+            self.assertIn("--on-acc: #FFFFFF;", body)
 
     # Pattern is assembled from parts so this file itself never contains the names: AC-4 requires
     # the repo-wide case-insensitive grep for the two names (dotted or not) to return nothing, guard included.
@@ -1080,6 +1110,9 @@ class Polish(unittest.TestCase):
         self.assertIn("<h3>Not tested</h3>", notes)
         self.assertEqual(s.count('class="footnote"'), 2)
         self.assertNotIn("<figcaption", s)
+        outside = text_of(s.replace(notes, ""))   # AC-22: zero caption paragraphs outside Notes
+        for foot in re.findall(r'<p class="footnote"[^>]*>(.*?)</p>', notes):
+            self.assertNotIn(text_of(foot), outside)
 
 if __name__ == "__main__":
     unittest.main()
