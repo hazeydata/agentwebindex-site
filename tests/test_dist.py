@@ -275,7 +275,7 @@ class Helpers(unittest.TestCase):
         self.assertFalse(priced & set(u))
         self.assertEqual(len(priced | set(u)), 15)
 
-    # AWI-PROVIDER-CONTEXTDEV-001 (rev 3) AC22: providers.json flag exclude_from_also_priced keeps Context.dev off the line.
+    # AWI-PROVIDER-CONTEXTDEV-001 (spec rev 4) AC22: providers.json flag exclude_from_also_priced keeps Context.dev off the line.
     @staticmethod
     def _ctxdev_fixture(flag=True):
         pricing = json.loads(json.dumps(PRICING))
