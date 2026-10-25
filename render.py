@@ -518,7 +518,7 @@ def slots(ctx):
         "prices_body": prices_body(ctx), "methodology_body": methodology_body(ctx), "data_body": data_body(ctx),
         "tell_us_body": tell_us_body(ctx), "newsletter_body": newsletter_body(ctx),
         "disclosures_body": field_page(ctx, "Disclosures page", end_key="Disclosures end",
-                                       aside=info_card(ctx, "Disclosures top", f'<p class="inline-links"><a href="{ISSUES}">Open an issue</a> · '
+                                       aside=info_card(ctx, "Disclosures top", f'<p class="inline-links"><a href="{ISSUES}">Open an issue</a><span class="sep"> · </span>'
                                                        '<a href="mailto:fred@hazeydata.ai">Email fred@hazeydata.ai</a></p>', "Corrections")),
         "sponsors_body": field_page(ctx, "Sponsors page", end_key="Sponsors end",
                                     after_first=f'<div class="cta cta-inline"><p class="cta-lead">{e(d.field("CTA boxes", "Sponsors top"))}</p>'

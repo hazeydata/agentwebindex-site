@@ -13,7 +13,7 @@
 :root {
   color-scheme: dark;
   --bg: #03070F; --surface: #0A1628; --raised: #13243D; --line: #1E3352;
-  --text: #E8EEF5; --muted: #A9B8C9; --link: #5FC4D6; --on-cyan: #0A1628;
+  --text: #E8EEF5; --muted: #A9B8C9; --link: #5FC4D6; --on-cyan: #0A1628; --on-acc: #FFFFFF;
   --cyan: #5FC4D6; --acc: #616512; --acc-tint: #8B901A;
   --body-bg: radial-gradient(circle, rgba(169,184,201,.09) 1px, transparent 1.2px) 0 0/22px 22px, linear-gradient(135deg, #03070F 0%, #0A1628 100%);
   --header-bg: rgba(3,7,15,.92);
@@ -28,14 +28,14 @@
   :root:not([data-theme=dark]) {
     color-scheme: light;
     --bg: #F7F9FC; --surface: #FFFFFF; --raised: #FFFFFF; --line: #CBD6E2;
-    --text: #0A1628; --muted: #3F516A; --link: #0A6577; --on-cyan: #0A1628;
+    --text: #0A1628; --muted: #3F516A; --link: #0A6577; --on-cyan: #0A1628; --on-acc: #FFFFFF;
     --body-bg: #F7F9FC; --header-bg: rgba(247,249,252,.94);
   }
 }
 :root[data-theme=light] {
   color-scheme: light;
   --bg: #F7F9FC; --surface: #FFFFFF; --raised: #FFFFFF; --line: #CBD6E2;
-  --text: #0A1628; --muted: #3F516A; --link: #0A6577; --on-cyan: #0A1628;
+  --text: #0A1628; --muted: #3F516A; --link: #0A6577; --on-cyan: #0A1628; --on-acc: #FFFFFF;
   --body-bg: #F7F9FC; --header-bg: rgba(247,249,252,.94);
 }
 @media (min-width: 768px) { :root { --fs3: 2.441rem; --fs4: 3.052rem; --pad: 40px; } }
@@ -162,7 +162,7 @@ details > p, details > ul, details > h4 { max-width: 65ch; }
 .card { background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s3); }
 .files { list-style: none; padding: 0; } .files li + li { margin-top: 0; }
 .files a { display: inline-flex; align-items: center; min-height: var(--hit); }
-.btn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--hit); background: var(--acc); color: #FFFFFF; font-weight: 600; text-decoration: none; border-radius: 8px; padding: 0 var(--s3); margin: var(--s2) var(--s1) 0 0; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--hit); background: var(--acc); color: var(--on-acc); font-weight: 600; text-decoration: none; border-radius: 8px; padding: 0 var(--s3); margin: var(--s2) var(--s1) 0 0; }
 .btn.ghost { background: none; color: var(--text); border: 1px solid var(--acc-tint); }
 .sponsor { border: 1px solid var(--line); border-left: 4px solid var(--acc-tint); border-radius: var(--radius); padding: var(--s1) var(--s2); color: var(--muted); font-size: var(--fs-1); margin-bottom: var(--s3); }
 .sponsor a { display: inline-flex; align-items: center; min-height: var(--hit); }
@@ -215,7 +215,10 @@ h1 { font-size: 2.25rem; line-height: 44px; } h2 { font-size: 1.75rem; line-heig
 .actions .btn { margin: 0; }
 @media (max-width: 767.98px) { .actions .btn { flex: 1 1 100%; } }
 .inline-links { margin-top: var(--s1); }
-.inline-links a { display: inline-flex; align-items: center; min-height: var(--hit); }
+.inline-links a { display: inline-flex; align-items: center; min-height: var(--hit); overflow-wrap: anywhere; }
+.cta-info { padding-inline: var(--s2); }   /* Tobias: Disclosures card at 1440 */
+.cta-info .inline-links a { display: block; margin-top: var(--s0); line-height: var(--hit); }   /* email link touched the card edge at 1440 (2.9px): one link per line under the lead-in */
+.cta-info .inline-links .sep { display: none; }
 .card-h { font-size: var(--fs1); line-height: 28px; margin-bottom: var(--s0); }
 
 .mlayout { display: grid; gap: var(--s4); }
