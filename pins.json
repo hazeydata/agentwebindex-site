@@ -9,15 +9,15 @@
  "queries": "agentwebindex-meta 2c28c0a cycles/2026-10-24-page-redo/her/QUERIES.md",
  "queries_sha256": "a58e77acb9e96cd923da665d77dfa74329dcbad95035801ad09c03e380ac526f",
  "chart_alt_sha256": "f0590fb5d596dd7de20031e62e3e145c08b756d7e0eb4148597b704cf634be28",
- "charts": "2e6e0cb",
+ "charts": "b748147",
  "charts_sha256": {
   "awi-cost-per-success-350-dark.svg": {
    "her_original": "her/her-cost-per-success-350-dark.svg",
-   "sha256": "9b097d9e8332370aaff23276ff4478eea5b644e30b8870c70b927e1a3a42f1f2"
+   "sha256": "cf0d7f60e7c63eda342b3609f1d56f635594afc5c83e5618c054f3ef1e1d1dc9"
   },
   "awi-cost-per-success-350-light.svg": {
    "her_original": "her/her-cost-per-success-350-light.svg",
-   "sha256": "0dc95c1535763aeddddf785565b36c6402d8f011c2f77cf86809be401512b61a"
+   "sha256": "be9f63bb74fe0365b4f13e60cdfd4d5c7c47516545d3f8ce20510d772c395efb"
   },
   "awi-cost-per-success-720-dark.svg": {
    "her_original": "her/her-cost-per-success-720-dark.svg",
@@ -29,11 +29,11 @@
   },
   "awi-pass-rate-350-dark.svg": {
    "her_original": "her/her-pass-rate-350-dark.svg",
-   "sha256": "1c7b3633f6fa788442638a3daafb8c2ee2160e24401610ce41daef48124f5df6"
+   "sha256": "a263f643202a86199ff623178351f5771cc2839068167aafefe827b52b75c602"
   },
   "awi-pass-rate-350-light.svg": {
    "her_original": "her/her-pass-rate-350-light.svg",
-   "sha256": "0cc0c0044e181f0a25eeec113b2ff2bbd476490cc62a550a3146c280c4fd28de"
+   "sha256": "361c7e8df1cf72accbd8046bc0e249b05a2886be6d1bed176ce309d2f1779cc3"
   },
   "awi-pass-rate-720-dark.svg": {
    "her_original": "her/her-pass-rate-720-dark.svg",
