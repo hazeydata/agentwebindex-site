@@ -1,0 +1,77 @@
+{
+ "_doc": "Results rows as built by main 385a6e3 at data pin 303efdf4 (AC-2 per spec R-9: rows = what the pinned data produces, in main's order). `rows`: run summary (#run); `table`: the full Every row table [provider name, category, set, run date]. Regenerate only when the data pin moves, by building main's code on the new pin.",
+ "data": "303efdf4fa955e81697a92906d32d6ac125e3882",
+ "rows": [
+  "exa",
+  "tavily",
+  "browserless"
+ ],
+ "table": [
+  [
+   "Apify",
+   "search",
+   "news_2026-42",
+   "2026-10-19"
+  ],
+  [
+   "Apify",
+   "search",
+   "news_2026-43",
+   "2026-10-20"
+  ],
+  [
+   "Exa",
+   "search",
+   "news_2026-42",
+   "2026-10-15"
+  ],
+  [
+   "Exa",
+   "search",
+   "news_2026-43",
+   "2026-10-20"
+  ],
+  [
+   "Exa",
+   "search",
+   "search_evergreen",
+   "2026-10-23"
+  ],
+  [
+   "Tavily",
+   "search",
+   "news_2026-42",
+   "2026-10-15"
+  ],
+  [
+   "Tavily",
+   "search",
+   "news_2026-43",
+   "2026-10-20"
+  ],
+  [
+   "Tavily",
+   "search",
+   "search_evergreen",
+   "2026-10-23"
+  ],
+  [
+   "Browserless",
+   "scrape",
+   "scrape_urls",
+   "2026-10-23"
+  ],
+  [
+   "Browserless",
+   "browser",
+   "newsfetch_2026-42",
+   "2026-10-19"
+  ],
+  [
+   "Browserless",
+   "browser",
+   "newsfetch_2026-43",
+   "2026-10-20"
+  ]
+ ]
+}
