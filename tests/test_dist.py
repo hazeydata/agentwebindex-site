@@ -275,6 +275,38 @@ class Helpers(unittest.TestCase):
         self.assertFalse(priced & set(u))
         self.assertEqual(len(priced | set(u)), 15)
 
+    # AWI-PROVIDER-CONTEXTDEV-001 (rev 3) AC22: providers.json flag exclude_from_also_priced keeps Context.dev off the line.
+    @staticmethod
+    def _ctxdev_fixture(flag=True):
+        pricing = json.loads(json.dumps(PRICING))
+        pricing.setdefault("providers", {})["contextdev"] = {"search": {"model": "credits", "free_tier": {"units_per_month": 1000}}}
+        entry = {"id": "contextdev", "name": "Context.dev", "categories": ["search", "scrape"],
+                 "pricing_url": "https://www.context.dev/pricing", "key_env": "CONTEXT_DEV_API_KEY"}
+        if flag:
+            entry["exclude_from_also_priced"] = True
+        return pricing, [p for p in PROVIDERS if p["id"] != "contextdev"] + [entry]
+
+    def test_also_priced_flag_keeps_contextdev_off_line_eleven(self):  # contextdev AC22 (a)(b)
+        pricing, provs = self._ctxdev_fixture(True)
+        u = P.untested_providers(pricing, LATEST, provs)
+        self.assertEqual(len(u), 11)
+        self.assertFalse(any(re.search(r"(?i)context\.?dev", n) for n in u))
+
+    def test_also_priced_without_flag_is_twelve(self):  # contextdev AC22 (c): the flag, not chance, excludes it
+        pricing, provs = self._ctxdev_fixture(False)
+        u = P.untested_providers(pricing, LATEST, provs)
+        self.assertEqual(len(u), 12)
+        self.assertIn("Context.dev", u)
+
+    def test_contextdev_not_on_prices_page_and_no_logo(self):  # contextdev AC21, AC6
+        self.assertNotRegex(page("/prices/"), r"(?i)context\.?dev")
+        self.assertEqual([r["provider"] for r in P.price_rows(PRICING, LATEST, PROVIDERS)], ["apify", "browserless", "exa", "tavily"])
+        for base in (R / "src", D):
+            for f in base.rglob("*"):
+                self.assertNotRegex(f.name, r"(?i)context\.?dev", str(f))
+                if f.is_file() and f.suffix in TEXT_SUFFIXES:
+                    self.assertNotRegex(f.read_text(errors="ignore"), r"(?i)context\.?dev[^\s\"']*\.(svg|png|jpe?g|webp)", str(f))
+
     def test_placeholder_constant(self):  # AC27 (constant kept)
         self.assertEqual(P.PLACEHOLDER, "[[LINDSAY-PLACEHOLDER]]")
 
