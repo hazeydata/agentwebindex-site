@@ -73,18 +73,24 @@ beehiiv URLs answer the build box with a Cloudflare challenge, so the root cause
 The submit button inside the iframe is set in the beehiiv dashboard, not here.
 
 Page polish (AWI-PAGE-POLISH-001):
-- CTA boxes: every page except Newsletter has a hero signup card (`aside.cta.cta-hero`, 2-column hero at >=1024px, compact row at 390) and/or an
-  end box (`.cta.cta-end`). Lead-ins and the button label come from the `## CTA boxes` section of `content/copy.md`; the button text is
+- CTA boxes: every page except Newsletter has a hero card (`aside.cta.cta-hero`, 2-column hero at >=1024px, compact row at 390) and/or an
+  end box (`.cta.cta-end`). The hero signup button links to `#signup-end` on pages that have the end form (only Results), otherwise to
+  `/newsletter/` (`test_hero_button_target`). Data and Disclosures hero cards are not signups (`.cta-info`): Data holds the latest.json/latest.csv
+  buttons, Disclosures the Open an issue / Email links, each under one lead-in from copy-cuts "Hero card lead-ins" (`test_hero_lead_ins_from_copy_cuts`). Lead-ins and the button label come from the `## CTA boxes` section of `content/copy.md`; the button text is
   exactly "Get the results by email" on every page (`test_cta_label_same_on_every_page`). Buttons use `--acc`/`--acc-tint`, links `--link`;
   cyan is only for charts and focus.
 - Methodology: each step is `<li id="m-…"><h2>label</h2><p>text</p></li>` in a `56px minmax(0, 68ch)` grid with every child in column 2. The old
   `<b>label</b> text` markup put the bare text node into the 48px number column as an anonymous grid item (~55px wide paragraphs).
-- Layout: 64px section padding (48px under 768px), 80px only on major Results/Methodology sections; mobile header is two 44px rows (<=88px).
-- Results "Not tested" moved into `section#not-tested` > `details#notes` ("Notes").
+- Layout: 64px section padding (48px under 768px), 80px only on major Results/Methodology sections; mobile header: 8px vertical padding, 44px
+  brand row, nav row with -8px block margins so links keep a 44px hit area and the header is 88px. Results run rows at 390 are stacked
+  label:value lines (provider, then values in IBM Plex Mono 13px); charts have no scroll wrapper.
+- Results chart footnotes (`p.footnote`, no `<figcaption>`) and "Not tested" sit in one `section#not-tested` > `details#notes` ("Notes").
+- `content/copy-cuts.md` is Lindsay's final copy-cuts.md verbatim, pinned by `pins.json` `copy_cuts_sha256` (build fails on mismatch);
+  `content/copy.md` carries the strings. Methodology limits: the Firecrawl sentence is Lindsay's AC-10 ruling (it differs from copy-cuts item 9).
 - Guards in `test_dist.Polish`: numbers on each page are a subset of `tests/numbers_baseline.json` (built from main 385a6e3, chart SVGs
   excluded), exactly 3 unranked Results rows (Exa, Tavily, Browserless), neither excluded provider name (the AC-4 list; the test assembles its pattern so the repo itself stays clean) in any tracked file or `dist/` file, the Tavily claim once
   (in `#run`) and "No provider pays us" once (Disclosures), chart `<h3>` == every SVG root `aria-label`, no trailing period.
-  `browser_check.check_layout`: header <=88px at 390, Methodology paragraphs >=480px (1440) / >=300px (390), signup iframe fills its box and
+  `browser_check.check_layout`: header <=88px with 8px padding at 390, run-row values Plex Mono 13px <=2 lines, Methodology paragraphs >=480px (1440) / >=300px (390), signup iframe fills its box and
   is >=240px tall, hero CTA top <=420px (1440) / <=560px (390).
 
 PR proof map: `python3 tools/proof_map.py` prints the "Proof by AC" section with line numbers read from the test names.
