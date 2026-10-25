@@ -78,6 +78,8 @@ def check(root, pins=None, vendored_sha=None):
         errs.append(f'data/_upstream/SOURCE sha {vendored} != pins.json data {pins["data"]}; run ./sync_data.sh {pins["data"]}')
     if sha256(root / "content/copy.md") != pins["copy_sha256"]:
         errs.append("content/copy.md does not match pins.json copy_sha256")
+    if "copy_cuts_sha256" in pins and sha256(root / "content/copy-cuts.md") != pins["copy_cuts_sha256"]:
+        errs.append("content/copy-cuts.md does not match pins.json copy_cuts_sha256")
     if sha256(root / "content/chart-alt.md") != pins["chart_alt_sha256"]:
         errs.append("content/chart-alt.md does not match pins.json chart_alt_sha256")
     for name, meta in pins["charts_sha256"].items():

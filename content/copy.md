@@ -97,7 +97,7 @@ Weekly news sets, before the frozen sets, plus Apify and Browserless browser run
 
 **Limits, plainly.**
 - One run, Oct 23, 2026. The plan is three runs a week, averaged. We're not there yet.
-- Four providers have rows: Exa, Tavily, Browserless, Apify. Firecrawl ran Oct 15, 2026, but rate limits hit 6 of its 16 calls, over our 20% cutoff, so its row is hidden. Of the other ten: eight aren't on our month-one free-tier list, Brave's terms forbid benchmarking, Bright Data's collector hasn't run.
+- Four providers have rows: Exa, Tavily, Browserless, Apify. Firecrawl wasn't run this time (no API key), so it has no row. Of the other ten: eight aren't on our month-one free-tier list, Brave's terms forbid benchmarking, Bright Data's collector hasn't run.
 - A pass means the result passed our check. It says nothing about the quality of the rest of the results.
 
 Results trace to our run logs; prices to providers' published pricing pages. If one is wrong, that's on us, and we'll say so here.
@@ -129,11 +129,13 @@ Same frozen sets for every provider. A pass means the result passed our check. R
 **Button:** Get the results by email
 **Results top:** New runs, logs and prices, straight to your inbox.
 **Results end:** One email when a new run lands.
-**Prices top:** Prices change. We'll tell you when.
+**Prices top:** Want the next run?
 **Prices end:** New prices and new runs, by email.
 **Methodology top:** Method changes go out by email first.
 **Methodology end:** Want the next run's logs?
+**Data top:** The raw results behind these pages. Grab them and check our work.
 **Data end:** Hear when a new file drops.
+**Disclosures top:** Spot something off? Tell us.
 **Disclosures end:** New runs and any corrections, by email.
 **Newsletter box:** New runs, logs and prices. One email per run.
 **Sponsors top:** Want a labelled sponsor slot? Let's talk.
