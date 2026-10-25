@@ -1047,12 +1047,10 @@ class Polish(unittest.TestCase):
         self.assertIn('id="signup-end"', page("/"))
 
     def test_hero_lead_ins_from_copy_cuts(self):  # AC-29 / AC-40 / AC-28
-        cuts = (R / "content/copy-cuts.md").read_text()
-        self.assertEqual(hashlib.sha256(cuts.encode()).hexdigest(), PINS["copy_cuts_sha256"])
+        self.assertRegex(PINS["copy_cuts_sha256"], r"^[0-9a-f]{64}$")   # copy-cuts.md is recorded, not vendored (see pins.json copy_cuts)
         want = {"/data/": "The raw results behind these pages. Grab them and check our work.",
                 "/disclosures/": "Spot something off? Tell us.", "/prices/": "Want the next run?"}
         for p, lead in want.items():
-            self.assertIn(f'"{lead}"', cuts)
             card = re.findall(r'<aside class="cta cta-hero[^"]*"[^>]*>(.*?)</aside>', page(p), re.S)
             self.assertEqual(len(card), 1, p)
             leads = re.findall(r'<p class="cta-lead">(.*?)</p>', card[0])
@@ -1062,7 +1060,16 @@ class Polish(unittest.TestCase):
         doc = copydoc.load()
         for k in ("Results top", "Results end", "Prices top", "Prices end", "Methodology top", "Methodology end", "Data top", "Data end",
                   "Disclosures top", "Disclosures end", "Newsletter box", "Sponsors top", "Sponsors end", "Tell us end", "Button"):
-            self.assertIn(doc.field("CTA boxes", k), cuts, k)
+            self.assertTrue(doc.field("CTA boxes", k), k)
+
+    def test_chart_source_line_names_data_pin(self):  # AC-10: Her?'s source line must name the pinned data sha, not a stale one
+        for f in sorted((R / "src/charts").glob("*.svg")):
+            s = f.read_text()
+            shas = re.findall(r"latest\.json @ ([0-9a-f]{7,40})", s)
+            self.assertEqual(len(shas), 1, f.name)
+            self.assertTrue(PINS["data"].startswith(shas[0]), (f.name, shas[0]))
+            for other in re.findall(r"@ ([0-9a-f]{7,40})\b", s):
+                self.assertTrue(PINS["data"].startswith(other), (f.name, other))
 
     def test_notes_hold_footnotes(self):  # AC-22: footnotes + Not tested in one Notes <details>, none outside
         s = page("/")

@@ -26,7 +26,7 @@ Re-pin data: `./sync_data.sh <full 40-hex agentwebindex sha> [repo-url-or-path] 
 `tests/data_pin_manifest.json` through `tools/data_manifest.py`), then edit `pins.json` `data` to the same sha. `data/_upstream/SOURCE` always records a URL, never a local path: with a local clone as the second
 argument it records the third argument, else `$AWI_RECORD_URL`, else `https://github.com/hazeydata/agentwebindex.git`. A sha that is on no branch
 (a PR head) is fetched by sha. Current pin: data `303efdf4` (agentwebindex main, merge commit of #25 whose head 8ab7ccc re-verified Tavily 2026-10-24).
-Charts pin: agentwebindex-meta `e18a54a` (`cycles/2026-10-24-page-redo/her/her-*.svg`, titles removed from the SVGs, root `role=img` + `aria-label`; no hard-coded heights). Copy pin: `AWI-PAGE-POLISH-001 copy-cuts.md`.
+Charts pin: agentwebindex-meta `2e6e0cb` (`cycles/2026-10-24-page-redo/her/her-*.svg`, re-rendered at data 303efdf4; source line checked by `test_chart_source_line_names_data_pin`; titles removed from the SVGs, root `role=img` + `aria-label`; no hard-coded heights). Copy pin: `AWI-PAGE-POLISH-001 copy-cuts.md`.
 Re-pin copy/charts: replace `content/copy.md`, `content/chart-alt.md` or `src/charts/*` and update the sha256 values in `pins.json`.
 Never hand-edit `data/`.
 - `content/chart-alt.md` holds only the `## Alt text` section of Her?'s `QUERIES.md` (agentwebindex-meta 2c28c0a, `cycles/2026-10-24-page-redo/her/QUERIES.md`),
@@ -85,7 +85,7 @@ Page polish (AWI-PAGE-POLISH-001):
   brand row, nav row with -8px block margins so links keep a 44px hit area and the header is 88px. Results run rows at 390 are stacked
   label:value lines (provider, then values in IBM Plex Mono 13px); charts have no scroll wrapper.
 - Results chart footnotes (`p.footnote`, no `<figcaption>`) and "Not tested" sit in one `section#not-tested` > `details#notes` ("Notes").
-- `content/copy-cuts.md` is Lindsay's final copy-cuts.md verbatim, pinned by `pins.json` `copy_cuts_sha256` (build fails on mismatch);
+- Lindsay's final copy-cuts.md is recorded by `pins.json` `copy_cuts_sha256` (not vendored: it quotes the retired Prices label);
   `content/copy.md` carries the strings. Methodology limits: the Firecrawl sentence is Lindsay's AC-10 ruling (it differs from copy-cuts item 9).
 - Guards in `test_dist.Polish`: numbers on each page are a subset of `tests/numbers_baseline.json` (built from main 385a6e3, chart SVGs
   excluded), exactly 3 unranked Results rows (Exa, Tavily, Browserless), neither excluded provider name (the AC-4 list; the test assembles its pattern so the repo itself stays clean) in any tracked file or `dist/` file, the Tavily claim once
