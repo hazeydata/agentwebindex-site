@@ -73,7 +73,7 @@ beehiiv URLs answer the build box with a Cloudflare challenge, so the root cause
 The submit button inside the iframe is set in the beehiiv dashboard, not here.
 
 Page polish (AWI-PAGE-POLISH-001):
-- CTA boxes: every page except Newsletter has a hero card (`aside.cta.cta-hero`, 2-column hero at >=1024px, compact row at 390) and/or an
+- CTA boxes: every page except Newsletter has a hero card (`aside.cta.cta-hero`, 2-column hero at >=768px, compact row at 390) and/or an
   end box (`.cta.cta-end`). The hero signup button links to `#signup-end` on pages that have the end form (only Results), otherwise to
   `/newsletter/` (`test_hero_button_target`). Data and Disclosures hero cards are not signups (`.cta-info`): Data holds the latest.json/latest.csv
   buttons, Disclosures the Open an issue / Email links, each under one lead-in from copy-cuts "Hero card lead-ins" (`test_hero_lead_ins_from_copy_cuts`). Lead-ins and the button label come from the `## CTA boxes` section of `content/copy.md`; the button text is
