@@ -172,6 +172,11 @@ def cta_card(ctx, key=None, href="/newsletter/"):
     return f'<aside class="cta cta-hero" aria-label="Newsletter">{lead}{cta_btn(ctx, href)}</aside>'
 
 
+def info_card(ctx, key, body, label):
+    """Hero card that is not a newsletter signup (Data downloads, Disclosures corrections): one lead-in from copy-cuts "Hero card lead-ins"."""
+    return f'<aside class="cta cta-hero cta-info" aria-label="{e(label)}"><p class="cta-lead">{e(ctx.doc.field("CTA boxes", key))}</p>{body}</aside>'
+
+
 def cta_end(ctx, key, form=False):
     """Full-width repeat at the end of a page; `form` embeds the signup itself instead of a button."""
     body = ctx.newsletter if form else cta_btn(ctx)
@@ -286,17 +291,20 @@ def chart_svgs(ctx, name):
     return "".join(out)
 
 
-def section_chart(ctx, sid, intro_key, name, title, caption):
+def section_chart(ctx, sid, intro_key, name, title):
     intro = ctx.doc.blocks("Home: section intros", intro_key)[0][1]
     return (f'<section id="{sid}"><div class="wrap"><div class="col"><h2>{e(intro_key)}</h2><p class="lcopy">{inline(intro)}</p></div>'
-            f'<figure class="chart" id="chart-{sid}"><h3>{e(title)}</h3>{chart_svgs(ctx, name)}<figcaption>{e(caption)}</figcaption></figure>'
+            f'<figure class="chart" id="chart-{sid}"><h3>{e(title)}</h3>{chart_svgs(ctx, name)}</figure>'
             '</div></section>')
 
 
 def section_not_tested(ctx):
+    """One Notes <details> (addendum 9, CEO R-5): the chart footnotes and "Not tested"."""
     t = ctx.doc.blocks("Home: section intros", "Not tested")[0][1]
-    return ('<section id="not-tested" class="notes"><div class="wrap"><details id="notes"><summary>Notes</summary><h3>Not tested</h3>'
-            f'<p>{inline(t)}</p><p><a href="/methodology/">Methodology and limits</a></p></details></div></section>')
+    foot = "".join(f'<p class="footnote" data-chart="{sid}">{e(c)}</p>' for sid, c in
+                   (("pass-rate", pass_caption(ctx)), ("cost", ctx.doc.field("Chart briefs", "Caption", sub="Chart 2"))))
+    return ('<section id="not-tested" class="notes"><div class="wrap"><details id="notes"><summary>Notes</summary>'
+            f'{foot}<h3>Not tested</h3><p>{inline(t)}</p><p><a href="/methodology/">Methodology and limits</a></p></details></div></section>')
 
 
 def earlier_runs(ctx):
@@ -419,7 +427,7 @@ def data_body(ctx):
     items = "".join(f'<li><a class="mono" href="{u}">{e(n)}</a></li>' for n, u in DATA_FILES[2:])
     dl = (f'<p class="actions"><a class="btn" href="{DATA_FILES[0][1]}">Download latest.json</a>'
           f'<a class="btn ghost" href="{DATA_FILES[1][1]}">or latest.csv</a></p>')   # labels: Lindsay copy-cuts, Data
-    return (hero(f'<p class="kicker">CC BY 4.0</p><h1>Data</h1><p class="lede">{inline(lede)}</p>{dl}', "", cta_card(ctx))
+    return (hero(f'<p class="kicker">CC BY 4.0</p><h1>Data</h1><p class="lede">{inline(lede)}</p>', "", info_card(ctx, "Data top", dl, "Data files"))
             + f'<section><div class="wrap"><div class="col"><div class="card"><h2 class="card-h">Other files</h2><ul class="files">{items}</ul></div></div></div></section>'
             + cta_end(ctx, "Data end"))
 
@@ -504,13 +512,14 @@ def slots(ctx):
     d = ctx.doc
     return {
         "hero_results": hero_results(ctx), "run": section_run(ctx),
-        "pass_rate": section_chart(ctx, "pass-rate", "Pass rate", "pass-rate", headline_sentence(ctx), pass_caption(ctx)),
-        "cost": section_chart(ctx, "cost", "Cost per passed check", "cost-per-success", cost_title(ctx), d.field("Chart briefs", "Caption", sub="Chart 2")),
+        "pass_rate": section_chart(ctx, "pass-rate", "Pass rate", "pass-rate", headline_sentence(ctx)),
+        "cost": section_chart(ctx, "cost", "Cost per passed check", "cost-per-success", cost_title(ctx)),
         "not_tested": section_not_tested(ctx), "details": section_details(ctx), "sponsor": section_sponsor(ctx),
         "prices_body": prices_body(ctx), "methodology_body": methodology_body(ctx), "data_body": data_body(ctx),
         "tell_us_body": tell_us_body(ctx), "newsletter_body": newsletter_body(ctx),
-        "disclosures_body": field_page(ctx, "Disclosures page", aside=cta_card(ctx), end_key="Disclosures end",
-                                       hero_extra=f'<p class="inline-links"><a href="{ISSUES}">Open an issue</a> · <a href="mailto:fred@hazeydata.ai">Email fred@hazeydata.ai</a></p>'),
+        "disclosures_body": field_page(ctx, "Disclosures page", end_key="Disclosures end",
+                                       aside=info_card(ctx, "Disclosures top", f'<p class="inline-links"><a href="{ISSUES}">Open an issue</a> · '
+                                                       '<a href="mailto:fred@hazeydata.ai">Email fred@hazeydata.ai</a></p>', "Corrections")),
         "sponsors_body": field_page(ctx, "Sponsors page", end_key="Sponsors end",
                                     after_first=f'<div class="cta cta-inline"><p class="cta-lead">{e(d.field("CTA boxes", "Sponsors top"))}</p>'
                                                '<a class="btn" href="mailto:fred@hazeydata.ai">Email Fred</a></div>'),
