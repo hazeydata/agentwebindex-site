@@ -198,8 +198,15 @@ export async function handleSubscribe(request, env, opts = {}) {
   }
 
   const out = await sendToBeehiiv(env, beehiivBody(email, cleanPage(fields.page), self), fetchImpl, timeoutMs);
+  let saved = true;
   try { await record(db, row.id, out, nowIso); } catch {
-    // Beehiiv has the email but the row still says pending: a retry would re-send it. Surface it as a server error (500).
+    saved = false;
+    // Beehiiv accepted: try once more to persist the acceptance (sub id + sent), so the retry job won't call Beehiiv again.
+    if (out.kind === 'sent') { try { await record(db, row.id, out, nowIso); saved = true; } catch { /* still pending */ } }
+  }
+  if (!saved) {
+    // Both writes failed: the row still says pending and the retry job WILL call Beehiiv again for it (Beehiiv dedupes the
+    // subscriber, but a confirmation email may be re-sent). Surface it as a server error (500) so it shows in logs/monitoring.
     log('signup', 'error', 'd1_write');
     if (out.kind === 'sent') return respond(request, 'error', 500);
   }

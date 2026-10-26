@@ -2,12 +2,13 @@
 // a KV, a recording fetch, and a log capture. No network.
 import { Q } from '../../signup/core.js';
 
-export function mockD1({ failInsert = false, failMark = false } = {}) {
+export function mockD1({ failInsert = false, failMark = false, failMarkTimes = 0 } = {}) {
   const rows = []; let nextId = 1; const calls = [];
   const live = (r) => r.deleted_at == null;
   const exec = (sql, a) => {
     calls.push(sql);
     if (failMark && [Q.markSent, Q.markFailed, Q.markQueued].includes(sql)) throw new Error('D1_ERROR');
+    if (failMarkTimes > 0 && [Q.markSent, Q.markFailed, Q.markQueued].includes(sql)) { failMarkTimes--; throw new Error('D1_ERROR'); }
     switch (sql) {
       case Q.insert: {
         if (failInsert) throw new Error('D1_ERROR');

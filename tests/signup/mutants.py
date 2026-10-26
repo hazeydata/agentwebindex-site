@@ -47,6 +47,9 @@ MUTANTS = {
     "export_no_deleted_filter": (C, "WHERE beehiiv_status != 'sent' AND deleted_at IS NULL ORDER BY id", "WHERE beehiiv_status != 'sent' ORDER BY id"),
     "mark_fail_swallowed": (C, "    if (out.kind === 'sent') return respond(request, 'error', 500);\n", ""),
     "page_unsanitized": (C, "function cleanPage(p) { return typeof p === 'string' &&", "function cleanPage(p) { return typeof p === 'string' ? p : '/'; return typeof p === 'string' &&"),
+    "page_protocol_relative": (C, "/^\\/(?!\\/)[A-Za-z0-9", "/^\\/[A-Za-z0-9"),
+    "status_fail_500_for_all": (C, "    if (out.kind === 'sent') return respond(request, 'error', 500);", "    return respond(request, 'error', 500);"),
+    "accepted_no_second_write": (C, "    if (out.kind === 'sent') { try { await record(db, row.id, out, nowIso); saved = true; }", "    if (false) { try { await record(db, row.id, out, nowIso); saved = true; }"),
     "honeypot_trimmed": (C, "String(fields.website || '') === ''", "String(fields.website || '').trim() === ''"),
 }
 COPY = ["signup", "functions", "workers", "migrations", "tests/signup", "site.config.json", "dist/newsletter/thanks"]

@@ -337,7 +337,26 @@ test('Beehiiv accepted but the status update fails -> 500, not success', async (
   assert.equal(r.res.status, 500); assert.equal(r.status, 'error'); assert.equal(r.fetch.calls.length, 1);
 });
 
-for (const [p, want] of [['/newsletter/', '/newsletter/'], ['javascript:alert(1)', '/'], ['https://evil.example.com/x', '/'], ['//evil.example.com', '/'],
+test('accepted, first status write fails, second persists it: success, row sent with sub id, retry does not call Beehiiv again', async () => {
+  const e = env({ SIGNUPS: mockD1({ failMarkTimes: 1 }) });
+  const r = await sub(e, OK);
+  assert.equal(r.res.status, 200); assert.equal(r.status, CFG.SUCCESS_STATUS);
+  assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'sent'); assert.ok(e.SIGNUPS.rows[0].beehiiv_sub_id);
+  const f = mockFetch(() => new Response('{}', { status: 201 }));
+  const { out } = await capture(() => retryPending(e, { fetch: f }));
+  assert.equal(out.tried, 0); assert.equal(f.calls.length, 0);
+});
+
+test('Beehiiv failed and the status update fails: not a 500 (the row is stored, answer queued)', async () => {
+  for (const resp of [500, 'network']) {
+    const e = env({ SIGNUPS: mockD1({ failMark: true }) });
+    const f = mockFetch(() => (resp === 'network' ? (() => { throw new TypeError('fetch failed'); })() : new Response('', { status: resp })));
+    const r = await sub(e, OK, { fetch: f });
+    assert.notEqual(r.res.status, 500); assert.equal(r.status, 'queued'); assert.equal(e.SIGNUPS.rows.length, 1);
+  }
+});
+
+for (const [p, want] of [['/newsletter/', '/newsletter/'], ['javascript:alert(1)', '/'], ['https://evil.example.com/x', '/'], ['//evil.example.com', '/'], ['//evil', '/'],
   ['/a?email=a@example.com', '/'], ['/<script>', '/'], [`/${'a'.repeat(101)}`, '/'], [42, '/']]) {
   test(`page field sanitized: ${String(p).slice(0, 30)}`, async () => {
     const e = env(); const r = await sub(e, { email: 'page@example.com', page: p });
