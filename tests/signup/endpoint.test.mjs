@@ -319,7 +319,7 @@ test('AC18: a row sent by retry today is kept until day 30, then purged; the exp
 // ---------------------------------------------------------------- Kitty's mutant gaps (9:48 steering)
 for (const [name, v, ok] of [
   ['dotless domain', 'a@localhost', false], ['1-letter TLD', 'a@example.c', false], ['2-letter TLD ok', 'a@example.co', true],
-  ['1-letter label ok', 'a@x.example.com', true], ['two @', 'a@b@example.com', false], ['no @', 'example.com', false],
+  ['1-letter label ok', 'a@x.example.com', true], ['two @', 'a@b@example.com', false], ['two @, valid first domain', 'a@example.com@example.org', false], ['no @', 'example.com', false],
   ['local 64 ok', `${'a'.repeat(64)}@example.com`, true], ['local 65', `${'a'.repeat(65)}@example.com`, false],
 ]) test(`AC2 validation: ${name}`, () => { assert.equal(normalizeEmail(v) !== null, ok, v); });
 
