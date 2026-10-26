@@ -382,6 +382,35 @@ def chrome_tmp_paths():
     return out
 
 
+HYGIENE_OK = ("browser_check: temp hygiene OK: 0 new Chrome temp paths (com.google.Chrome.*, .com.google.Chrome.*, .org.chromium.*, "
+              "scoped_dir*), no live Chrome process group; profile and Chrome TMPDIR removed")
+
+
+def cleanup_errors(before, pgid, own_dirs):
+    """All post-cleanup checks: new Chrome temp paths, a surviving Chrome process group, our own dirs still present."""
+    errs = []
+    left = sorted(chrome_tmp_paths() - before)
+    if left:
+        errs.append(f"run left {len(left)} new Chrome temp path(s) behind: {left}")
+    if pgid is not None:
+        try:
+            os.killpg(pgid, 0)   # signal 0: existence probe only
+            errs.append(f"Chrome process group {pgid} still alive after cleanup")
+        except (ProcessLookupError, PermissionError):
+            pass
+    errs += [f"run left its own temp dir behind: {p}" for p in own_dirs if os.path.exists(p)]
+    return errs
+
+
+def report(errs):
+    """Print BROWSER FAIL lines, or the hygiene OK line only when every check (cleanup included) passed."""
+    for m in errs:
+        print("BROWSER FAIL:", m, file=sys.stderr)
+    if not errs:
+        print(HYGIENE_OK)
+    return 1 if errs else 0
+
+
 def main():
     if not Path(CHROME).exists():
         print("browser_check: SKIP (google-chrome not installed)")
@@ -452,23 +481,8 @@ def main():
         shutil.rmtree(ctmp, ignore_errors=True)
         if os.environ.get("AWI_KEEP_SHOTS") != "1":
             shutil.rmtree(shots, ignore_errors=True)
-    left = sorted(chrome_tmp_paths() - before)
-    if left:
-        errs.append(f"run left {len(left)} new Chrome temp path(s) behind: {left}")
-    else:
-        print("browser_check: temp hygiene OK: 0 new Chrome temp paths (com.google.Chrome.*, .com.google.Chrome.*, .org.chromium.*, scoped_dir*), no live Chrome process group; profile and Chrome TMPDIR removed")
-    if chrome:
-        try:
-            os.killpg(chrome.pid, 0)   # signal 0: existence probe only
-            errs.append(f"Chrome process group {chrome.pid} still alive after cleanup")
-        except (ProcessLookupError, PermissionError):
-            pass
-    for p in (prof, ctmp):
-        if os.path.exists(p):
-            errs.append(f"run left its own temp dir behind: {p}")
-    for m in errs:
-        print("BROWSER FAIL:", m, file=sys.stderr)
-    return 1 if errs else 0
+    errs += cleanup_errors(before, chrome.pid if chrome else None, (prof, ctmp))
+    return report(errs)
 
 
 if __name__ == "__main__":
