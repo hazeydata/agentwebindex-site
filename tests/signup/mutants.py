@@ -31,8 +31,25 @@ MUTANTS = {
     "doi_drift": (CFG, "export const DOUBLE_OPT_IN = true;", "export const DOUBLE_OPT_IN = false;"),
     "no_source_tag": (C, "custom_fields: [{ name: BEEHIIV_SOURCE_FIELD, value: BEEHIIV_SOURCE_TAG }],", ""),
     "raw_ip_stored": (C, "nowIso, hash).run();", "nowIso, request.headers.get('CF-Connecting-IP')).run();"),
+    "purge_deletes_any_status": (C, "purge: \"DELETE FROM signups WHERE beehiiv_status = 'sent' AND sent_at IS NOT NULL AND sent_at <= ?\"", "purge: \"DELETE FROM signups WHERE sent_at IS NOT NULL AND sent_at <= ?\""),
+    "purge_deletes_unsent": (C, "purge: \"DELETE FROM signups WHERE beehiiv_status = 'sent' AND sent_at IS NOT NULL AND sent_at <= ?\"", "purge: \"DELETE FROM signups WHERE (beehiiv_status = 'sent' AND sent_at IS NOT NULL AND sent_at <= ?) OR beehiiv_status != 'sent'\""),
+    "purge_29_days": (CFG, "export const RETENTION_DAYS = 30;", "export const RETENTION_DAYS = 29;"),
+    "purge_31_days": (CFG, "export const RETENTION_DAYS = 30;", "export const RETENTION_DAYS = 31;"),
+    "purge_strict_cutoff": (C, "AND sent_at <= ?\"", "AND sent_at < ?\""),
+    "purge_skipped_without_key": ("workers/signup-retry.js", "  const purge = await purgeSent(env, opts);", "  const purge = retry.skipped ? { deleted: 0 } : await purgeSent(env, opts);"),
+    "domain_no_dot": (C, "[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$/", "[A-Za-z0-9])?\\.)*[A-Za-z]{2,63}$/"),
+    "tld_one_letter": (C, "[A-Za-z]{2,63}$/", "[A-Za-z]{1,63}$/"),
+    "two_at_allowed": (C, "if (parts.length !== 2) return null;", "if (parts.length < 2) return null;"),
+    "local_65_allowed": (C, "local.length > 64", "local.length > 65"),
+    "rl_window_11min": (CFG, "perIp: { max: 5, windowSeconds: 600 }", "perIp: { max: 5, windowSeconds: 660 }"),
+    "due_no_deleted_filter": (C, "AND attempts < ? AND deleted_at IS NULL", "AND attempts < ?"),
+    "due_cap_inclusive": (C, "AND attempts < ? AND deleted_at IS NULL", "AND attempts <= ? AND deleted_at IS NULL"),
+    "export_no_deleted_filter": (C, "WHERE beehiiv_status != 'sent' AND deleted_at IS NULL ORDER BY id", "WHERE beehiiv_status != 'sent' ORDER BY id"),
+    "mark_fail_swallowed": (C, "    if (out.kind === 'sent') return respond(request, 'error', 500);\n", ""),
+    "page_unsanitized": (C, "function cleanPage(p) { return typeof p === 'string' &&", "function cleanPage(p) { return typeof p === 'string' ? p : '/'; return typeof p === 'string' &&"),
+    "honeypot_trimmed": (C, "String(fields.website || '') === ''", "String(fields.website || '').trim() === ''"),
 }
-COPY = ["signup", "functions", "migrations", "tests/signup", "site.config.json", "dist/newsletter/thanks"]
+COPY = ["signup", "functions", "workers", "migrations", "tests/signup", "site.config.json", "dist/newsletter/thanks"]
 CMDS = [["node", "--test", "tests/signup/"], [sys.executable, "tests/signup/sql_check.py"]]
 
 def run(cmd, cwd, timeout=60):

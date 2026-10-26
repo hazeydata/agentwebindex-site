@@ -2,11 +2,12 @@
 // a KV, a recording fetch, and a log capture. No network.
 import { Q } from '../../signup/core.js';
 
-export function mockD1({ failInsert = false } = {}) {
+export function mockD1({ failInsert = false, failMark = false } = {}) {
   const rows = []; let nextId = 1; const calls = [];
   const live = (r) => r.deleted_at == null;
   const exec = (sql, a) => {
     calls.push(sql);
+    if (failMark && [Q.markSent, Q.markFailed, Q.markQueued].includes(sql)) throw new Error('D1_ERROR');
     switch (sql) {
       case Q.insert: {
         if (failInsert) throw new Error('D1_ERROR');
@@ -21,6 +22,11 @@ export function mockD1({ failInsert = false } = {}) {
       case Q.markFailed: { const r = rows.find((x) => x.id === a[1] && x.beehiiv_status !== 'sent'); if (r) Object.assign(r, { beehiiv_status: 'failed', attempts: r.attempts + 1, last_error: a[0] }); return { changes: r ? 1 : 0 }; }
       case Q.markQueued: { const r = rows.find((x) => x.id === a[1] && x.beehiiv_status !== 'sent'); if (r) Object.assign(r, { beehiiv_status: 'queued', last_error: a[0] }); return { changes: r ? 1 : 0 }; }
       case Q.due: return rows.filter((r) => ['failed', 'pending'].includes(r.beehiiv_status) && r.attempts < a[0] && live(r)).slice(0, 100).map((r) => ({ ...r }));
+      case Q.purge: {
+        const before = rows.length;
+        for (let i = rows.length - 1; i >= 0; i--) { const r = rows[i]; if (r.beehiiv_status === 'sent' && r.sent_at != null && r.sent_at <= a[0]) rows.splice(i, 1); }
+        return { changes: before - rows.length };
+      }
       case Q.exportRows: return rows.filter((r) => r.beehiiv_status !== 'sent' && live(r)).map((r) => ({ email: r.email_norm, source: r.source, created_at: r.created_at }));
       default: throw new Error(`unexpected SQL: ${sql}`);
     }

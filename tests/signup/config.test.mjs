@@ -17,3 +17,8 @@ test('AC7 every status has copy and a thank-you page', () => {
     readFileSync(new URL(`../../dist/newsletter/thanks/${s}/index.html`, import.meta.url));
   }
 });
+
+test("Lindsay's copy is used verbatim for invalid and error (copy/signup-form-copy.md, 10:00)", () => {
+  assert.equal(CFG.MESSAGES.invalid, "That email doesn't look right. Check it and try again.");
+  assert.equal(CFG.MESSAGES.error, 'Something broke on our end. Try again in a minute, or email fred@hazeydata.ai.');
+});

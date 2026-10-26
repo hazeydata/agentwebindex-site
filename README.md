@@ -109,23 +109,29 @@ Store-first, same-origin signup. Copied and adapted from hazeydata/hazeydata.ai 
   with `utm_source=agentwebindex`, `custom_fields [{source: AWI}]`, `reactivate_existing:false`.
   2xx -> `sent` + sub id, status `pending_confirmation`. Timeout, network, 5xx, 429, other 4xx -> `failed`, status `queued`.
   No key, 401 or 403 -> `queued` row (CSV main path, AC 8a), status `queued`. A repeat writes nothing and calls nothing, and answers what a first
-  signup in that row's state would get, so the response never reveals membership (`already_subscribed` is never sent). Logs hold fixed enums only.
+  signup in that row's state would get (if Beehiiv accepted the email but the D1 status update fails, the answer is a 500 `error`),
+  so the response never reveals membership (`already_subscribed` is never sent). Logs hold fixed enums only.
 - Statuses and copy: `pending_confirmation` "Check your inbox to confirm your subscription.", `queued` "Thanks, you're on the list. We'll send a confirmation
   email soon.", `invalid`, `rate_limited` "Too many tries, please wait a few minutes.", `error` (`subscribed` only if `DOUBLE_OPT_IN` is false).
   JSON when the request is JSON or `Accept: application/json` (`/signup.js`); otherwise a 303 to the static `/newsletter/thanks/<status>/` page
   (built by `build.py`, noindex, not in the sitemap), so the form works with JS off. (Spec data shape said `?s=<status>`; a per-status page needs no JS.)
 - `functions/api/subscribe.js`: the Pages Function. `functions/api/signups/export.csv.js`: `GET` with header `X-Export-Token: <EXPORT_TOKEN>` -> CSV
-  `email,source,created_at` of every row not `sent` (formula-guarded); missing or wrong token -> 401. Exporting deletes nothing.
+  `email,source,created_at` of every row not `sent` and not deleted (`deleted_at` set) (formula-guarded); missing or wrong token -> 401. Exporting deletes nothing.
 - `workers/signup-retry.js`: scheduled Worker (`*/15 * * * *`, example config `workers/wrangler.signup-retry.toml.example`) running `retryPending`:
   `failed`/`pending` rows with attempts < 5; `sent` rows are never touched (every UPDATE is guarded by `beehiiv_status != 'sent'`); no key -> skips Beehiiv;
-  a 401/403 marks the row `queued` and stops the run. Retention (AC 18, delete 30 days after `sent`) is not built yet.
+  a 401/403 marks the row `queued` and stops the run. The same run then calls `purgeSent` (AC 18, R2): it deletes rows whose
+  `beehiiv_status` is `sent` and whose `sent_at` is 30 days (`RETENTION_DAYS`) or more ago. `queued`, `pending` and `failed` rows are never deleted,
+  however old; a second run deletes nothing more (idempotent). Purge runs even when retry is skipped for lack of a key.
 - `migrations/0001_signups.sql`: D1 table `signups` (idempotent). `ip_hash` = SHA-256 of `IP_SALT` + IP; the raw IP is never stored.
 - Bindings and secrets (names only; chief creates them at deploy): D1 `SIGNUPS`, optional KV `SIGNUP_RL`, secrets `BEEHIIV_API_KEY`, `BEEHIIV_PUB_ID`,
   `IP_SALT`, `EXPORT_TOKEN`. Beehiiv needs a `source` custom field on the publication for the AWI tag to be stored.
 - Tests (in `run_tests.sh`): `node --test tests/signup/` (mocked D1/KV/fetch/clock; no network), `tests/signup/sql_check.py` (every statement against
   the migration in real SQLite), `tests/signup/secret_scan.sh`, `tests/signup/mutants.py` (defects injected into the save order and fallback logic must
   all be caught), plus `test_dist` (`test_signup_*`) and `browser_check.check_signup` (first screenful at 1280x800 and 390x844, label, "Subscribe",
-  honeypot off-screen, contrast >= 4.5:1, keyboard order, aria-live error).
+  honeypot off-screen, contrast >= 4.5:1, keyboard order, aria-live error) and `browser_check.check_signup_goatcounter` (R3, AC 13: against
+  `tests/signup/dev_server.mjs`, which serves `dist/` and the real handler on mocks, the form submits with JS on and off while gc.zgo.at is
+  blocked, and with GoatCounter allowed (a stub `count.js` that beacons path, query, hash, referrer and title) no third-party request carries the email
+  in its URL, Referer or body). AC 13 covers the form and `/api/subscribe` only; the site-wide GoatCounter script is left as it was.
 
 ## Deploy (Cloudflare Pages)
 Build command `python3 build.py`, output directory `dist`, env `PYTHON_VERSION=3.12`. The signup needs the Pages project to deploy `functions/`

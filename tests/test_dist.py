@@ -545,9 +545,12 @@ class Shell(unittest.TestCase):
         self.assertRegex(css, r"\.signup-hp \{ position: absolute; left: -10000px;")
         self.assertIn('<script src="/signup.js" defer></script>', top)
 
-    def test_signup_no_beehiiv_iframe_or_third_party_script(self):  # AC 13
+    def test_signup_no_beehiiv_iframe_or_third_party_script(self):  # AC 13 (R3: form and /api/subscribe only; GoatCounter left as is)
         for p in ("/", "/newsletter/"):
             s = page(p)
+            # the email only ever travels in a same-origin POST body, never in a URL that analytics could see (R3)
+            for f in re.findall(r'<form\b[^>]*class="awi-signup"[^>]*>', s):
+                self.assertIn('method="post"', f, p); self.assertIn('action="/api/subscribe"', f, p)
             self.assertNotIn("beehiiv.com", s, p)
             self.assertNotRegex(s, r"(?i)<iframe", p)
             ext = re.findall(r'<script\b[^>]*\bsrc="((?:https?:)?//[^"]+)"', s)

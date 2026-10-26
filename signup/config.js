@@ -18,6 +18,8 @@ export const ALLOW_UNICODE_LOCAL = false;    // OQ-5 open, R2 default: ASCII onl
 export const RATE_LIMIT = { perIp: { max: 5, windowSeconds: 600 }, site: { max: 50, windowSeconds: 60 } };
 export const BEEHIIV_TIMEOUT_MS = 5000;
 export const MAX_ATTEMPTS = 5;
+// AC 18 (R2): a row is deleted RETENTION_DAYS after it reached Beehiiv (sent_at). queued/pending/failed rows are never deleted.
+export const RETENTION_DAYS = 30;
 
 // Bot check (R2 OQ-1: "Honeypot plus rate limit only"). Pluggable: checks live in BOT_CHECKS (signup/core.js); only
 // 'honeypot' is registered. Adding another means a new entry there plus a spec ruling (AC 13 allows 0 third-party scripts).
@@ -33,7 +35,7 @@ export const MESSAGES = {
   pending_confirmation: 'Check your inbox to confirm your subscription.',
   subscribed: "You're subscribed.",
   queued: "Thanks, you're on the list. We'll send a confirmation email soon.",
-  invalid: 'Please enter a valid email address.',
+  invalid: "That email doesn't look right. Check it and try again.",  // Lindsay, copy/signup-form-copy.md (verbatim)
   rate_limited: 'Too many tries, please wait a few minutes.',
-  error: 'Something went wrong on our side. Please try again in a minute.',
+  error: 'Something broke on our end. Try again in a minute, or email fred@hazeydata.ai.',  // Lindsay, copy/signup-form-copy.md (verbatim)
 };

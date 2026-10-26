@@ -3,7 +3,7 @@
 // Everything external is injected (env bindings, opts.fetch, opts.now) so tests run on mocks with no network.
 import {
   SOURCE, BEEHIIV_SOURCE_TAG, BEEHIIV_SOURCE_FIELD, UTM_SOURCE, DOUBLE_OPT_IN, SEND_WELCOME_EMAIL, ALLOW_UNICODE_LOCAL,
-  RATE_LIMIT, BEEHIIV_TIMEOUT_MS, MAX_ATTEMPTS, BOT_CHECK, STATUSES, SUCCESS_STATUS,
+  RATE_LIMIT, BEEHIIV_TIMEOUT_MS, MAX_ATTEMPTS, RETENTION_DAYS, BOT_CHECK, STATUSES, SUCCESS_STATUS,
 } from './config.js';
 
 const HTTP = { pending_confirmation: 200, subscribed: 200, queued: 200, invalid: 400, rate_limited: 429, error: 502 };
@@ -19,6 +19,8 @@ export const Q = {
   markQueued: "UPDATE signups SET beehiiv_status = 'queued', last_error = ? WHERE id = ? AND beehiiv_status != 'sent'",
   due: `SELECT id, email_norm, page FROM signups WHERE beehiiv_status IN ('failed', 'pending') AND attempts < ? AND deleted_at IS NULL
         ORDER BY id LIMIT 100`,
+  // AC 18: only rows Beehiiv accepted (status 'sent' with a sent_at) and only once sent_at is at or before the cutoff.
+  purge: "DELETE FROM signups WHERE beehiiv_status = 'sent' AND sent_at IS NOT NULL AND sent_at <= ?",
   exportRows: "SELECT email_norm AS email, source, created_at FROM signups WHERE beehiiv_status != 'sent' AND deleted_at IS NULL ORDER BY id",
 };
 
@@ -134,13 +136,13 @@ async function record(db, id, out, nowIso) {
 }
 
 // ---------------------------------------------------------------- request handling
-function respond(request, status) {
+function respond(request, status, httpStatus) {
   if (!STATUSES.includes(status)) status = 'error';
   const accept = request.headers.get('Accept') || '';
   const ctype = request.headers.get('Content-Type') || '';
   if (accept.includes('application/json') || ctype.includes('application/json')) {
     return new Response(JSON.stringify({ status }), {
-      status: HTTP[status], headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      status: httpStatus ?? HTTP[status], headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     });
   }
   // No-JS path: 303 to a static per-status thank-you page (works with JS off; see README).
@@ -156,7 +158,7 @@ async function readFields(request) {
   } catch { return {}; }
 }
 
-function cleanPage(p) { return typeof p === 'string' && /^\/[A-Za-z0-9/_-]{0,100}$/.test(p) ? p : '/'; }
+function cleanPage(p) { return typeof p === 'string' && /^\/(?!\/)[A-Za-z0-9/_-]{0,100}$/.test(p) ? p : '/'; }
 
 export async function handleSubscribe(request, env, opts = {}) {
   const fetchImpl = opts.fetch || fetch;
@@ -196,7 +198,11 @@ export async function handleSubscribe(request, env, opts = {}) {
   }
 
   const out = await sendToBeehiiv(env, beehiivBody(email, cleanPage(fields.page), self), fetchImpl, timeoutMs);
-  try { await record(db, row.id, out, nowIso); } catch { /* row is stored; retry/export picks it up */ }
+  try { await record(db, row.id, out, nowIso); } catch {
+    // Beehiiv has the email but the row still says pending: a retry would re-send it. Surface it as a server error (500).
+    log('signup', 'error', 'd1_write');
+    if (out.kind === 'sent') return respond(request, 'error', 500);
+  }
   log('signup', out.kind, out.code ?? null);
   return respond(request, out.kind === 'sent' ? SUCCESS_STATUS : 'queued');
 }
@@ -219,4 +225,16 @@ export async function retryPending(env, opts = {}) {
   }
   log('retry', 'done');
   return tally;
+}
+
+// AC 18 retention (R2): hard-delete rows 30 days after they reached Beehiiv. Idempotent: a second run deletes nothing
+// more; never touches queued, pending or failed rows (they are the CSV fallback). Called by the scheduled Worker.
+export async function purgeSent(env, opts = {}) {
+  const db = env.SIGNUPS;
+  if (!db) { log('purge', 'error', 'd1_missing'); return { deleted: 0 }; }
+  const cutoff = new Date((opts.now ?? Date.now()) - RETENTION_DAYS * 86400000).toISOString();
+  const r = await db.prepare(Q.purge).bind(cutoff).run();
+  const deleted = r?.meta?.changes ?? 0;
+  log('purge', 'done');
+  return { deleted, cutoff };
 }

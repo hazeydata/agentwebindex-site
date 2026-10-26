@@ -7,7 +7,7 @@ deleted on exit; with AWI_KEEP_SHOTS=1 it is kept and its path is printed for th
 
 Run after `python3 build.py`:  python3 -m tests.browser_check
 """
-import base64, hashlib, http.client, json, os, re, shutil, signal, socket, struct, subprocess, sys, tempfile, threading, time, urllib.request
+import base64, hashlib, http.client, json, os, re, shutil, signal, socket, struct, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -83,28 +83,47 @@ class Cdp:
     def __init__(self, ws):
         self.ws, self.n, self.events = ws, 0, []
 
+    hook = None   # optional fn(cdp, message) for events that need an answer (Fetch.requestPaused)
+
+    def _dispatch(self, m):
+        if "id" in m:
+            sent = getattr(self, "pending_ids", {}).pop(m["id"], None)
+            if sent:
+                if "error" in m:
+                    self.send_errors = getattr(self, "send_errors", []) + [f"{sent}: {m['error']}"]
+                return
+            self.responses[m["id"]] = m
+        elif "method" in m:
+            self.events.append(m["method"])
+            if self.hook:
+                self.hook(self, m)
+
+    def send(self, method, **params):
+        """Fire-and-forget command (used from hooks, which must not block on a reply). Errors are kept in self.send_errors."""
+        self.n += 1
+        self.pending_ids = getattr(self, "pending_ids", {}); self.pending_ids[self.n] = method
+        self.ws.send(json.dumps({"id": self.n, "method": method, "params": params}))
+
     def call(self, method, **params):
         self.n += 1
         mid = self.n
+        self.responses = getattr(self, "responses", {})
         self.ws.send(json.dumps({"id": mid, "method": method, "params": params}))
-        while True:
-            m = json.loads(self.ws.recv())
-            if m.get("id") == mid:
-                if "error" in m:
-                    raise RuntimeError(f"{method}: {m['error']}")
-                return m.get("result", {})
-            if "method" in m:
-                self.events.append(m["method"])
+        while mid not in self.responses:
+            self._dispatch(json.loads(self.ws.recv()))
+        m = self.responses.pop(mid)
+        if "error" in m:
+            raise RuntimeError(f"{method}: {m['error']}")
+        return m.get("result", {})
 
     def wait_event(self, name, timeout=20):
+        self.responses = getattr(self, "responses", {})
         end = time.time() + timeout
         while name not in self.events:
             if time.time() > end:
                 raise TimeoutError(name)
             self.ws.s.settimeout(max(0.1, end - time.time()))
-            m = json.loads(self.ws.recv())
-            if "method" in m:
-                self.events.append(m["method"])
+            self._dispatch(json.loads(self.ws.recv()))
         self.ws.s.settimeout(30)
 
     def js(self, expr):
@@ -430,9 +449,128 @@ def check_signup(cdp, base, errs):
         press_enter(cdp)
         time.sleep(0.2)
         st = json.loads(cdp.js("(() => { const f = document.querySelector('form.awi-signup'); const s = f.querySelector('.signup-status'); return JSON.stringify({t: s.textContent, live: s.getAttribute('aria-live'), inv: f.querySelector('input[name=email]').getAttribute('aria-invalid'), url: location.pathname}); })()"))
-        if st["t"] != "Please enter a valid email address." or st["live"] != "polite" or st["inv"] != "true" or st["url"] != p:
+        if st["t"] != "That email doesn't look right. Check it and try again." or st["live"] != "polite" or st["inv"] != "true" or st["url"] != p:
             errs.append(f"{p}: invalid email not announced inline: {st}")
         n += 1
+    return n
+
+
+# Stand-in for gc.zgo.at/count.js (the box has no network): it beacons a superset of what GoatCounter sends -- the
+# path through the page's own window.goatcounter.path, plus search, hash, referrer and title -- to the data-goatcounter endpoint.
+GC_STUB = """(function(){var g=window.goatcounter||{};var p=location.pathname+location.search+location.hash;if(typeof g.path==='function')p=g.path(p);
+var s=document.querySelector('script[data-goatcounter]');var ep=(s&&s.getAttribute('data-goatcounter'))||'https://gc.zgo.at/count';
+new Image().src=ep+'?p='+encodeURIComponent(p)+'&r='+encodeURIComponent(document.referrer)+'&t='+encodeURIComponent(document.title)+'&u='+encodeURIComponent(location.href);})();"""
+
+
+def check_signup_goatcounter(cdp, errs):
+    """AWI-SIGNUP-FORM-001 R3 (AC 13 / AC 15 locally): with tests/signup/dev_server.mjs (dist/ + the real /api/subscribe on mocks),
+    (a) with gc.zgo.at blocked the form still submits, with JS on (inline status) and with JS off (303 to /newsletter/thanks/<status>/),
+    and a row is stored for each; (b) with GoatCounter allowed (stub count.js), no request to any non-local host carries the email
+    (raw, URL-encoded or lowercased) in its URL, path, query, Referer or body, while beacons do fire (incl. the thanks page)."""
+    proc = subprocess.Popen(["node", str(R / "tests/signup/dev_server.mjs")], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, start_new_session=True)
+    seen, mode = [], {"block": True}
+
+    def hook(c, m):
+        if m.get("method") != "Fetch.requestPaused":
+            return
+        p = m["params"]; rq = p["request"]; url = rq["url"]; rid = p["requestId"]
+        if url.startswith(base) or not url.startswith(("http:", "https:")):   # local server, chrome-extension:// internals
+            c.send("Fetch.continueRequest", requestId=rid)
+            return
+        seen.append({"url": url, "referer": rq.get("headers", {}).get("Referer", ""), "body": rq.get("postData", ""), "blocked": mode["block"]})
+        if mode["block"]:
+            c.send("Fetch.failRequest", requestId=rid, errorReason="BlockedByClient")
+        else:
+            body = GC_STUB if url.endswith("count.js") else ""
+            c.send("Fetch.fulfillRequest", requestId=rid, responseCode=200,
+                   responseHeaders=[{"name": "Content-Type", "value": "text/javascript" if body else "image/gif"}], body=base64.b64encode(body.encode()).decode())
+
+    def rows():
+        with urllib.request.urlopen(base + "/__rows", timeout=10) as r:
+            return json.loads(r.read())["rows"]
+
+    def submit(path, email, js_on):
+        cdp.call("Emulation.setScriptExecutionDisabled", value=not js_on)
+        cdp.events.clear()
+        cdp.call("Page.navigate", url=base + path)
+        try:
+            cdp.wait_event("Page.loadEventFired")
+        except (TimeoutError, OSError) as ex:
+            raise RuntimeError(f"R3 {path}: no load; events={cdp.events[-20:]} paused={len(seen)} send_errors={getattr(cdp, 'send_errors', [])}") from ex
+        root = cdp.call("DOM.getDocument")["root"]["nodeId"]
+        node = cdp.call("DOM.querySelector", nodeId=root, selector="form.awi-signup input[name=email]")["nodeId"]
+        cdp.call("DOM.focus", nodeId=node)
+        cdp.call("Input.insertText", text=email)
+        cdp.events.clear()
+        press_enter(cdp)
+        if not js_on:
+            cdp.wait_event("Page.loadEventFired")
+            # reload the landing page with JS on, so GoatCounter (when allowed) runs there with the real document.referrer
+            cdp.call("Emulation.setScriptExecutionDisabled", value=False)
+            cdp.events.clear(); cdp.call("Page.reload"); cdp.wait_event("Page.loadEventFired")
+        else:
+            cdp.js("new Promise(r => { const t0 = Date.now(); (function w() { const s = document.querySelector('.signup-status');"
+                   " if ((s && s.textContent.trim()) || Date.now() - t0 > 8000) r(); else setTimeout(w, 100); })(); })")
+        time.sleep(0.6)
+        hist = cdp.call("Page.getNavigationHistory"); url = hist["entries"][hist["currentIndex"]]["url"]
+        cdp.call("Emulation.setScriptExecutionDisabled", value=False)
+        txt = cdp.js("(() => { const s = document.querySelector('.signup-status, .signup-result'); return s ? s.textContent : '' })()")
+        return url, txt
+
+    n = 0
+    try:
+        line = proc.stdout.readline()
+        base = f"http://127.0.0.1:{int(line.split()[1])}"
+        cdp.hook = hook
+        cdp.call("Fetch.enable", patterns=[{"urlPattern": "*"}])
+        cdp.call("Emulation.setDeviceMetricsOverride", width=1280, height=800, deviceScaleFactor=1, mobile=False)
+        ok_msg = "Check your inbox to confirm your subscription."
+        flows = [("/", "Kitty.Blocked+js@Example.COM", True, True), ("/newsletter/", "kitty.blocked.nojs@example.com", False, True),
+                 ("/", "Kitty.Leak+js@Example.COM", True, False), ("/newsletter/", "kitty.leak.nojs@example.com", False, False)]
+        for path, email, js_on, block in flows:
+            mode["block"] = block
+            before = len(rows())
+            url, txt = submit(path, email, js_on)
+            tag = f"{path} js={'on' if js_on else 'off'} gc={'blocked' if block else 'stubbed'}"
+            want_url = base + path if js_on else base + "/newsletter/thanks/pending_confirmation/"
+            if url != want_url or txt.strip() != ok_msg:
+                errs.append(f"{tag}: signup did not complete: url={url} text={txt!r}")
+            if len(rows()) != before + 1:
+                errs.append(f"{tag}: no row stored")
+            if js_on is False:   # no-JS: the landing page must also load GoatCounter normally (when allowed), so the leak check covers it
+                time.sleep(0.4)
+            n += 1
+        gc = [x for x in seen if not x["blocked"]]
+        if not any("goatcounter" in x["url"] and "thanks" in x["url"] for x in gc) or not any(x["url"].endswith("count.js") for x in gc):
+            errs.append(f"GoatCounter beacons did not fire with gc allowed (test would be vacuous): {[x['url'][:80] for x in gc]}")
+        if not any(x["blocked"] and "gc.zgo.at" in x["url"] for x in seen):
+            errs.append("gc.zgo.at was never requested while blocked (block test vacuous)")
+        for _, email, _, _ in flows:
+            forms = {email, email.lower(), email.split("@")[0] + "@" + email.split("@")[1].lower()}
+            forms |= {urllib.parse.quote(f, safe="") for f in list(forms)} | {urllib.parse.quote_plus(f) for f in list(forms)} | {email.split("@")[0]}
+            for x in seen:
+                blob = urllib.parse.unquote(x["url"]) + " " + x["url"] + " " + x["referer"] + " " + x["body"]
+                hit = [f for f in forms if f and f in blob]
+                if hit:
+                    errs.append(f"third-party request carries the email: {x['url'][:120]} (matched {hit[0]!r})")
+        others = sorted({urllib.parse.urlsplit(x["url"]).hostname for x in seen} - {"gc.zgo.at", "openmillage.goatcounter.com"})
+        if others:
+            errs.append(f"unexpected third-party hosts requested: {others}")
+        print(f"browser_check: GoatCounter (R3): {n} submits ok with gc.zgo.at blocked/stubbed, JS on/off; {len(seen)} third-party requests, 0 carry the email"
+              if not errs else "browser_check: GoatCounter (R3): see failures")
+    finally:
+        cdp.hook = None
+        try:
+            cdp.call("Fetch.disable")
+        except Exception:
+            pass
+        try:
+            os.killpg(proc.pid, signal.SIGTERM); proc.wait(timeout=10)
+        except (ProcessLookupError, subprocess.TimeoutExpired):
+            try:
+                os.killpg(proc.pid, signal.SIGKILL); proc.wait(timeout=5)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
+                pass
     return n
 
 
@@ -472,6 +610,7 @@ def main():
         check_readability(cdp, base, shots, errs)
         nl = check_layout(cdp, base, errs)
         nsu = check_signup(cdp, base, errs)
+        check_signup_goatcounter(cdp, errs)
         print(f"browser_check: {n} chart/viewport/scheme combinations checked; readability checked on {len(PAGES)} pages x 2 schemes at 390px")
         print(f"browser_check: one non-title Inter chart text element rendered with Inter (no fallback) in {nf} chart/viewport/scheme cases; id-rename text+geometry equal in {ng}")
         print(f"browser_check: layout (header <= 88px at 390, Methodology grid, hero CTA fold) checked on {nl} page/viewport cases")

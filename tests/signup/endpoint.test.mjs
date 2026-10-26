@@ -1,7 +1,8 @@
 // AWI-SIGNUP-FORM-001 S1/S2 on mocks. Run: node --test tests/signup/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleSubscribe, retryPending, normalizeEmail, beehiivBody, _resetMemoryLimiter, BOT_CHECKS } from '../../signup/core.js';
+import { handleSubscribe, retryPending, purgeSent, normalizeEmail, beehiivBody, _resetMemoryLimiter, BOT_CHECKS } from '../../signup/core.js';
+import { runScheduled } from '../../workers/signup-retry.js';
 import { handleExport } from '../../functions/api/signups/export.csv.js';
 import * as CFG from '../../signup/config.js';
 import { mockD1, mockFetch, env, post, capture, SECRET_KEY, SALT, ORIGIN } from './helpers.mjs';
@@ -41,7 +42,7 @@ test('edge: missing D1 binding fails closed with error, no Beehiiv call', async 
 test('AC2 normalization: trim, lowercase domain only', () => {
   assert.equal(normalizeEmail('  Kitty.Q@Example.COM \n'), 'Kitty.Q@example.com');
 });
-for (const [name, v] of [['empty', ''], ['spaces', '   '], ['inner space', 'a b@c.com'], ['a@b', 'a@b'], ['a@@b.com', 'a@@b.com'],
+for (const [name, v] of [['empty', ''], ['spaces', '   '], ['inner space', 'a b@example.com'], ['a@b', 'a@b'], ['a@@b.com', 'a@@b.com'],
   ['300 chars', `${'a'.repeat(290)}@example.com`], ['unicode local part (OQ-5 default ASCII)', 'kätzchen@example.com'], ['IDN domain', 'a@bücher.de'],
   ['no @', 'example.com'], ['missing field', undefined]]) {
   test(`AC2 invalid: ${name} -> invalid, no row, no call`, async () => {
@@ -249,7 +250,7 @@ test('AC11 payload carries source AWI + utm_source=agentwebindex', async () => {
   assert.equal(b.send_welcome_email, false);
   assert.equal(r.fetch.calls[0].url, 'https://api.beehiiv.com/v2/publications/pub_test/subscriptions');
   assert.equal(r.fetch.calls[0].init.headers.Authorization, `Bearer ${SECRET_KEY}`);
-  assert.deepEqual(beehiivBody('x@y.co', '/', ORIGIN).custom_fields, b.custom_fields);
+  assert.deepEqual(beehiivBody('x@example.com', '/', ORIGIN).custom_fields, b.custom_fields);
 });
 test('AC12 key, salt and email never in logs or responses across every path', async () => {
   const all = [];
@@ -261,4 +262,91 @@ test('AC12 key, salt and email never in logs or responses across every path', as
   for (const [e, fl, o] of paths) { const r = await sub(e, fl, o); all.push(r.text, ...r.lines, JSON.stringify([...r.res.headers])); }
   const blob = all.join('\n');
   for (const s of [SECRET_KEY, SALT, 'Kitty@', 'kitty@', '203.0.113.7']) assert.ok(!blob.includes(s), s);
+});
+
+// ---------------------------------------------------------------- AC 18 retention (R2: 30 days after the row reached Beehiiv)
+const DAY = 86400000;
+function seeded() {
+  const e = env(); const db = e.SIGNUPS; const iso = (ms) => new Date(ms).toISOString();
+  const mk = (email, st, sentMs) => db.rows.push({ id: db.rows.length + 1, email_norm: email, email_raw: email, source: 'awi', page: '/',
+    created_at: iso(T0 - 40 * DAY), beehiiv_status: st, beehiiv_sub_id: st === 'sent' ? 'sub' : null, attempts: 1, last_error: null,
+    ip_hash: 'h', sent_at: sentMs == null ? null : iso(sentMs), deleted_at: null });
+  mk('old-sent@example.com', 'sent', T0 - 31 * DAY);
+  mk('edge-sent@example.com', 'sent', T0 - 30 * DAY);           // exactly 30 days: due
+  mk('young-sent@example.com', 'sent', T0 - 30 * DAY + 1000);   // 1 s short of 30 days: kept
+  mk('new-sent@example.com', 'sent', T0 - 1 * DAY);
+  mk('queued@example.com', 'queued', null);
+  mk('pending@example.com', 'pending', null);
+  mk('failed@example.com', 'failed', null);
+  mk('odd-queued@example.com', 'queued', T0 - 90 * DAY);       // not sent, even with an old sent_at: kept
+  return e;
+}
+const left = (e) => e.SIGNUPS.rows.map((r) => r.email_norm).sort();
+
+test('AC18: purge deletes sent rows 30+ days after sent_at, keeps the rest', async () => {
+  const e = seeded(); const { out } = await capture(() => purgeSent(e, { now: T0 }));
+  assert.equal(out.deleted, 2);
+  assert.deepEqual(left(e), ['failed@example.com', 'new-sent@example.com', 'odd-queued@example.com', 'pending@example.com', 'queued@example.com', 'young-sent@example.com']);
+});
+test('AC18: purge never deletes queued, pending or failed rows, however old', async () => {
+  const e = seeded(); await capture(() => purgeSent(e, { now: T0 + 3650 * DAY }));
+  assert.deepEqual(left(e), ['failed@example.com', 'odd-queued@example.com', 'pending@example.com', 'queued@example.com']);
+});
+test('AC18: purge is idempotent', async () => {
+  const e = seeded(); await capture(() => purgeSent(e, { now: T0 }));
+  const snap = JSON.stringify(e.SIGNUPS.rows);
+  const { out } = await capture(() => purgeSent(e, { now: T0 })); assert.equal(out.deleted, 0);
+  assert.equal(JSON.stringify(e.SIGNUPS.rows), snap);
+});
+test('AC18: cutoff is exactly now - 30 days and the log carries no email', async () => {
+  const e = seeded(); const { out, lines: logs } = await capture(() => purgeSent(e, { now: T0 }));
+  assert.equal(out.cutoff, new Date(T0 - 30 * DAY).toISOString());
+  assert.ok(!logs.join('\n').includes('@'));
+});
+test('AC18: scheduled run purges even with no Beehiiv key (retry skipped)', async () => {
+  const e = seeded(); delete e.BEEHIIV_API_KEY; const f = mockFetch();
+  const { out } = await capture(() => runScheduled(e, { now: T0, fetch: f }));
+  assert.equal(out.retry.skipped, 'no_key'); assert.equal(out.purge.deleted, 2); assert.equal(f.calls.length, 0);
+});
+test('AC18: a row sent by retry today is kept until day 30, then purged; the export never lists it', async () => {
+  const e = env(); await sub(e, { email: 'later@example.com' }, { fetch: mockFetch(() => 'timeout') });
+  await capture(() => runScheduled(e, { now: T0, fetch: mockFetch() }));
+  assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'sent');
+  await capture(() => purgeSent(e, { now: T0 + 29 * DAY })); assert.equal(e.SIGNUPS.rows.length, 1);
+  await capture(() => purgeSent(e, { now: T0 + 30 * DAY })); assert.equal(e.SIGNUPS.rows.length, 0);
+});
+
+// ---------------------------------------------------------------- Kitty's mutant gaps (9:48 steering)
+for (const [name, v, ok] of [
+  ['dotless domain', 'a@localhost', false], ['1-letter TLD', 'a@example.c', false], ['2-letter TLD ok', 'a@example.co', true],
+  ['1-letter label ok', 'a@x.example.com', true], ['two @', 'a@b@example.com', false], ['no @', 'example.com', false],
+  ['local 64 ok', `${'a'.repeat(64)}@example.com`, true], ['local 65', `${'a'.repeat(65)}@example.com`, false],
+]) test(`AC2 validation: ${name}`, () => { assert.equal(normalizeEmail(v) !== null, ok, v); });
+
+test('rate limit: per-IP window is 10 minutes (6th post in window blocked, next window open)', async () => {
+  const e = env(); const base = Date.UTC(2026, 9, 26, 14, 0, 0);
+  for (let i = 0; i < 5; i++) assert.notEqual((await sub(e, { email: `rl${i}@example.com` }, { now: base + i * 1000 })).status, 'rate_limited');
+  assert.equal((await sub(e, { email: 'rl5@example.com' }, { now: base + 9 * 60_000 + 59_000 })).status, 'rate_limited');
+  assert.notEqual((await sub(e, { email: 'rl6@example.com' }, { now: base + 10 * 60_000 })).status, 'rate_limited');
+  assert.equal(CFG.RATE_LIMIT.perIp.windowSeconds, 600);
+});
+
+test('Beehiiv accepted but the status update fails -> 500, not success', async () => {
+  const e = env({ SIGNUPS: mockD1({ failMark: true }) });
+  const r = await sub(e, OK);
+  assert.equal(r.res.status, 500); assert.equal(r.status, 'error'); assert.equal(r.fetch.calls.length, 1);
+});
+
+for (const [p, want] of [['/newsletter/', '/newsletter/'], ['javascript:alert(1)', '/'], ['https://evil.example.com/x', '/'], ['//evil.example.com', '/'],
+  ['/a?email=a@example.com', '/'], ['/<script>', '/'], [`/${'a'.repeat(101)}`, '/'], [42, '/']]) {
+  test(`page field sanitized: ${String(p).slice(0, 30)}`, async () => {
+    const e = env(); const r = await sub(e, { email: 'page@example.com', page: p });
+    assert.equal(e.SIGNUPS.rows[0].page, want);
+    assert.equal(r.fetch.calls[0].body.referring_site, `${ORIGIN}${want}`);
+  });
+}
+
+for (const hp of [' ', '\t', ' x ']) test(`honeypot with whitespace ${JSON.stringify(hp)} counts as a bot`, async () => {
+  const e = env(); const r = await sub(e, { email: 'hp@example.com', website: hp });
+  assert.equal(r.status, CFG.SUCCESS_STATUS); assert.equal(e.SIGNUPS.rows.length, 0); assert.equal(r.fetch.calls.length, 0);
 });
