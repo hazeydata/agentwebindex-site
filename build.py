@@ -23,17 +23,26 @@ UP=R/"data"/"_upstream"   # vendored copies of agentwebindex collectors/provider
 PROVIDERS=UP/"providers.json"; PRICING=UP/"pricing.yaml"
 EXCLUSION_PUBLIC=("provider","reason","quote","terms_url","checked_at")  # allowlist: only these exclusion fields are published
 
-def newsletter_slot():
-    url=(cfg.get("beehiiv_embed_url") or "").strip()
-    m=re.match(r"https://subscribe-forms\.beehiiv\.com/([0-9a-f-]{36})/?$",url)
-    if m or url.startswith("https://"):
-        # Direct iframe, loaded eagerly (AWI-PAGE-POLISH-001 P0): with the v3 loader.js script embed the form at the end of Results
-        # rendered empty. The loader decides when and how big to inject its iframe; a plain eager iframe with a fixed src removes
-        # that dependency. Width 100%, min-height 240px (style.css).
-        return (f'<iframe class="beehiiv-embed" src="{html.escape(url)}" title="Newsletter signup" data-test-id="beehiiv-embed" '
-                'loading="eager" width="100%" height="320" frameborder="0" scrolling="no"></iframe>')
-    return ('<form id="signup" onsubmit="return false" aria-disabled="true"><input type="email" placeholder="you@example.com" disabled>'
-            '<button disabled>Coming soon</button></form><p class="muted">Placeholder: no form endpoint is connected and nothing is submitted.</p>')
+SIGNUP=cfg.get("signup") or {}
+
+def signup_form(prefix, page):
+    """First-party signup form (AWI-SIGNUP-FORM-001): same-origin POST to /api/subscribe (functions/api/subscribe.js).
+    Works without JS (303 to /newsletter/thanks/<status>/); /signup.js upgrades it to an inline aria-live message.
+    The honeypot `website` is off-screen, aria-hidden and tabindex=-1 (AC 4). No third-party script or iframe (AC 13)."""
+    p = html.escape(prefix, quote=True)
+    return (f'<form class="awi-signup" method="post" action="/api/subscribe" novalidate data-signup>'
+            f'<label class="signup-label" for="{p}-email">Email address</label>'
+            f'<div class="signup-row"><input id="{p}-email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="254" '
+            f'aria-describedby="{p}-status"><button class="btn" type="submit">Subscribe</button></div>'
+            f'<input type="hidden" name="page" value="{html.escape(page, quote=True)}">'
+            f'<div class="signup-hp" aria-hidden="true"><label for="{p}-website">Website</label>'
+            f'<input id="{p}-website" name="website" type="text" tabindex="-1" autocomplete="off" value=""></div>'
+            f'<p id="{p}-status" class="signup-status" role="status" aria-live="polite"></p>'
+            f'<p class="signup-privacy">{html.escape(SIGNUP.get("privacy") or "")}</p></form>')
+
+def signup_js():
+    """dist/signup.js: src/signup.js with the status copy from site.config.json "signup" (same copy as signup/config.js; AC 7 drift test)."""
+    return (S/"signup.js").read_text().replace("/*MESSAGES*/{}", json.dumps(SIGNUP.get("messages") or {}, ensure_ascii=False))
 
 def page_head(title, desc, path):
     u = html.escape(SITE_URL + path); t = html.escape(f"{title} · AgentWebIndex"); d = html.escape(desc)
@@ -83,7 +92,7 @@ layout=(S/"_layout.html").read_text(); pages=[]
 ctx=type("Ctx",(),{})()
 ctx.latest=json.loads((R/"data/benchmarks/latest.json").read_text()); ctx.pricing=P.load_pricing(PRICING)
 ctx.providers=json.loads(PROVIDERS.read_text())["providers"]; ctx.doc=copydoc.load(); ctx.alt=copydoc.alt_texts()
-ctx.pins=PINS; ctx.newsletter=newsletter_slot(); ctx.charts=S/"charts"; ctx.content=R/"content"
+ctx.pins=PINS; ctx.signup_form=signup_form; ctx.charts=S/"charts"; ctx.content=R/"content"
 SLOTS=render.slots(ctx); META=render.page_meta(ctx); FOOTER=render.footer_html(ctx)
 for f in sorted(S.glob("*.html")):
     if f.name.startswith("_"): continue
@@ -101,6 +110,17 @@ pages.sort(key=lambda p:(p!="/",p))
 (D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")
 (D/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+"".join(f"<url><loc>{SITE_URL}{p}</loc></url>\n" for p in pages)+"</urlset>\n")
 for a in ("style.css","app.js","favicon.svg"): shutil.copy(S/a,D/a)
+(D/"signup.js").write_text(signup_js())
+def thanks_pages():
+    """dist/newsletter/thanks/<status>/: the no-JS landing page per /api/subscribe status (noindex, not in the sitemap)."""
+    back=html.escape(SIGNUP.get("thanks_back") or "Back")
+    for st,msg in (SIGNUP.get("messages") or {}).items():
+        path=f"/newsletter/thanks/{st}/"; out=D/"newsletter"/"thanks"/st/"index.html"; out.parent.mkdir(parents=True,exist_ok=True)
+        body=(f'<section class="hero"><div class="wrap"><div class="col"><p class="kicker">Newsletter</p><h1>Newsletter</h1>'
+              f'<p class="lede signup-result" role="status" data-status="{st}">{html.escape(msg)}</p><p><a href="/newsletter/">{back}</a></p></div></div></section>')
+        out.write_text(layout.replace("{{title}}","Newsletter").replace("{{head}}",page_head("Newsletter",msg,path)+'<meta name="robots" content="noindex">')
+                       .replace("{{nav}}",render.nav_html(path)).replace("{{footer}}",FOOTER).replace("{{body}}",body))
+thanks_pages()
 shutil.copytree(S/"fonts",D/"assets"/"fonts")
 shutil.copytree(S/"retest",D/"assets"/"retest")   # Apify retest chart, byte-identical (pinned by content/retest-apify-2026-10-26.json)
 shutil.copytree(S/"charts",D/"assets"/"charts")   # byte-identical copies of the 8 pinned chart SVGs only (fonts live in assets/fonts)

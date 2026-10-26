@@ -1,0 +1,10 @@
+# Example only (no ids, no secrets). Chief fills in the D1 id at deploy with Fred's go; secrets via `wrangler secret put`.
+name = "awi-signup-retry"
+main = "signup-retry.js"
+compatibility_date = "2026-10-01"
+[triggers]
+crons = ["*/15 * * * *"]
+[[d1_databases]]
+binding = "SIGNUPS"
+database_name = "<awi signups db>"
+database_id = "<filled at deploy>"

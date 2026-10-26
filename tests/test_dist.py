@@ -525,24 +525,69 @@ class Shell(unittest.TestCase):
         self.assertTrue(robots.startswith("User-agent: *\nAllow: /\n"))
         self.assertTrue(robots.endswith(f"Sitemap: {site}/sitemap.xml\n"))
 
-    def test_beehiiv_embed(self):  # AWI-PAGE-POLISH-001 P0: the form at the end of Results rendered empty with the loader.js embed
-        url = CFG["beehiiv_embed_url"]
-        for p, box in (("/newsletter/", 'id="signup"'), ("/", 'id="signup-end"')):
+    def test_signup_form_markup(self):  # AWI-SIGNUP-FORM-001 AC 4, 14, 16 (static part): first-party form on / (hero + end) and /newsletter/
+        for p, n in (("/", 2), ("/newsletter/", 1)):
             s = page(p)
-            frames = re.findall(r"<iframe\b[^>]*>", s)
-            self.assertEqual(len(frames), 1, p)
-            f = frames[0]
-            self.assertIn(f'src="{url}"', f)
-            self.assertIn('loading="eager"', f)
-            self.assertNotIn("loader.js", s)
-            self.assertLess(s.index(box), s.index("<iframe"), p)   # inside its CTA box
+            forms = re.findall(r'<form class="awi-signup"[^>]*>.*?</form>', s, re.S)
+            self.assertEqual(len(forms), n, p)
+            for f in forms:
+                self.assertIn('method="post" action="/api/subscribe"', f)
+                pid = re.search(r'<input id="([a-z]+)-email" name="email" type="email"', f).group(1)
+                self.assertIn(f'<label class="signup-label" for="{pid}-email">Email address</label>', f)   # visible label
+                self.assertIn('<button class="btn" type="submit">Subscribe</button>', f)
+                self.assertIn(f'<p id="{pid}-status" class="signup-status" role="status" aria-live="polite">', f)
+                self.assertIn(f'aria-describedby="{pid}-status"', f)
+                hp = re.search(r'<div class="signup-hp" aria-hidden="true">(.*?)</div>', f).group(1)
+                self.assertIn('name="website" type="text" tabindex="-1" autocomplete="off"', hp)
+                self.assertRegex(f, r'<input type="hidden" name="page" value="/(newsletter/)?">')
+        top = page("/")
+        self.assertLess(top.index('class="awi-signup"'), top.index('id="run"'))   # hero form precedes the results (AC 14; geometry in browser_check)
         css = (D / "style.css").read_text()
-        rule = re.search(r"\.beehiiv-embed \{([^}]*)\}", css).group(1)
-        self.assertIn("width: 100%", rule)
-        self.assertIn("min-height: 240px", rule)
+        self.assertRegex(css, r"\.signup-hp \{ position: absolute; left: -10000px;")
+        self.assertIn('<script src="/signup.js" defer></script>', top)
+
+    def test_signup_no_beehiiv_iframe_or_third_party_script(self):  # AC 13 (R3: form and /api/subscribe only; GoatCounter left as is)
+        for p in ("/", "/newsletter/"):
+            s = page(p)
+            # the email only ever travels in a same-origin POST body, never in a URL that analytics could see (R3)
+            for f in re.findall(r'<form\b[^>]*class="awi-signup"[^>]*>', s):
+                self.assertIn('method="post"', f, p); self.assertIn('action="/api/subscribe"', f, p)
+            self.assertNotIn("beehiiv.com", s, p)
+            self.assertNotRegex(s, r"(?i)<iframe", p)
+            ext = re.findall(r'<script\b[^>]*\bsrc="((?:https?:)?//[^"]+)"', s)
+            # goatcounter is the site's pre-existing analytics (out of scope for this spec); nothing else, and no Turnstile (R2)
+            self.assertEqual(ext, ["https://gc.zgo.at/count.js"], p)
+        for f in D.rglob("*"):
+            if f.suffix in (".html", ".js", ".css"):
+                # AC 19: Lindsay's privacy line names Beehiiv in plain text; it is the only allowed mention
+                body = re.sub(r'<p class="signup-privacy">[^<]*</p>', " ", f.read_text())
+                self.assertNotIn("beehiiv", body.lower(), f)
+                self.assertNotIn("challenges.cloudflare.com", f.read_text(), f)
+        js = (D / "signup.js").read_text()
+        self.assertNotRegex(js, r"https?://")   # same-origin fetch only
+
+    def test_signup_thanks_pages_match_config(self):  # AC 7 / AC 8 / AC 15 no-JS landing pages; copy == site.config.json == signup/config.js (node test)
+        sc = CFG["signup"]
+        self.assertTrue(sc["double_opt_in"])
+        for st, msg in sc["messages"].items():
+            s = (D / "newsletter/thanks" / st / "index.html").read_text()
+            self.assertIn(f'data-status="{st}">{html.escape(msg)}</p>', s)
+            self.assertIn('<meta name="robots" content="noindex">', s)
+        self.assertEqual(sc["messages"]["pending_confirmation"], "Check your inbox to confirm your subscription.")
+        self.assertEqual(sc["messages"]["queued"], "Thanks, you're on the list. We'll send a confirmation email soon.")
+        self.assertEqual(sc["messages"]["rate_limited"], "Too many tries, please wait a few minutes.")
+        self.assertNotIn("/newsletter/thanks/", (D / "sitemap.xml").read_text())
+        js = (D / "signup.js").read_text()
+        self.assertIn(json.dumps(sc["messages"], ensure_ascii=False), js)
+
+    def test_signup_no_secret_names_or_values_in_dist(self):  # AC 12 (repo-wide value scan is tests/signup/secret_scan.sh)
+        for f in dist_text_files():
+            t = f.read_text(errors="ignore")
+            for name in ("BEEHIIV_API_KEY", "IP_SALT", "EXPORT_TOKEN", "Authorization", "api.beehiiv.com"):
+                self.assertNotIn(name, t, f)
 
     def test_no_external_fonts_or_cdn(self):
-        allowed = {"https://subscribe-forms.beehiiv.com/v3/loader.js", "https://gc.zgo.at/count.js"}
+        allowed = {"https://gc.zgo.at/count.js"}
         for p in D.rglob("*"):
             if p.suffix not in (".html", ".css", ".js"):
                 continue
@@ -590,7 +635,7 @@ class Shell(unittest.TestCase):
                 continue
             s = p.read_text()
             refs = re.findall(r'(?:href|src)="(/[^"]*)"', s) + re.findall(r'url\("(/[^"]+)"\)', s)
-            refs += [u[len("https://agentwebindex.com"):] or "/" for u in re.findall(r"https://agentwebindex\.com(/[^\s<\"]*)", s)]
+            refs += [u or "/" for u in re.findall(r"https://agentwebindex\.com(/[^\s<\"]*)", s)]
             for u in refs:
                 if u.startswith("//"):
                     continue
@@ -1064,7 +1109,7 @@ class Polish(unittest.TestCase):
             s = page(p)
             labels = [text_of(x) for x in re.findall(r'<a class="btn cta-btn"[^>]*>(.*?)</a>', s)]
             self.assertTrue(set(labels) <= {want}, (p, labels))
-            if p != "/newsletter/":   # the Newsletter page is the form itself
+            if p not in ("/newsletter/", "/"):   # Newsletter and Results carry the signup form itself (AWI-SIGNUP-FORM-001)
                 self.assertGreaterEqual(len(labels), 1, p)
         retired = "Get price " + "updates by email"   # AC-29: retired label; assembled so the repo-wide grep stays clean
         self.assertEqual([str(f.relative_to(R)) for f in repo_files() if retired.lower().encode() in f.read_bytes().lower()], [])
@@ -1093,15 +1138,15 @@ class Polish(unittest.TestCase):
         self.assertIn("grid-template-columns: 56px minmax(0, 68ch)", css)
         self.assertIn(".steps li > * { grid-column: 2; }", css)
 
-    def test_hero_button_target(self):  # AC-8: #signup-end where the page has the end form, else /newsletter/
+    def test_hero_button_target(self):  # AC-8, updated by AWI-SIGNUP-FORM-001: Results' hero holds the form itself; other hero buttons go to /newsletter/
         for p in PAGES:
-            s = page(p)
-            heroes = re.findall(r'<aside class="cta cta-hero"[^>]*>(.*?)</aside>', s, re.S)
+            heroes = re.findall(r'<aside class="cta cta-hero"[^>]*>(.*?)</aside>', page(p), re.S)
             for h in heroes:
                 for href in re.findall(r'<a class="btn cta-btn" href="([^"]+)"', h):
-                    self.assertEqual(href, "#signup-end" if 'id="signup-end"' in s else "/newsletter/", p)
-        self.assertIn('href="#signup-end"', page("/"))
-        self.assertIn('id="signup-end"', page("/"))
+                    self.assertEqual(href, "/newsletter/", p)
+        s = page("/")
+        self.assertIn('<aside class="cta cta-hero cta-form" id="signup-top" aria-label="Newsletter">', s)
+        self.assertIn('id="signup-end"', s)
 
     def test_hero_lead_ins_from_copy_cuts(self):  # AC-29 / AC-40 / AC-28
         self.assertRegex(PINS["copy_cuts_sha256"], r"^[0-9a-f]{64}$")   # copy-cuts.md is recorded, not vendored (see pins.json copy_cuts)
