@@ -611,7 +611,7 @@ class Results(unittest.TestCase):
     def test_section_order(self):  # AC12
         ids = re.findall(r'<(?:section|footer)\b[^>]*?(?:id="([a-z-]+)"|class="(site-footer)")', self.s)
         order = [a or b for a, b in ids]
-        self.assertEqual([x for x in order if x != ""], ["run", "pass-rate", "cost", "not-tested", "details", "sponsor-newsletter", "site-footer"])
+        self.assertEqual([x for x in order if x != ""], ["run", "pass-rate", "cost", "apify-retest", "not-tested", "details", "sponsor-newsletter", "site-footer"])
         self.assertTrue(self.s.index('class="hero"') < self.s.index('id="run"'))
         self.assertIn('<aside id="sponsor-banner" class="sponsor"><b>Sponsored</b>', self.s)
         run = self.s[self.s.index('id="run"'):self.s.index('id="pass-rate"')]
@@ -1157,6 +1157,69 @@ class W43GradingNote(unittest.TestCase):
         self.assertEqual(hashlib.sha256((R / "tests/results_rows_baseline.json").read_bytes()).hexdigest(), self.MAIN_ROWS_SHA256)
         pub = json.loads((D / "data/benchmarks/latest.json").read_text())
         self.assertEqual(pub["tables"], LATEST["tables"])
+
+class ApifyRetest(unittest.TestCase):
+    """AWI Apify retest (preliminary): section placement, copy numbers vs the pinned retest JSON, chart bytes and alt text, fairness wording."""
+    META = json.loads((R / "content/retest-apify-2026-10-26.json").read_text())
+    PARA = "Apify suggested a fairer setup, so we reran their tools on this week's 21 news items. Their RAG Web Browser search got a longer timeout (240 seconds per request), and we added their Web Fetch tool for reading pages. In one run, Web Fetch passed 19 of 21 and RAG search passed 16 of 21, with no timeouts. This week's set is short, below our usual minimum of 25 items, so treat these numbers as preliminary. Thanks to Apify for the nudge. My bots and I run this benchmark, and feedback like this makes it better."
+    ALT = "Bar chart, preliminary: on 21 AgentWebIndex news items, apify/web-fetch passed 19 and apify/rag-web-browser, with a 240-second timeout, passed 16, with 0 timeouts. One run per setup on a short set."
+
+    def setUp(self):
+        self.s = page("/")
+        self.sec = self.s[self.s.index('id="apify-retest"'):]
+        self.sec = self.sec[:self.sec.index("</section>")]
+
+    def test_section_after_weekly_results_before_notes_and_details(self):
+        self.assertLess(self.s.index('id="cost"'), self.s.index('id="apify-retest"'))
+        self.assertLess(self.s.index('id="apify-retest"'), self.s.index('id="not-tested"'))
+        self.assertLess(self.s.index('id="apify-retest"'), self.s.index('id="details"'))
+        self.assertEqual(norm(text_of(re.search(r"<h3>(.*?)</h3>", self.sec).group(1))), "Apify retest (preliminary) Preliminary")
+        self.assertIn('<span class="pill">Preliminary</span>', self.sec)
+
+    def test_copy_verbatim_and_numbers_match_run_data(self):
+        self.assertIn(self.PARA, norm(html.unescape(text_of(self.sec))))
+        m, runs = self.META, {r["tool"]: r for r in self.META["runs"]}
+        wf, rag = runs["apify/web-fetch"], runs["apify/rag-web-browser"]
+        n = m["n"]
+        self.assertEqual((wf["rows"], rag["rows"], n), (21, 21, 21))
+        self.assertEqual((wf["pass_raw"], wf["pass_regraded"], rag["pass_raw"], rag["pass_regraded"]), (19, 19, 16, 16))
+        self.assertEqual((wf["timeouts"], rag["timeouts"]), (0, 0))
+        self.assertIn(f"Web Fetch passed {wf['pass_regraded']} of {n} and RAG search passed {rag['pass_regraded']} of {n}, with no timeouts", self.PARA)
+        self.assertIn(f"({rag['timeout_s']} seconds per request)", self.PARA)
+        self.assertIn(f"this week's {n} news items", self.PARA)
+        self.assertIn(f"usual minimum of {m['minimum']} items", self.PARA)
+        self.assertEqual(rag["grader"], "canon-2026-10-20")
+
+    def test_chart_bytes_alt_and_caption(self):
+        f = R / self.META["chart"]
+        self.assertEqual(hashlib.sha256(f.read_bytes()).hexdigest(), self.META["chart_sha256"])
+        self.assertEqual((D / "assets/retest" / f.name).read_bytes(), f.read_bytes())
+        self.assertEqual(self.META["alt"], self.ALT)
+        imgs = re.findall(r'<img src="([^"]+)" alt="([^"]+)"', self.sec)
+        self.assertEqual(imgs, [("/assets/retest/" + f.name, html.escape(self.ALT, quote=True))])
+        self.assertIn("<figcaption>", self.sec)
+        self.assertIn("no before-and-after comparison", text_of(self.sec))
+        self.assertEqual(sorted(p.name for p in (D / "assets/charts").iterdir() if p.suffix == ".svg"), sorted(PINS["charts_sha256"]))
+
+    def test_fair_wording(self):
+        txt = text_of(self.sec).lower()
+        self.assertIn("preliminary", txt)
+        self.assertIn("thanks to apify", txt)
+        for w in ("best", "worst", "fails", "beats", "winner", "better than", "faster than", "leaderboard", "improved", "up from", "was 4"):
+            self.assertNotIn(w, txt, w)
+
+    @unittest.skipUnless(os.environ.get("AWI_DATA_REPO"), "needs AWI_DATA_REPO (local clone of hazeydata/agentwebindex)")
+    def test_counts_recomputed_from_raw_logs(self):  # optional, like test_vendored_pricing_cross_checked_against_data_repo
+        for r in self.META["runs"]:
+            raw = subprocess.run(["git", "-C", os.environ["AWI_DATA_REPO"], "show", f'{self.META["data_commit"]}:{r["file"]}'], capture_output=True, check=True).stdout
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), r["sha256"])
+            rows = [json.loads(l) for l in raw.decode().splitlines() if l.strip()]
+            self.assertEqual(len(rows), r["rows"])
+            self.assertEqual(sum(1 for x in rows if x.get("pass")), r["pass_raw"])
+
+    def test_weekly_table_data_unchanged_vs_main(self):
+        self.assertEqual(hashlib.sha256((R / "data/benchmarks/latest.json").read_bytes()).hexdigest(), W43GradingNote.MAIN_LATEST_SHA256)
+        self.assertEqual(hashlib.sha256((R / "tests/results_rows_baseline.json").read_bytes()).hexdigest(), W43GradingNote.MAIN_ROWS_SHA256)
 
 
 if __name__ == "__main__":
