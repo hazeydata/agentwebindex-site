@@ -367,6 +367,17 @@ def check_layout(cdp, base, errs):
     return n
 
 
+def chrome_tmp_paths():
+    """Existing com.google.Chrome.* paths in the system temp dirs (read-only listing; never used to delete)."""
+    out = set()
+    for d in {"/tmp", tempfile.gettempdir()}:
+        try:
+            out |= {os.path.join(d, n) for n in os.listdir(d) if n.startswith("com.google.Chrome.")}
+        except OSError:
+            pass
+    return out
+
+
 def main():
     if not Path(CHROME).exists():
         print("browser_check: SKIP (google-chrome not installed)")
@@ -374,7 +385,10 @@ def main():
     if not (D / "index.html").exists():
         print("browser_check: dist/ missing; run python3 build.py first", file=sys.stderr)
         return 2
+    before = chrome_tmp_paths()
+    # Every path this run creates is recorded here and only these exact paths are removed in finally.
     prof = tempfile.mkdtemp(prefix="awi-chrome.")
+    ctmp = tempfile.mkdtemp(prefix="awi-chrome-tmp.")   # Chrome's own TMPDIR: its com.google.Chrome.* scratch lands here
     shots = Path(tempfile.mkdtemp(prefix="awi-shots."))
     srv = ThreadingHTTPServer(("127.0.0.1", 0), partial(Quiet, directory=str(D)))
     threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -383,7 +397,8 @@ def main():
     try:
         chrome = subprocess.Popen([CHROME, "--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
                                    "--remote-debugging-port=0", "--remote-allow-origins=*", f"--user-data-dir={prof}", "about:blank"],
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+                                  env=dict(os.environ, TMPDIR=ctmp, TMP=ctmp, TEMP=ctmp))
         port_file = Path(prof) / "DevToolsActivePort"
         for _ in range(100):
             if port_file.exists() and len(port_file.read_text().split()) >= 2:
@@ -409,8 +424,16 @@ def main():
             print(f"browser_check: screenshots (390 and 1440) for a human readability check: {shots}")
     finally:
         if ws:
+            try:
+                Cdp(ws).call("Browser.close")   # graceful close first, so Chrome removes its own scratch
+            except Exception:
+                pass
             ws.close()
         if chrome:
+            try:
+                chrome.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
             try:
                 os.killpg(chrome.pid, signal.SIGTERM)
                 chrome.wait(timeout=10)
@@ -422,8 +445,17 @@ def main():
         srv.shutdown()
         srv.server_close()
         shutil.rmtree(prof, ignore_errors=True)
+        shutil.rmtree(ctmp, ignore_errors=True)
         if os.environ.get("AWI_KEEP_SHOTS") != "1":
             shutil.rmtree(shots, ignore_errors=True)
+    left = sorted(chrome_tmp_paths() - before)
+    if left:
+        errs.append(f"run left {len(left)} new com.google.Chrome.* temp path(s) behind: {left}")
+    else:
+        print("browser_check: temp hygiene OK: 0 new com.google.Chrome.* paths; profile and Chrome TMPDIR removed")
+    for p in (prof, ctmp):
+        if os.path.exists(p):
+            errs.append(f"run left its own temp dir behind: {p}")
     for m in errs:
         print("BROWSER FAIL:", m, file=sys.stderr)
     return 1 if errs else 0
