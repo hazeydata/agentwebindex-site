@@ -23,6 +23,7 @@ db.execute(Q["markFailed"], ("http_503", rid)); ok(db.execute("SELECT beehiiv_st
 db.execute(Q["markSent"], ("sub_1", "2026-10-26T13:00:00Z", rid)); ok(db.execute("SELECT beehiiv_status, attempts, beehiiv_sub_id FROM signups").fetchone() == ("sent", 2, "sub_1"), "markSent")
 ok(db.execute(Q["markFailed"], ("timeout", rid)).rowcount == 0, "a sent row is never downgraded")
 ok(db.execute(Q["markQueued"], ("no_key", rid)).rowcount == 0, "a sent row is never queued")
+ok(db.execute(Q["markSent"], ("sub_2", "2026-10-27T13:00:00Z", rid)).rowcount == 0 and db.execute("SELECT beehiiv_sub_id, sent_at, attempts FROM signups WHERE id = ?", (rid,)).fetchone() == ("sub_1", "2026-10-26T13:00:00Z", 2), "a sent row is never re-marked sent (sub id, sent_at and attempts kept)")
 ok(db.execute(Q["due"], (5,)).fetchall() == [], "sent row is not due")
 ok(db.execute(Q["exportRows"]).fetchall() == [], "sent row not exported")
 ins("b@example.com"); rb = db.execute(Q["byEmail"], ("b@example.com", "awi")).fetchone()[0]

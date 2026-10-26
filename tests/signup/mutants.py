@@ -56,6 +56,8 @@ MUTANTS = {
     "st_raw_untrimmed": (C, ".bind(email, raw.trim(), SOURCE", ".bind(email, raw, SOURCE"),
     "log_reason_unfiltered": (C, "if (reason != null && !REASONS.test(reason)) reason = null;", ""),
     "x_secret_unset_open": ("functions/api/signups/export.csv.js", "if (!secret || typeof given", "if (typeof given"),
+    "v_space_ok": (C, "if (/\\s/.test(s)) return null;", ""),
+    "st_markSent_unguarded": (C, "WHERE id = ? AND beehiiv_status != 'sent'`,\n  markFailed", "WHERE id = ?`,\n  markFailed"),
     "honeypot_trimmed": (C, "String(fields.website || '') === ''", "String(fields.website || '').trim() === ''"),
 }
 COPY = ["signup", "functions", "workers", "migrations", "tests/signup", "site.config.json", "dist/newsletter/thanks", "dist/index.html", "dist/newsletter/index.html"]

@@ -1,6 +1,10 @@
 // AWI-SIGNUP-FORM-001 S1/S2 on mocks. Run: node --test tests/signup/
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, copyFileSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { handleSubscribe, retryPending, purgeSent, normalizeEmail, beehiivBody, _resetMemoryLimiter, BOT_CHECKS, Q, log } from '../../signup/core.js';
 import { runScheduled } from '../../workers/signup-retry.js';
 import { handleExport, tokenMatches } from '../../functions/api/signups/export.csv.js';
@@ -52,6 +56,19 @@ for (const [name, v] of [['empty', ''], ['spaces', '   '], ['inner space', 'a b@
     assert.equal(e.SIGNUPS.rows.length, 0); assert.equal(r.fetch.calls.length, 0);
   });
 }
+test('AC2 whitespace is rejected on its own, even with ALLOW_UNICODE_LOCAL = true', async () => {
+  // The ASCII-only check also rejects spaces, so flip it off in a temp copy of signup/ to test the whitespace rule alone.
+  const dir = mkdtempSync(join(tmpdir(), 'awi-ws-'));
+  try {
+    for (const f of ['core.js', 'config.js']) copyFileSync(new URL(`../../signup/${f}`, import.meta.url), join(dir, f));
+    const cfg = join(dir, 'config.js'); const src = readFileSync(cfg, 'utf8');
+    assert.ok(src.includes('export const ALLOW_UNICODE_LOCAL = false;'));
+    writeFileSync(cfg, src.replace('export const ALLOW_UNICODE_LOCAL = false;', 'export const ALLOW_UNICODE_LOCAL = true;'));
+    const m = await import(pathToFileURL(join(dir, 'core.js')).href);
+    assert.equal(m.normalizeEmail('kätzchen@example.com'), 'kätzchen@example.com'); // the flip took effect
+    for (const v of ['a b@example.com', 'a\tb@example.com', 'a\u00a0b@example.com', 'a@exa mple.com']) assert.equal(m.normalizeEmail(v), null, JSON.stringify(v));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
 test('AC2 254 chars accepted, 255 rejected', () => {
   const at = (n) => `${'a'.repeat(64)}@${'b'.repeat(n - 64 - 1 - 4)}.com`;
   // build domain of labels <= 63 chars
