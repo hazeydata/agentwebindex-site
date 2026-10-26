@@ -1162,6 +1162,7 @@ class ApifyRetest(unittest.TestCase):
     """AWI Apify retest (preliminary): section placement, copy numbers vs the pinned retest JSON, chart bytes and alt text, fairness wording."""
     META = json.loads((R / "content/retest-apify-2026-10-26.json").read_text())
     PARA = "Apify suggested a fairer setup, so we reran their tools on this week's 21 news items. Their RAG Web Browser search got a longer timeout (240 seconds per request), and we added their Web Fetch tool for reading pages. In one run, Web Fetch passed 19 of 21 and RAG search passed 16 of 21, with no timeouts. This week's set is short, below our usual minimum of 25 items, so treat these numbers as preliminary. Thanks to Apify for the nudge. My bots and I run this benchmark, and feedback like this makes it better."
+    CAPTION = "Preliminary: one run per setup on a short 21-item set. No earlier Apify run used these items, so there is no before-and-after comparison."
     ALT = "Bar chart, preliminary: on 21 AgentWebIndex news items, apify/web-fetch passed 19 and apify/rag-web-browser, with a 240-second timeout, passed 16, with 0 timeouts. One run per setup on a short set."
 
     def setUp(self):
@@ -1198,6 +1199,8 @@ class ApifyRetest(unittest.TestCase):
         imgs = re.findall(r'<img src="([^"]+)" alt="([^"]+)"', self.sec)
         self.assertEqual(imgs, [("/assets/retest/" + f.name, html.escape(self.ALT, quote=True))])
         self.assertIn('<p class="retest-caption">', self.sec)
+        caps = re.findall(r'<p class="retest-caption">(.*?)</p>', self.sec)
+        self.assertEqual([norm(html.unescape(c)) for c in caps], [self.CAPTION])   # word-for-word approved caption, nothing added
         self.assertIn("no before-and-after comparison", text_of(self.sec))
         self.assertEqual(sorted(p.name for p in (D / "assets/charts").iterdir() if p.suffix == ".svg"), sorted(PINS["charts_sha256"]))
 
@@ -1212,7 +1215,7 @@ class ApifyRetest(unittest.TestCase):
         self.assertEqual(nums(small), nums(big))
         self.assertEqual(sorted(norm(words(small)).split()), sorted(norm(words(big)).split()))   # exactly the same words, only re-wrapped
         sizes = [float(x) for x in re.findall(r"font-size: ([\d.]+)px", small.read_text())]
-        self.assertGreaterEqual(min(sizes) * 350 / 252, 11)
+        self.assertGreaterEqual(min(sizes) * 340 / 252, 13)   # >= 13px even if the column is a little under 350px
 
     # Fred rule: no strong claims about other products. The retest is one run on new items, so no time comparison
     # (previous run, last week, improvement, jump) and no ranking (beats, outperforms, top choice, ahead of) anywhere

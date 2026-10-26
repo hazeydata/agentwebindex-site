@@ -134,7 +134,7 @@ main section h2 { margin-bottom: var(--s2); }
 .retest { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--line, currentColor); }
 .retest h3 + p { margin-top: var(--s1); }
 .retest p { line-height: 1.6; }
-.retest .pill { display: inline-block; font-size: 0.7em; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border: 1px solid currentColor; border-radius: 999px; vertical-align: middle; }
+.retest .pill { display: inline-block; font-size: max(13px, 0.7em); letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border: 1px solid currentColor; border-radius: 999px; vertical-align: middle; }
 .retest-fig { margin: var(--s2) 0 0; max-width: var(--wide); }
 .retest-fig img { display: block; width: 100%; height: auto; border: 0; box-shadow: none; }
 .retest-fig picture { display: block; }

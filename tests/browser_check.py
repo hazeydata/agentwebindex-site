@@ -295,14 +295,18 @@ def check_rename_geometry(cdp, base, errs):
     return n
 
 
-RETEST_MIN_PX = 11
+RETEST_MIN_PX = 13
 
 
 def check_retest_chart_390(cdp, scheme, errs):
     """The Apify retest chart is an <img>, so its text is measured as (smallest font-size in the served SVG) x (rendered width / viewBox width)."""
     r = json.loads(cdp.js("""(async () => { const i = document.querySelector('.retest-fig img'); i.loading = 'eager'; i.scrollIntoView();
       for (let k = 0; k < 50 && !(i.complete && i.naturalWidth); k++) await new Promise(f => setTimeout(f, 100));
-      return JSON.stringify({src: i.currentSrc, w: i.getBoundingClientRect().width}); })()"""))
+      return JSON.stringify({src: i.currentSrc, w: i.getBoundingClientRect().width,
+        pill: parseFloat(getComputedStyle(document.querySelector('.retest .pill')).fontSize)}); })()"""))
+    print(f"browser_check: retest 'Preliminary' pill @390 {scheme}: {r['pill']}px")
+    if r["pill"] < RETEST_MIN_PX:
+        errs.append(f"retest pill @390 {scheme}: {r['pill']}px < {RETEST_MIN_PX}px")
     name = r["src"].rsplit("/", 1)[-1]
     if not name.endswith("-350.svg"):
         errs.append(f"retest chart @390 {scheme}: served {name}, not the 350px variant")
