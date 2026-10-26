@@ -558,7 +558,9 @@ class Shell(unittest.TestCase):
             self.assertEqual(ext, ["https://gc.zgo.at/count.js"], p)
         for f in D.rglob("*"):
             if f.suffix in (".html", ".js", ".css"):
-                self.assertNotIn("beehiiv", f.read_text().lower(), f)
+                # AC 19: Lindsay's privacy line names Beehiiv in plain text; it is the only allowed mention
+                body = re.sub(r'<p class="signup-privacy">[^<]*</p>', " ", f.read_text())
+                self.assertNotIn("beehiiv", body.lower(), f)
                 self.assertNotIn("challenges.cloudflare.com", f.read_text(), f)
         js = (D / "signup.js").read_text()
         self.assertNotRegex(js, r"https?://")   # same-origin fetch only
