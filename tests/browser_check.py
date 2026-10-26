@@ -367,12 +367,16 @@ def check_layout(cdp, base, errs):
     return n
 
 
+CHROME_TMP_PREFIXES = ("com.google.Chrome.", ".com.google.Chrome.", ".org.chromium.", "scoped_dir")
+
+
 def chrome_tmp_paths():
-    """Existing com.google.Chrome.* paths in the system temp dirs (read-only listing; never used to delete)."""
+    """Existing Chrome scratch paths (com.google.Chrome.*, .com.google.Chrome.*, .org.chromium.*, scoped_dir*) in the
+    system temp dirs. Read-only listing; never used to delete."""
     out = set()
     for d in {"/tmp", tempfile.gettempdir()}:
         try:
-            out |= {os.path.join(d, n) for n in os.listdir(d) if n.startswith("com.google.Chrome.")}
+            out |= {os.path.join(d, n) for n in os.listdir(d) if n.startswith(CHROME_TMP_PREFIXES)}
         except OSError:
             pass
     return out
@@ -450,9 +454,15 @@ def main():
             shutil.rmtree(shots, ignore_errors=True)
     left = sorted(chrome_tmp_paths() - before)
     if left:
-        errs.append(f"run left {len(left)} new com.google.Chrome.* temp path(s) behind: {left}")
+        errs.append(f"run left {len(left)} new Chrome temp path(s) behind: {left}")
     else:
-        print("browser_check: temp hygiene OK: 0 new com.google.Chrome.* paths; profile and Chrome TMPDIR removed")
+        print("browser_check: temp hygiene OK: 0 new Chrome temp paths (com.google.Chrome.*, .com.google.Chrome.*, .org.chromium.*, scoped_dir*), no live Chrome process group; profile and Chrome TMPDIR removed")
+    if chrome:
+        try:
+            os.killpg(chrome.pid, 0)   # signal 0: existence probe only
+            errs.append(f"Chrome process group {chrome.pid} still alive after cleanup")
+        except (ProcessLookupError, PermissionError):
+            pass
     for p in (prof, ctmp):
         if os.path.exists(p):
             errs.append(f"run left its own temp dir behind: {p}")
