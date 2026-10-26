@@ -1201,14 +1201,84 @@ class ApifyRetest(unittest.TestCase):
         self.assertIn("no before-and-after comparison", text_of(self.sec))
         self.assertEqual(sorted(p.name for p in (D / "assets/charts").iterdir() if p.suffix == ".svg"), sorted(PINS["charts_sha256"]))
 
-    def test_fair_wording(self):
-        txt = text_of(self.sec).lower()
-        self.assertIn("preliminary", txt)
-        self.assertIn("thanks to apify", txt)
-        for w in ("best", "worst", "fails", "beats", "winner", "better than", "faster than", "leaderboard", "improved", "up from", "was 4"):
-            self.assertNotIn(w, txt, w)
+    def test_chart_350_variant_same_numbers(self):  # 390px readability: a 350px <source> below 768px, like the weekly charts
+        big, small = R / self.META["chart"], R / self.META["chart_350"]
+        self.assertEqual(hashlib.sha256(small.read_bytes()).hexdigest(), self.META["chart_350_sha256"])
+        self.assertEqual((D / "assets/retest" / small.name).read_bytes(), small.read_bytes())
+        self.assertIn(f'<picture><source media="(max-width: 767.98px)" srcset="/assets/retest/{small.name}"><img src="/assets/retest/{big.name}"', self.sec)
+        self.assertIn('viewBox="0 0 252 ', small.read_text())
+        words = lambda f: " ".join(re.findall(r"<text[^>]*>([^<]*)</text>", f.read_text()))
+        nums = lambda f: sorted(re.findall(r"\d+(?:\.\d+)?", words(f)))
+        self.assertEqual(nums(small), nums(big))
+        self.assertEqual(sorted(norm(words(small)).split()), sorted(norm(words(big)).split()))   # exactly the same words, only re-wrapped
+        sizes = [float(x) for x in re.findall(r"font-size: ([\d.]+)px", small.read_text())]
+        self.assertGreaterEqual(min(sizes) * 350 / 252, 11)
 
-    def test_counts_consistent_and_recomputed_from_raw_logs(self):  # raw recount only with AWI_DATA_REPO, like the pricing cross-check
+    # Fred rule: no strong claims about other products. The retest is one run on new items, so no time comparison
+    # (previous run, last week, improvement, jump) and no ranking (beats, outperforms, top choice, ahead of) anywhere
+    # in the section: paragraph, caption, chart alt text, and the words inside both chart SVGs.
+    BANNED = (r"\bcompar(?:ed|es|ing|ison)\w*", r"\bversus\b", r"\bvs\.?(?=\s)", r"\bthan\b",
+              r"\bimprov\w*", r"\bjump\w*", r"\bprevious\w*", r"\bearlier run\b", r"\blast (?:week|run|time)\b", r"\bup from\b",
+              r"\bdown from\b", r"\bwas \d", r"\bnow\b", r"\bincrease\w*", r"\bdecrease\w*", r"\bgain\w*", r"\bdrop\w*",
+              r"\boutperform\w*", r"\bunderperform\w*", r"\btop (?:choice|pick|tool|performer)\b", r"\bahead\b", r"\bbehind\b",
+              r"\bbetter\b", r"\bworse\b", r"\bbest\b", r"\bworst\b", r"\bbeat\w*", r"\blead(?:s|ing|er)?\b", r"\bwin\w*",
+              r"\blos(?:e|es|er|ing)\b", r"\bfails?\b", r"\bleaderboard\b", r"\bfaster\b", r"\bslower\b", r"\bclearly\b",
+              r"\bdominat\w*", r"\bsuperior\b", r"\bnumber one\b", r"\b#1\b", r"\brank\w*")
+    # Exempted verbatim and nowhere else: the approved sentence where "better" is about our benchmark, not a product; the caption's
+    # own "no before-and-after comparison"; and the chart's settings note "(was 120s)", which is about a timeout, not a result.
+    ALLOWED = ("feedback like this makes it better.", "no before-and-after comparison", "timeout raised to 240s (was 120s)")
+
+    def retest_text(self):
+        svgs = " ".join(" ".join(re.findall(r"<text[^>]*>([^<]*)</text>", (R / self.META[k]).read_text())) for k in ("chart", "chart_350"))
+        alts = " ".join(html.unescape(a) for a in re.findall(r'alt="([^"]*)"', self.sec))
+        return norm(html.unescape(text_of(self.sec)) + " " + alts + " " + svgs)
+
+    def guard_hits(self, txt):
+        low = txt.lower()
+        for a in self.ALLOWED:
+            low = low.replace(a, " ")
+        return [b for b in self.BANNED if re.search(b, low)]
+
+    def test_fair_wording(self):
+        txt = self.retest_text()
+        self.assertIn(self.ALT, txt)   # alt text is in the scanned text
+        self.assertIn("so there is no before-and-after comparison", txt)   # caption is in the scanned text
+        self.assertIn("Settings this run", txt)   # SVG words are in the scanned text
+        low = txt.lower()
+        self.assertIn("preliminary", low)
+        self.assertIn("thanks to apify", low)
+        self.assertEqual(self.guard_hits(txt), [])
+
+    CAPTION_MUTANTS = ("Web Fetch is up from 4 of 40.", "Compared with the Oct 20 run, both setups did much better.",
+                       "A big improvement over last week.", "Previously RAG search passed 4 of 40.", "That is a big jump from the previous run.",
+                       "Web Fetch beats RAG search.", "Web Fetch clearly outperforms the rest.", "Apify is now the top choice for reading pages.",
+                       "That puts Web Fetch ahead of Tavily.", "Results improved.")
+    TERMS = ("compared", "compares", "comparing", "versus", "vs ", "than", "improvement", "improved", "jump", "previous run", "previously",
+             "earlier run", "last week", "last run", "up from", "down from", "was 4", "now", "increase", "decreased", "gains", "dropped",
+             "outperform", "outperforms", "underperforms", "top choice", "top pick", "ahead of", "behind", "better", "worse", "best",
+             "worst", "beats", "beat", "leads", "leader", "wins", "winner", "loses", "fails", "leaderboard", "faster", "slower",
+             "clearly", "dominates", "superior", "number one", "ranked")
+
+    def test_guard_catches_each_caption_mutant_in_paragraph_caption_and_alt(self):
+        base = self.retest_text()
+        for m in self.CAPTION_MUTANTS:
+            for where in ("Thanks to Apify for the nudge.", "so there is no before-and-after comparison.", "One run per setup on a short set."):
+                with self.subTest(mutant=m, where=where):
+                    self.assertIn(where, base)
+                    self.assertNotEqual(self.guard_hits(base.replace(where, where + " " + m, 1)), [], m)
+
+    def test_guard_catches_each_banned_term(self):
+        base = self.retest_text()
+        for w in self.TERMS:
+            with self.subTest(term=w):
+                self.assertNotEqual(self.guard_hits(base + " Web Fetch " + w + " 7 RAG search."), [], w)
+
+    def test_guard_exemptions_are_exact(self):
+        self.assertNotEqual(self.guard_hits("Web Fetch did better."), [])
+        self.assertNotEqual(self.guard_hits("Compared with the Oct 20 run."), [])
+        self.assertEqual(self.guard_hits("Feedback like this makes it better. There is no before-and-after comparison."), [])
+
+    def test_counts_consistent_and_raw_pass_count_when_data_repo_set(self):  # always: count invariants; with AWI_DATA_REPO also sha256 + raw pass count of each log (no regrade rerun), like the pricing cross-check
         for r in self.META["runs"]:
             self.assertEqual(r["rows"], self.META["n"])
             self.assertLessEqual(r["pass_raw"], r["rows"])

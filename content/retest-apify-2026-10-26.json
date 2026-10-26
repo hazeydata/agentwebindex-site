@@ -13,6 +13,9 @@
  ],
  "chart": "src/retest/apify-retest-2026-10-26.svg",
  "chart_sha256": "f7f05283645fcc1e5383971775c4dad2e8743985efeabea8d67cb8950106b58a",
+ "chart_350": "src/retest/apify-retest-2026-10-26-350.svg",
+ "chart_350_sha256": "9d7e05f6a5cc1b189aa3584084d1837882aedcf8c0149da85421965d98448eb9",
+ "chart_350_note": "350px variant for screens under 768px, like the weekly charts: the same words and numbers as the main chart, re-wrapped on a 252-unit viewBox so text renders at 12px or more at 390px.",
  "chart_source": "2026-10-26 Apify retest package chart.svg (Her? and Tobias)",
  "alt": "Bar chart, preliminary: on 21 AgentWebIndex news items, apify/web-fetch passed 19 and apify/rag-web-browser, with a 240-second timeout, passed 16, with 0 timeouts. One run per setup on a short set."
 }

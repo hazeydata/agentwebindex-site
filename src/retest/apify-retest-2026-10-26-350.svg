@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="252pt" height="362pt" viewBox="0 0 252 362" version="1.1">
+  <rect x="0" y="0" width="252" height="362" style="fill: #ffffff"/>
+  <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="14" y="22">Apify passed 19 of 21</text>
+  <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="14" y="39">with web-fetch and 16 of 21</text>
+  <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="14" y="56">with its RAG browser</text>
+  <rect x="14" y="69" width="70" height="15" rx="3" style="fill: #f0f0f0"/>
+  <text style="font-size: 9px; font-family: 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #666666" x="49" y="80">PRELIMINARY</text>
+  <text style="font-size: 10px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="14" y="103">Items passed out of 21 on the</text>
+  <text style="font-size: 10px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="14" y="116">AgentWebIndex news set, 0 timeouts</text>
+  <text style="font-size: 11px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="14" y="141">apify/web-fetch</text>
+  <rect x="14" y="147" width="224" height="24" style="fill: #eeeeee"/>
+  <rect x="14" y="147" width="202.666667" height="24" style="fill: #0072b2"/>
+  <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans', sans-serif; text-anchor: end; fill: #ffffff" x="210.666667" y="163">19 of 21</text>
+  <text style="font-size: 11px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="14" y="191">apify/rag-web-browser (240s timeout)</text>
+  <rect x="14" y="197" width="224" height="24" style="fill: #eeeeee"/>
+  <rect x="14" y="197" width="170.666667" height="24" style="fill: #0072b2"/>
+  <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans', sans-serif; text-anchor: end; fill: #ffffff" x="178.666667" y="213">16 of 21</text>
+  <path d="M 238 143 L 238 223" style="fill: none; stroke: #999999; stroke-linecap: round"/>
+  <text style="font-size: 10px; font-family: 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #999999" x="14" y="233">0</text>
+  <text style="font-size: 10px; font-family: 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #999999" x="238" y="233">21</text>
+  <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="14" y="257">Preliminary: one run per setup,</text>
+  <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="14" y="270">short 21-item set.</text>
+  <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #999999" x="14" y="288">Settings this run: RAG browser timeout</text>
+  <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #999999" x="14" y="301">raised to 240s (was 120s); web-fetch</text>
+  <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #999999" x="14" y="314">actor added.</text>
+  <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #999999" x="14" y="332">Source: AgentWebIndex Apify retest,</text>
+  <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #999999" x="14" y="345">Oct 26, 2026</text>
+</svg>

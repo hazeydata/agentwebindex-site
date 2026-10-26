@@ -26,6 +26,7 @@ VIEWPORTS = [(390, 844), (720, 900), (1440, 900)]
 
 class WS:
     def __init__(self, host, port, path):
+        self.addr = (host, port, path)   # kept so Cdp can reconnect to the same page target once
         self.s = socket.create_connection((host, port), timeout=30)
         key = base64.b64encode(os.urandom(16)).decode()
         self.s.sendall((f"GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
@@ -84,6 +85,17 @@ class Cdp:
         self.ws, self.n, self.events = ws, 0, []
 
     def call(self, method, **params):
+        try:
+            return self._call(method, **params)
+        except ConnectionError as ex:   # seen once under load: "websocket closed" at captureScreenshot. Reconnect to the same target, retry once.
+            print(f"browser_check: {method}: {ex}; reconnecting to the same page and retrying once", file=sys.stderr)
+            self.ws.close()
+            self.ws = WS(*self.ws.addr)
+            self._call("Page.enable")
+            self._call("Runtime.enable")
+            return self._call(method, **params)
+
+    def _call(self, method, **params):
         self.n += 1
         mid = self.n
         self.ws.send(json.dumps({"id": mid, "method": method, "params": params}))
@@ -283,6 +295,26 @@ def check_rename_geometry(cdp, base, errs):
     return n
 
 
+RETEST_MIN_PX = 11
+
+
+def check_retest_chart_390(cdp, scheme, errs):
+    """The Apify retest chart is an <img>, so its text is measured as (smallest font-size in the served SVG) x (rendered width / viewBox width)."""
+    r = json.loads(cdp.js("""(async () => { const i = document.querySelector('.retest-fig img'); i.loading = 'eager'; i.scrollIntoView();
+      for (let k = 0; k < 50 && !(i.complete && i.naturalWidth); k++) await new Promise(f => setTimeout(f, 100));
+      return JSON.stringify({src: i.currentSrc, w: i.getBoundingClientRect().width}); })()"""))
+    name = r["src"].rsplit("/", 1)[-1]
+    if not name.endswith("-350.svg"):
+        errs.append(f"retest chart @390 {scheme}: served {name}, not the 350px variant")
+        return
+    svg = (D / "assets/retest" / name).read_text()
+    vbw = float(re.search(r'viewBox="0 0 ([\d.]+) ', svg).group(1))
+    px = min(float(x) for x in re.findall(r"font-size: ([\d.]+)px", svg)) * r["w"] / vbw
+    print(f"browser_check: retest chart @390 {scheme}: {name} rendered {r['w']:.1f}px wide, smallest text {px:.2f}px")
+    if px < RETEST_MIN_PX:
+        errs.append(f"retest chart @390 {scheme}: smallest text {px:.2f}px < {RETEST_MIN_PX}px")
+
+
 def check_readability(cdp, base, shots, errs):
     for scheme in ("dark", "light"):
         for p in PAGES:
@@ -294,6 +326,8 @@ def check_readability(cdp, base, shots, errs):
                 errs.append(f"{p} {scheme}: body font {r['font']}px < 16px")
             if r["small"]:
                 errs.append(f"{p} {scheme}: tap targets under 44px: {r['small'][:4]}")
+            if p == "/":
+                check_retest_chart_390(cdp, scheme, errs)
     for w, h in ((390, 844), (1440, 900)):
         for p in PAGES:
             open_page(cdp, base, p, w, h, "dark")
@@ -397,7 +431,7 @@ def main():
     srv = ThreadingHTTPServer(("127.0.0.1", 0), partial(Quiet, directory=str(D)))
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"
-    chrome, ws, errs = None, None, []
+    chrome, ws, cdp, errs = None, None, None, []
     try:
         chrome = subprocess.Popen([CHROME, "--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
                                    "--remote-debugging-port=0", "--remote-allow-origins=*", f"--user-data-dir={prof}", "about:blank"],
@@ -427,9 +461,11 @@ def main():
         if os.environ.get("AWI_KEEP_SHOTS") == "1":
             print(f"browser_check: screenshots (390 and 1440) for a human readability check: {shots}")
     finally:
+        if cdp:
+            ws = cdp.ws   # the reconnect retry may have replaced it
         if ws:
             try:
-                Cdp(ws).call("Browser.close")   # graceful close first, so Chrome removes its own scratch
+                Cdp(ws)._call("Browser.close")   # graceful close first, so Chrome removes its own scratch (no reconnect here)
             except Exception:
                 pass
             ws.close()
