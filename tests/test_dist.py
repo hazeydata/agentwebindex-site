@@ -1302,5 +1302,42 @@ class ApifyRetest(unittest.TestCase):
         self.assertEqual(hashlib.sha256((R / "tests/results_rows_baseline.json").read_bytes()).hexdigest(), W43GradingNote.MAIN_ROWS_SHA256)
 
 
+class BrowserCheckHygiene(unittest.TestCase):
+    def test_hygiene_ok_only_when_every_cleanup_check_passes(self):  # OK line never printed alongside BROWSER FAIL
+        import contextlib, io, signal
+        from tests import browser_check as bc
+        def run(errs):
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                rc = bc.report(errs)
+            return rc, out.getvalue(), err.getvalue()
+        before = bc.chrome_tmp_paths()
+        # a live process group stands in for a Chrome that survived cleanup
+        live = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        try:
+            errs = bc.cleanup_errors(before, live.pid, ())
+            self.assertTrue(any("still alive" in e for e in errs), errs)
+            rc, out, err = run(errs)
+            self.assertEqual(rc, 1)
+            self.assertIn("BROWSER FAIL", err)
+            self.assertNotIn("temp hygiene OK", out + err)
+        finally:
+            os.killpg(live.pid, signal.SIGKILL)
+            live.wait()
+        own = tempfile.mkdtemp(prefix="awi-hyg.")
+        try:   # own dir left behind is also a failure, with no OK line
+            rc, out, err = run(bc.cleanup_errors(before, None, (own,)))
+            self.assertEqual(rc, 1)
+            self.assertNotIn("temp hygiene OK", out + err)
+        finally:
+            os.rmdir(own)
+        rc, out, err = run(bc.cleanup_errors(before, live.pid, (own,)))   # group reaped, dir gone: clean
+        self.assertEqual((rc, err), (0, ""))
+        self.assertIn("temp hygiene OK", out)
+        rc, out, err = run(["some chart check failed"])   # a non-cleanup failure also suppresses OK
+        self.assertEqual(rc, 1)
+        self.assertNotIn("temp hygiene OK", out)
+
+
 if __name__ == "__main__":
     unittest.main()
