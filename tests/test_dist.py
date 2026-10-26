@@ -1197,7 +1197,7 @@ class ApifyRetest(unittest.TestCase):
         self.assertEqual(self.META["alt"], self.ALT)
         imgs = re.findall(r'<img src="([^"]+)" alt="([^"]+)"', self.sec)
         self.assertEqual(imgs, [("/assets/retest/" + f.name, html.escape(self.ALT, quote=True))])
-        self.assertIn("<figcaption>", self.sec)
+        self.assertIn('<p class="retest-caption">', self.sec)
         self.assertIn("no before-and-after comparison", text_of(self.sec))
         self.assertEqual(sorted(p.name for p in (D / "assets/charts").iterdir() if p.suffix == ".svg"), sorted(PINS["charts_sha256"]))
 
@@ -1208,8 +1208,15 @@ class ApifyRetest(unittest.TestCase):
         for w in ("best", "worst", "fails", "beats", "winner", "better than", "faster than", "leaderboard", "improved", "up from", "was 4"):
             self.assertNotIn(w, txt, w)
 
-    @unittest.skipUnless(os.environ.get("AWI_DATA_REPO"), "needs AWI_DATA_REPO (local clone of hazeydata/agentwebindex)")
-    def test_counts_recomputed_from_raw_logs(self):  # optional, like test_vendored_pricing_cross_checked_against_data_repo
+    def test_counts_consistent_and_recomputed_from_raw_logs(self):  # raw recount only with AWI_DATA_REPO, like the pricing cross-check
+        for r in self.META["runs"]:
+            self.assertEqual(r["rows"], self.META["n"])
+            self.assertLessEqual(r["pass_raw"], r["rows"])
+            self.assertLessEqual(r["pass_regraded"], r["rows"])
+            if r["grader"] is None:
+                self.assertEqual(r["pass_raw"], r["pass_regraded"])
+        if not os.environ.get("AWI_DATA_REPO"):
+            return
         for r in self.META["runs"]:
             raw = subprocess.run(["git", "-C", os.environ["AWI_DATA_REPO"], "show", f'{self.META["data_commit"]}:{r["file"]}'], capture_output=True, check=True).stdout
             self.assertEqual(hashlib.sha256(raw).hexdigest(), r["sha256"])

@@ -130,14 +130,14 @@ main section h2 { margin-bottom: var(--s2); }
 @media (min-width: 768px) { :root[data-theme=light] .ch-720.ch-light { display: block; } }
 @media (max-width: 767.98px) { :root[data-theme=light] .ch-350.ch-light { display: block; } }
 
-/* Apify retest (layout.md: 64px top margin, 48px padding, 1px rule; 16px h3->p; 24px p->figure; 8px figcaption) */
+/* Apify retest (layout.md: 64px top margin, 48px padding, 1px rule; 16px h3->p; 24px p->figure; 8px caption) */
 .retest { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--line, currentColor); }
 .retest h3 + p { margin-top: var(--s1); }
 .retest p { line-height: 1.6; }
 .retest .pill { display: inline-block; font-size: 0.7em; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border: 1px solid currentColor; border-radius: 999px; vertical-align: middle; }
 .retest-fig { margin: var(--s2) 0 0; max-width: var(--wide); }
 .retest-fig img { display: block; width: 100%; height: auto; border: 0; box-shadow: none; }
-.retest-fig figcaption { margin-top: var(--s0); }
+.retest-fig .retest-caption { margin-top: var(--s0); }
 
 /* details */
 details { margin-top: var(--s3); border: 1px solid var(--line); border-radius: var(--radius); padding: 0 var(--s2) var(--s2); background: var(--surface); }

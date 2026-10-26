@@ -312,7 +312,7 @@ RETEST = "retest-apify-2026-10-26"
 
 def section_retest(ctx):
     """Apify retest (preliminary): own section after the weekly results (layout.md). Copy from copy.md; alt text and
-    counts from content/retest-apify-2026-10-26.json; the SVG is served byte-identical from /assets/retest/ as an <img>."""
+    counts from content/retest-apify-2026-10-26.json; the SVG is served byte-identical from /assets/retest/ as an <img>. The caption is a <p>, not a <figcaption> (CEO R-5: no figcaption on the page)."""
     meta = json.loads((ctx.content / f"{RETEST}.json").read_text())
     title = "Apify retest (preliminary)"
     para = [t for k, t in ctx.doc.blocks(title) if k == "p" and not t.startswith(("**", "<!--"))][0]
@@ -320,7 +320,7 @@ def section_retest(ctx):
     src = "/assets/retest/" + Path(meta["chart"]).name
     return (f'<section id="apify-retest" class="retest"><div class="wrap"><div class="col"><h3>{e(title)} <span class="pill">Preliminary</span></h3>'
             f'<p>{inline(para)}</p></div><figure class="retest-fig"><img src="{src}" alt="{e(meta["alt"], quote=True)}" width="768" height="432" loading="lazy">'
-            f'<figcaption>{e(cap)}</figcaption></figure></div></section>')
+            f'<p class="retest-caption">{e(cap)}</p></figure></div></section>')
 
 
 def earlier_runs(ctx):
