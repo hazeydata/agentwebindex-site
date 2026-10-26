@@ -1185,5 +1185,24 @@ class Polish(unittest.TestCase):
         for foot in re.findall(r'<p class="footnote"[^>]*>(.*?)</p>', notes):
             self.assertNotIn(text_of(foot), outside)
 
+class W43GradingNote(unittest.TestCase):
+    """AWI-W43-REVIEW-NOTE: the grading note renders, and no number moved versus main 4d56dfd."""
+    NOTE = "We never edit the raw run logs. Each row keeps its original pass mark, and the published count re-grades that row's stored top-10 results under our current URL rules, so recounting the raw pass marks can give a different number."
+    MAIN_LATEST_SHA256 = "391f8a0fd1dd7d34bec3c526b29adbb059e2ebbbcc6d61c0cead9f010b3578ee"  # data/benchmarks/latest.json at origin/main 4d56dfd
+    MAIN_ROWS_SHA256 = "99ec3306779f831e9dd49a161346105d97814eab89a5c4f177c84211e7a9cfb7"  # tests/results_rows_baseline.json at origin/main 4d56dfd
+
+    def test_grading_note_renders_on_methodology(self):
+        txt = norm(html.unescape(page("/methodology/")))
+        self.assertIn(self.NOTE, txt)
+        self.assertIn("**Grading.** Search re-graded with grader canon-2026-10-20. Scrape and browser scored straight from the run log. " + self.NOTE,
+                      (R / "content/copy.md").read_text())
+
+    def test_table_data_unchanged_vs_main(self):
+        self.assertEqual(hashlib.sha256((R / "data/benchmarks/latest.json").read_bytes()).hexdigest(), self.MAIN_LATEST_SHA256)
+        self.assertEqual(hashlib.sha256((R / "tests/results_rows_baseline.json").read_bytes()).hexdigest(), self.MAIN_ROWS_SHA256)
+        pub = json.loads((D / "data/benchmarks/latest.json").read_text())
+        self.assertEqual(pub["tables"], LATEST["tables"])
+
+
 if __name__ == "__main__":
     unittest.main()
