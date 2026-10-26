@@ -66,15 +66,13 @@ Inter 400/600/700 and Space Grotesk 600 (`inter-{400,600,700}-latin.woff2`, `spa
 of the 2c28c0a charts with fontTools, Latin range. Those TrueType files are not in the repo or in `dist/`. Weights kept are the ones the CSS uses (Inter 700 is the default `<b>` weight).
 Charts (R9 supersedes the R8 font bullet; AC14): `dist/assets/charts` holds exactly the 8 pinned SVGs, byte-identical, and the same markup is inlined on `/`; fonts are not byte-checked. A test fails if any font file in the repo
 (`git ls-files`) or in `dist/` is over 100 KB (102,400 bytes) or is a TrueType/OpenType file.
-Newsletter: when `site.config.json` -> `beehiiv_embed_url` is set, the form is a direct `<iframe class="beehiiv-embed" src="<url>" loading="eager">`
-(width 100%, min-height 240px) on `/newsletter/` (`#signup`) and in the end box of Results (`#signup-end`); otherwise a disabled "Coming soon" form.
-It used to be beehiiv's `loader.js` + `data-beehiiv-form`, which rendered nothing at the end of Results (AWI-PAGE-POLISH-001 P0). The
-beehiiv URLs answer the build box with a Cloudflare challenge, so the root cause of the blank loader embed is not verified; the iframe removes the script dependency.
-The submit button inside the iframe is set in the beehiiv dashboard, not here.
+Newsletter: a first-party signup form (AWI-SIGNUP-FORM-001, see "Signup" below) in the Results hero card (`aside#signup-top`, first screenful),
+in the Results end box (`#signup-end`) and on `/newsletter/` (`#signup`). No Beehiiv iframe, loader or other third-party script (the earlier
+`beehiiv_embed_url` iframe is gone; the site's only external script is the pre-existing GoatCounter analytics).
 
 Page polish (AWI-PAGE-POLISH-001):
 - CTA boxes: every page except Newsletter has a hero card (`aside.cta.cta-hero`, 2-column hero at >=768px, compact row at 390) and/or an
-  end box (`.cta.cta-end`). The hero signup button links to `#signup-end` on pages that have the end form (only Results), otherwise to
+  end box (`.cta.cta-end`). On Results the hero card holds the signup form itself; every other hero signup button links to
   `/newsletter/` (`test_hero_button_target`). Data and Disclosures hero cards are not signups (`.cta-info`): Data holds the latest.json/latest.csv
   buttons, Disclosures the Open an issue / Email links, each under one lead-in from copy-cuts "Hero card lead-ins" (`test_hero_lead_ins_from_copy_cuts`). Lead-ins and the button label come from the `## CTA boxes` section of `content/copy.md`; the button text is
   exactly "Get the results by email" on every page (`test_cta_label_same_on_every_page`). Buttons use `--acc` with `--on-acc` text, links `--link`; brand, nav current and the h1 underline use `--acc-tint`;
@@ -90,14 +88,48 @@ Page polish (AWI-PAGE-POLISH-001):
 - Guards in `test_dist.Polish`: numbers on each page are a subset of `tests/numbers_baseline.json` (built from main 385a6e3, chart SVGs
   excluded), unranked Results rows equal to what the data pin produces, in main's order (`tests/results_rows_baseline.json`; at 303efdf4: run summary 3 rows (Exa, Tavily, Browserless) and the full Every row table 11 rows / 4 providers, Apify 2 rows), no raw hex in button rules (`--on-acc` token), neither excluded provider name (the AC-4 list; the test assembles its pattern so the repo itself stays clean) in any tracked file or `dist/` file, the Tavily claim once
   (in `#run`) and "No provider pays us" once (Disclosures), chart `<h3>` == every SVG root `aria-label`, no trailing period.
-  `browser_check.check_layout`: header <=88px with 8px padding at 390, run-row values Plex Mono 13px <=2 lines, Methodology paragraphs >=480px (1440) / >=300px (390), signup iframe fills its box and
-  is >=240px tall, hero CTA top <=420px (1440) / <=560px (390).
+  `browser_check.check_layout`: header <=88px with 8px padding at 390, run-row values Plex Mono 13px <=2 lines, Methodology paragraphs >=480px (1440) / >=300px (390), hero CTA top <=420px (1440) / <=560px (390).
   Every visible `main p` except `.headline` is capped at 68ch of its own font (AC-20; also `test_prose_max_width_68ch`), and every rendered
   chart `<text>` is >=12px at 390 (font-size x screen CTM scale; 390 runs with overlay scrollbars as on phones).
 
 PR proof map: `python3 tools/proof_map.py` prints the "Proof by AC" section with line numbers read from the test names.
 
+## Signup (AWI-SIGNUP-FORM-001)
+Store-first, same-origin signup. Copied and adapted from hazeydata/hazeydata.ai `functions/api/subscribe.js` and
+`assets/signup/signup-config.js` at **d8ef4bbfa53dd819a5e5a11e1a8eba45707082a5** (HD-SIGNUP-001, PRs #30/#32); the endpoint is not shared (spec R1).
+- `signup/config.js`: limits, statuses, visitor copy, `DOUBLE_OPT_IN` (true: every Beehiiv call sends `double_opt_override: "on"`, so the confirmation
+  email and the "Check your inbox to confirm your subscription." copy follow one flag), `SEND_WELCOME_EMAIL=false` (R2: the welcome automation is
+  switched on only by chief after Fred approves its copy), ASCII-only emails (OQ-5 default). `site.config.json` `signup` carries the same copy and
+  double opt-in flag for the build; `tests/signup/config.test.mjs` fails on any drift.
+- `signup/core.js`: `handleSubscribe` and `retryPending`. Order: POST only (else 405); `Origin` must equal the request's own origin (else 403, no CORS);
+  `IP_SALT` required (else `error`); rate limit (5 per `ip_hash` per 10 min, 50 site-wide per minute; KV binding `SIGNUP_RL`, per-isolate memory without
+  it; KV errors fail open); bot check (pluggable `BOT_CHECKS`, only `honeypot` = field `website`; R2: no Turnstile) with a fake success; email
+  validation (trim, lowercase the domain; <=254 chars, one `@`, dotted domain) -> `invalid`; INSERT into D1 `SIGNUPS` (unique `email_norm, source`; a
+  missing binding or failed write -> `error`, and Beehiiv is never called); then Beehiiv `POST /v2/publications/{BEEHIIV_PUB_ID}/subscriptions` (5 s timeout)
+  with `utm_source=agentwebindex`, `custom_fields [{source: AWI}]`, `reactivate_existing:false`.
+  2xx -> `sent` + sub id, status `pending_confirmation`. Timeout, network, 5xx, 429, other 4xx -> `failed`, status `queued`.
+  No key, 401 or 403 -> `queued` row (CSV main path, AC 8a), status `queued`. A repeat writes nothing and calls nothing, and answers what a first
+  signup in that row's state would get, so the response never reveals membership (`already_subscribed` is never sent). Logs hold fixed enums only.
+- Statuses and copy: `pending_confirmation` "Check your inbox to confirm your subscription.", `queued` "Thanks, you're on the list. We'll send a confirmation
+  email soon.", `invalid`, `rate_limited` "Too many tries, please wait a few minutes.", `error` (`subscribed` only if `DOUBLE_OPT_IN` is false).
+  JSON when the request is JSON or `Accept: application/json` (`/signup.js`); otherwise a 303 to the static `/newsletter/thanks/<status>/` page
+  (built by `build.py`, noindex, not in the sitemap), so the form works with JS off. (Spec data shape said `?s=<status>`; a per-status page needs no JS.)
+- `functions/api/subscribe.js`: the Pages Function. `functions/api/signups/export.csv.js`: `GET` with header `X-Export-Token: <EXPORT_TOKEN>` -> CSV
+  `email,source,created_at` of every row not `sent` (formula-guarded); missing or wrong token -> 401. Exporting deletes nothing.
+- `workers/signup-retry.js`: scheduled Worker (`*/15 * * * *`, example config `workers/wrangler.signup-retry.toml.example`) running `retryPending`:
+  `failed`/`pending` rows with attempts < 5; `sent` rows are never touched (every UPDATE is guarded by `beehiiv_status != 'sent'`); no key -> skips Beehiiv;
+  a 401/403 marks the row `queued` and stops the run. Retention (AC 18, delete 30 days after `sent`) is not built yet.
+- `migrations/0001_signups.sql`: D1 table `signups` (idempotent). `ip_hash` = SHA-256 of `IP_SALT` + IP; the raw IP is never stored.
+- Bindings and secrets (names only; chief creates them at deploy): D1 `SIGNUPS`, optional KV `SIGNUP_RL`, secrets `BEEHIIV_API_KEY`, `BEEHIIV_PUB_ID`,
+  `IP_SALT`, `EXPORT_TOKEN`. Beehiiv needs a `source` custom field on the publication for the AWI tag to be stored.
+- Tests (in `run_tests.sh`): `node --test tests/signup/` (mocked D1/KV/fetch/clock; no network), `tests/signup/sql_check.py` (every statement against
+  the migration in real SQLite), `tests/signup/secret_scan.sh`, `tests/signup/mutants.py` (defects injected into the save order and fallback logic must
+  all be caught), plus `test_dist` (`test_signup_*`) and `browser_check.check_signup` (first screenful at 1280x800 and 390x844, label, "Subscribe",
+  honeypot off-screen, contrast >= 4.5:1, keyboard order, aria-live error).
+
 ## Deploy (Cloudflare Pages)
-Build command `python3 build.py`, output directory `dist`, env `PYTHON_VERSION=3.12`. Not deployed yet.
+Build command `python3 build.py`, output directory `dist`, env `PYTHON_VERSION=3.12`. The signup needs the Pages project to deploy `functions/`
+alongside `dist/` (a direct `wrangler pages deploy dist` from the repo root picks up `functions/`), the bindings above and the D1 migration applied
+first. Not done by this repo's code: deploy is gated on Fred's approval via chief.
 
 License: MIT (code); data under data/ is CC BY 4.0 (data/LICENSE).

@@ -309,8 +309,6 @@ const steps = [...document.querySelectorAll('.steps li')].map(li => { const cs =
   const inner = lr.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); const h2 = li.querySelector('h2');
   return {beforeRow: b.gridRowStart, h2Row: getComputedStyle(h2).gridRowStart, h2Top: r(h2).top - lr.top - parseFloat(cs.paddingTop), h2Left: r(h2).left - lr.left,
           pw: [...li.querySelectorAll(':scope > p')].map(p => r(p).width), inner}; });
-const f = document.querySelector('iframe.beehiiv-embed'); const fb = r(f); const box = f ? r(f.parentElement) : null;
-const pad = f ? parseFloat(getComputedStyle(f.parentElement).paddingLeft) + parseFloat(getComputedStyle(f.parentElement).paddingRight) : 0;
 const cta = document.querySelector('.cta-hero');
 const vals = [...document.querySelectorAll('.rows .row .mono')].map(e => ({h: r(e).height, f: getComputedStyle(e).fontSize, ff: getComputedStyle(e).fontFamily}));
 const probe = document.createElement('span'); probe.style.cssText = 'position:absolute;visibility:hidden;width:68ch';
@@ -318,13 +316,12 @@ const pw = [...document.querySelectorAll('main p:not(.headline)')].filter(p => p
   const want = probe.getBoundingClientRect().width; probe.remove(); return {mw: getComputedStyle(p).maxWidth, want, cls: p.className}; });
 const ctext = [...document.querySelectorAll('.ch svg text')].filter(t => t.getClientRects().length).map(t => parseFloat(getComputedStyle(t).fontSize) * t.getScreenCTM().a);
 return JSON.stringify({pw, ctext, steps, vals, hpad: getComputedStyle(document.querySelector('.site-header .wrap')).paddingTop, header: r(document.querySelector('.site-header')).height, stepMin: ps.length ? Math.min(...ps) : null,
-  iframe: f ? {w: fb.width, h: fb.height, inner: box.width - pad - 2, src: f.getAttribute('src'), loading: f.getAttribute('loading')} : null,
   ctaTop: cta ? r(cta).top + scrollY : null}); })()"""
 
 
 def check_layout(cdp, base, errs):
     """AWI-PAGE-POLISH-001: header <= 88px at 390; Methodology paragraphs are not squeezed into the number column (P0);
-    the signup iframe fills its box (width 100%, >= 240px tall) on /newsletter/ and at the end of Results (P0); hero CTA above the fold."""
+    hero CTA above the fold. (The signup form itself is checked by check_signup.)"""
     n = 0
     for w, h in ((390, 844), (1440, 900)):
         for p in PAGES:
@@ -355,15 +352,87 @@ def check_layout(cdp, base, errs):
                         errs.append(f"{tag}: step {i + 1} number and h2 not on one line: {st}")
                     if not st["pw"] or any(abs(x - st["inner"]) > 1 for x in st["pw"]):
                         errs.append(f"{tag}: step {i + 1} paragraph width {st['pw']} != content width {st['inner']}")
-            if p in ("/", "/newsletter/"):
-                f = m["iframe"]
-                if not f or f["h"] < 239.5 or abs(f["w"] - f["inner"]) > 1.5 or not f["src"] or f["loading"] == "lazy":
-                    errs.append(f"{tag}: signup iframe not full-width / >=240px / eager: {f}")
             if p in ("/", "/prices/", "/methodology/", "/data/", "/disclosures/"):
                 lim = 420 if w >= 768 else 560
                 if m["ctaTop"] is None or m["ctaTop"] > lim:
                     errs.append(f"{tag}: hero CTA top {m['ctaTop']} > {lim}px")
             n += 1
+    return n
+
+
+SIGNUP = """(() => { const f = document.querySelector('form.awi-signup'); if (!f) return 'null';
+const r = e => e.getBoundingClientRect(), lab = f.querySelector('label.signup-label'), inp = f.querySelector('input[name=email]'), b = f.querySelector('button[type=submit]');
+const hp = f.querySelector('.signup-hp'), hr = r(hp), cs = getComputedStyle(b);
+const vis = e => { const x = r(e); return x.width > 0 && x.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+return JSON.stringify({bottom: Math.max(r(lab).bottom, r(inp).bottom, r(b).bottom) + scrollY, labelVisible: vis(lab), labelText: lab.textContent,
+  button: b.textContent, bg: cs.backgroundColor, fg: cs.color, hpOff: hr.right <= 0 || hr.left >= innerWidth, inputH: r(inp).height, buttonH: r(b).height}); })()"""
+
+
+def _lum(rgb):
+    v = [int(x) / 255 for x in re.findall(r"\d+", rgb)[:3]]
+    v = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in v]
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
+
+
+def contrast(a, b):
+    x, y = sorted((_lum(a), _lum(b)), reverse=True)
+    return (x + 0.05) / (y + 0.05)
+
+
+def press_tab(cdp):
+    for t in ("rawKeyDown", "keyUp"):
+        cdp.call("Input.dispatchKeyEvent", type=t, key="Tab", code="Tab", windowsVirtualKeyCode=9, nativeVirtualKeyCode=9)
+
+
+def press_enter(cdp):
+    cdp.call("Input.dispatchKeyEvent", type="rawKeyDown", key="Enter", code="Enter", windowsVirtualKeyCode=13, nativeVirtualKeyCode=13)
+    cdp.call("Input.dispatchKeyEvent", type="char", text="\r", key="Enter")
+    cdp.call("Input.dispatchKeyEvent", type="keyUp", key="Enter", code="Enter", windowsVirtualKeyCode=13, nativeVirtualKeyCode=13)
+
+
+def check_signup(cdp, base, errs):
+    """AWI-SIGNUP-FORM-001 AC 14: the first form's label, input and Subscribe button end inside the top 800px at 1280x800
+    (and 844px at 390x844) on / and /newsletter/, label visible, honeypot off-screen. AC 16: button text/background contrast
+    >= 4.5:1 (the site's standard, same --acc/--on-acc pair as every .btn) in both schemes; keyboard only: Tab reaches the
+    email input then the Subscribe button and never the honeypot; Enter on an invalid address announces the error in the
+    aria-live status (client-side, no request is sent)."""
+    n = 0
+    for w, h in ((1280, 800), (390, 844)):
+        for scheme in ("dark", "light"):
+            for p in ("/", "/newsletter/"):
+                open_page(cdp, base, p, w, h, scheme)
+                m = json.loads(cdp.js(SIGNUP)); tag = f"{p} @{w}x{h} {scheme}"
+                if not m:
+                    errs.append(f"{tag}: no signup form"); continue
+                if m["bottom"] > min(h, 800) + 0.5:
+                    errs.append(f"{tag}: signup form ends at {m['bottom']:.0f}px, below the first screenful")
+                if not m["labelVisible"] or m["labelText"] != "Email address" or m["button"] != "Subscribe":
+                    errs.append(f"{tag}: label/button wrong: {m}")
+                if not m["hpOff"]:
+                    errs.append(f"{tag}: honeypot is on screen")
+                if m["inputH"] < 43.5 or m["buttonH"] < 43.5:
+                    errs.append(f"{tag}: input/button below the 44px tap target")
+                c = contrast(m["bg"], m["fg"])
+                if c < 4.5:
+                    errs.append(f"{tag}: Subscribe contrast {c:.2f} < 4.5")
+                n += 1
+    for p in ("/", "/newsletter/"):
+        open_page(cdp, base, p, 1280, 800, "dark")
+        seq = []
+        for _ in range(40):
+            press_tab(cdp)
+            seq.append(cdp.js("(() => { const a = document.activeElement; return (a.name || a.tagName) + '|' + (a.closest('form.awi-signup') ? 'f' : '') })()"))
+            if seq[-1] == "BUTTON|f":
+                break
+        if "website|f" in seq or "email|f" not in seq or seq[-1] != "BUTTON|f" or seq.index("email|f") != len(seq) - 2:
+            errs.append(f"{p}: keyboard order to the form wrong: {seq[-4:]}")
+        cdp.js("(() => { const i = document.querySelector('form.awi-signup input[name=email]'); i.value = 'a@b'; i.focus(); return 1 })()")
+        press_enter(cdp)
+        time.sleep(0.2)
+        st = json.loads(cdp.js("(() => { const f = document.querySelector('form.awi-signup'); const s = f.querySelector('.signup-status'); return JSON.stringify({t: s.textContent, live: s.getAttribute('aria-live'), inv: f.querySelector('input[name=email]').getAttribute('aria-invalid'), url: location.pathname}); })()"))
+        if st["t"] != "Please enter a valid email address." or st["live"] != "polite" or st["inv"] != "true" or st["url"] != p:
+            errs.append(f"{p}: invalid email not announced inline: {st}")
+        n += 1
     return n
 
 
@@ -402,9 +471,11 @@ def main():
         ng = check_rename_geometry(cdp, base, errs)
         check_readability(cdp, base, shots, errs)
         nl = check_layout(cdp, base, errs)
+        nsu = check_signup(cdp, base, errs)
         print(f"browser_check: {n} chart/viewport/scheme combinations checked; readability checked on {len(PAGES)} pages x 2 schemes at 390px")
         print(f"browser_check: one non-title Inter chart text element rendered with Inter (no fallback) in {nf} chart/viewport/scheme cases; id-rename text+geometry equal in {ng}")
-        print(f"browser_check: layout (header <= 88px at 390, Methodology grid, signup iframe, hero CTA fold) checked on {nl} page/viewport cases")
+        print(f"browser_check: layout (header <= 88px at 390, Methodology grid, hero CTA fold) checked on {nl} page/viewport cases")
+        print(f"browser_check: signup form (first screenful, label, Subscribe, honeypot off-screen, contrast, keyboard, aria-live error) checked in {nsu} cases")
         if os.environ.get("AWI_KEEP_SHOTS") == "1":
             print(f"browser_check: screenshots (390 and 1440) for a human readability check: {shots}")
     finally:
