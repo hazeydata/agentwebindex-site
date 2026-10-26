@@ -52,6 +52,11 @@ Weekly news sets, before the frozen sets, plus Apify and Browserless browser run
 - Apify search, run Oct 20, 2026, n=40: 48%, cost n/a (paid-tier price not captured).
 - Browserless browser, run Oct 20, 2026, n=40: 93%, $1.35.
 
+## Apify retest (preliminary)
+<!-- Source: 2026-10-26 Apify retest voice draft, "Site section" (byte-for-byte paragraph); numbers checked against content/retest-apify-2026-10-26.json -->
+Apify suggested a fairer setup, so we reran their tools on this week's 21 news items. Their RAG Web Browser search got a longer timeout (240 seconds per request), and we added their Web Fetch tool for reading pages. In one run, Web Fetch passed 19 of 21 and RAG search passed 16 of 21, with no timeouts. This week's set is short, below our usual minimum of 25 items, so treat these numbers as preliminary. Thanks to Apify for the nudge. My bots and I run this benchmark, and feedback like this makes it better.
+**Caption:** Preliminary: one run per setup on a short 21-item set. No earlier Apify run used these items, so there is no before-and-after comparison.
+
 ## Chart briefs
 ### Chart 1: Pass rate on our test set
 - **Title:** Tavily passed 69% of our 100 evergreen checks, Exa 40%; Browserless passed 66% of 120 scrape checks

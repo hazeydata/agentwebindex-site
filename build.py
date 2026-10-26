@@ -83,7 +83,7 @@ layout=(S/"_layout.html").read_text(); pages=[]
 ctx=type("Ctx",(),{})()
 ctx.latest=json.loads((R/"data/benchmarks/latest.json").read_text()); ctx.pricing=P.load_pricing(PRICING)
 ctx.providers=json.loads(PROVIDERS.read_text())["providers"]; ctx.doc=copydoc.load(); ctx.alt=copydoc.alt_texts()
-ctx.pins=PINS; ctx.newsletter=newsletter_slot(); ctx.charts=S/"charts"
+ctx.pins=PINS; ctx.newsletter=newsletter_slot(); ctx.charts=S/"charts"; ctx.content=R/"content"
 SLOTS=render.slots(ctx); META=render.page_meta(ctx); FOOTER=render.footer_html(ctx)
 for f in sorted(S.glob("*.html")):
     if f.name.startswith("_"): continue
@@ -102,6 +102,7 @@ pages.sort(key=lambda p:(p!="/",p))
 (D/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+"".join(f"<url><loc>{SITE_URL}{p}</loc></url>\n" for p in pages)+"</urlset>\n")
 for a in ("style.css","app.js","favicon.svg"): shutil.copy(S/a,D/a)
 shutil.copytree(S/"fonts",D/"assets"/"fonts")
+shutil.copytree(S/"retest",D/"assets"/"retest")   # Apify retest chart, byte-identical (pinned by content/retest-apify-2026-10-26.json)
 shutil.copytree(S/"charts",D/"assets"/"charts")   # byte-identical copies of the 8 pinned chart SVGs only (fonts live in assets/fonts)
 if (R/"data").exists(): shutil.copytree(R/"data",D/"data",ignore=lambda d,n:[x for x in n if x in ("cache","_upstream")],dirs_exist_ok=True)
 def public_bench():

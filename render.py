@@ -307,6 +307,24 @@ def section_not_tested(ctx):
             f'{foot}<h3>Not tested</h3><p>{inline(t)}</p><p><a href="/methodology/">Methodology and limits</a></p></details></div></section>')
 
 
+RETEST = "retest-apify-2026-10-26"
+
+
+def section_retest(ctx):
+    """Apify retest (preliminary): own section after the weekly results (layout.md). Copy from copy.md; alt text and
+    counts from content/retest-apify-2026-10-26.json; the SVG is served byte-identical from /assets/retest/ as an <img>, with a 350px <source> below 960px (chart text >= 13px at 320-959px). The caption is a <p>, not a <figcaption> (CEO R-5: no figcaption on the page)."""
+    meta = json.loads((ctx.content / f"{RETEST}.json").read_text())
+    title = "Apify retest (preliminary)"
+    para = [t for k, t in ctx.doc.blocks(title) if k == "p" and not t.startswith(("**", "<!--"))][0]
+    cap = ctx.doc.field(title, "Caption")
+    src = "/assets/retest/" + Path(meta["chart"]).name
+    src350 = "/assets/retest/" + Path(meta["chart_350"]).name   # 350px variant like the weekly charts (252-unit viewBox shown at 350px)
+    return (f'<section id="apify-retest" class="retest"><div class="wrap"><div class="col"><h3>{e(title)} <span class="pill">Preliminary</span></h3>'
+            f'<p>{inline(para)}</p></div><figure class="retest-fig"><picture><source media="(max-width: 959.98px)" srcset="{src350}">'
+            f'<img src="{src}" alt="{e(meta["alt"], quote=True)}" width="768" height="432" loading="lazy"></picture>'
+            f'<p class="retest-caption">{e(cap)}</p></figure></div></section>')
+
+
 def earlier_runs(ctx):
     bl = ctx.doc.blocks("Earlier runs")
     summary = next(t for k, t in bl if t.startswith("**Summary line:**")).split(":**", 1)[1].strip()
@@ -514,7 +532,7 @@ def slots(ctx):
         "hero_results": hero_results(ctx), "run": section_run(ctx),
         "pass_rate": section_chart(ctx, "pass-rate", "Pass rate", "pass-rate", headline_sentence(ctx)),
         "cost": section_chart(ctx, "cost", "Cost per passed check", "cost-per-success", cost_title(ctx)),
-        "not_tested": section_not_tested(ctx), "details": section_details(ctx), "sponsor": section_sponsor(ctx),
+        "not_tested": section_not_tested(ctx), "retest": section_retest(ctx), "details": section_details(ctx), "sponsor": section_sponsor(ctx),
         "prices_body": prices_body(ctx), "methodology_body": methodology_body(ctx), "data_body": data_body(ctx),
         "tell_us_body": tell_us_body(ctx), "newsletter_body": newsletter_body(ctx),
         "disclosures_body": field_page(ctx, "Disclosures page", end_key="Disclosures end",

@@ -4,6 +4,7 @@ AC numbers refer to specs/awi-page-redo-001.md (rev 2 + R3-R6). SHIP gates live 
 the headless-Chrome checks (AC16/AC17/AC14 served bytes, readability) live in tests/browser_check.py.
 """
 import csv, hashlib, html, json, os, re, shutil, subprocess, sys, tempfile, unittest
+import unittest.mock
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -611,7 +612,7 @@ class Results(unittest.TestCase):
     def test_section_order(self):  # AC12
         ids = re.findall(r'<(?:section|footer)\b[^>]*?(?:id="([a-z-]+)"|class="(site-footer)")', self.s)
         order = [a or b for a, b in ids]
-        self.assertEqual([x for x in order if x != ""], ["run", "pass-rate", "cost", "not-tested", "details", "sponsor-newsletter", "site-footer"])
+        self.assertEqual([x for x in order if x != ""], ["run", "pass-rate", "cost", "apify-retest", "not-tested", "details", "sponsor-newsletter", "site-footer"])
         self.assertTrue(self.s.index('class="hero"') < self.s.index('id="run"'))
         self.assertIn('<aside id="sponsor-banner" class="sponsor"><b>Sponsored</b>', self.s)
         run = self.s[self.s.index('id="run"'):self.s.index('id="pass-rate"')]
@@ -1140,6 +1141,169 @@ class Polish(unittest.TestCase):
         for foot in re.findall(r'<p class="footnote"[^>]*>(.*?)</p>', notes):
             self.assertNotIn(text_of(foot), outside)
 
+class W43GradingNote(unittest.TestCase):
+    """AWI-W43-REVIEW-NOTE: the grading note renders, and no number moved versus main 4d56dfd."""
+    NOTE = "We never edit the raw run logs. Each row keeps its original pass mark, and the published count re-grades that row's stored top-10 results under our current URL rules, so recounting the raw pass marks can give a different number."
+    MAIN_LATEST_SHA256 = "391f8a0fd1dd7d34bec3c526b29adbb059e2ebbbcc6d61c0cead9f010b3578ee"  # data/benchmarks/latest.json at origin/main 4d56dfd
+    MAIN_ROWS_SHA256 = "99ec3306779f831e9dd49a161346105d97814eab89a5c4f177c84211e7a9cfb7"  # tests/results_rows_baseline.json at origin/main 4d56dfd
+
+    def test_grading_note_renders_on_methodology(self):
+        txt = norm(html.unescape(page("/methodology/")))
+        self.assertIn(self.NOTE, txt)
+        self.assertIn("**Grading.** Search re-graded with grader canon-2026-10-20. Scrape and browser scored straight from the run log. " + self.NOTE,
+                      (R / "content/copy.md").read_text())
+
+    def test_table_data_unchanged_vs_main(self):
+        self.assertEqual(hashlib.sha256((R / "data/benchmarks/latest.json").read_bytes()).hexdigest(), self.MAIN_LATEST_SHA256)
+        self.assertEqual(hashlib.sha256((R / "tests/results_rows_baseline.json").read_bytes()).hexdigest(), self.MAIN_ROWS_SHA256)
+        pub = json.loads((D / "data/benchmarks/latest.json").read_text())
+        self.assertEqual(pub["tables"], LATEST["tables"])
+
+class ApifyRetest(unittest.TestCase):
+    """AWI Apify retest (preliminary): section placement, copy numbers vs the pinned retest JSON, chart bytes and alt text, fairness wording."""
+    META = json.loads((R / "content/retest-apify-2026-10-26.json").read_text())
+    PARA = "Apify suggested a fairer setup, so we reran their tools on this week's 21 news items. Their RAG Web Browser search got a longer timeout (240 seconds per request), and we added their Web Fetch tool for reading pages. In one run, Web Fetch passed 19 of 21 and RAG search passed 16 of 21, with no timeouts. This week's set is short, below our usual minimum of 25 items, so treat these numbers as preliminary. Thanks to Apify for the nudge. My bots and I run this benchmark, and feedback like this makes it better."
+    CAPTION = "Preliminary: one run per setup on a short 21-item set. No earlier Apify run used these items, so there is no before-and-after comparison."
+    ALT = "Bar chart, preliminary: on 21 AgentWebIndex news items, apify/web-fetch passed 19 and apify/rag-web-browser, with a 240-second timeout, passed 16, with 0 timeouts. One run per setup on a short set."
+
+    def setUp(self):
+        self.s = page("/")
+        self.sec = self.s[self.s.index('id="apify-retest"'):]
+        self.sec = self.sec[:self.sec.index("</section>")]
+
+    def test_section_after_weekly_results_before_notes_and_details(self):
+        self.assertLess(self.s.index('id="cost"'), self.s.index('id="apify-retest"'))
+        self.assertLess(self.s.index('id="apify-retest"'), self.s.index('id="not-tested"'))
+        self.assertLess(self.s.index('id="apify-retest"'), self.s.index('id="details"'))
+        self.assertEqual(norm(text_of(re.search(r"<h3>(.*?)</h3>", self.sec).group(1))), "Apify retest (preliminary) Preliminary")
+        self.assertIn('<span class="pill">Preliminary</span>', self.sec)
+
+    def test_copy_verbatim_and_numbers_match_run_data(self):
+        paras = re.findall(r"<p>(.*?)</p>", self.sec, re.S)
+        self.assertEqual([norm(html.unescape(text_of(x))) for x in paras], [self.PARA])   # word-for-word approved paragraph, nothing added before or after
+        self.assertEqual(norm(html.unescape(text_of(self.sec[self.sec.index(">") + 1:]))), "Apify retest (preliminary) Preliminary " + self.PARA + " " + self.CAPTION)   # and no other text anywhere in the section
+        m, runs = self.META, {r["tool"]: r for r in self.META["runs"]}
+        wf, rag = runs["apify/web-fetch"], runs["apify/rag-web-browser"]
+        n = m["n"]
+        self.assertEqual((wf["rows"], rag["rows"], n), (21, 21, 21))
+        self.assertEqual((wf["pass_raw"], wf["pass_regraded"], rag["pass_raw"], rag["pass_regraded"]), (19, 19, 16, 16))
+        self.assertEqual((wf["timeouts"], rag["timeouts"]), (0, 0))
+        self.assertIn(f"Web Fetch passed {wf['pass_regraded']} of {n} and RAG search passed {rag['pass_regraded']} of {n}, with no timeouts", self.PARA)
+        self.assertIn(f"({rag['timeout_s']} seconds per request)", self.PARA)
+        self.assertIn(f"this week's {n} news items", self.PARA)
+        self.assertIn(f"usual minimum of {m['minimum']} items", self.PARA)
+        self.assertEqual(rag["grader"], "canon-2026-10-20")
+
+    def test_chart_bytes_alt_and_caption(self):
+        f = R / self.META["chart"]
+        self.assertEqual(hashlib.sha256(f.read_bytes()).hexdigest(), self.META["chart_sha256"])
+        self.assertEqual((D / "assets/retest" / f.name).read_bytes(), f.read_bytes())
+        self.assertEqual(self.META["alt"], self.ALT)
+        imgs = re.findall(r'<img src="([^"]+)" alt="([^"]+)"', self.sec)
+        self.assertEqual(imgs, [("/assets/retest/" + f.name, html.escape(self.ALT, quote=True))])
+        self.assertIn('<p class="retest-caption">', self.sec)
+        caps = re.findall(r'<p class="retest-caption">(.*?)</p>', self.sec)
+        self.assertEqual([norm(html.unescape(c)) for c in caps], [self.CAPTION])   # word-for-word approved caption, nothing added
+        self.assertIn("no before-and-after comparison", text_of(self.sec))
+        self.assertEqual(sorted(p.name for p in (D / "assets/charts").iterdir() if p.suffix == ".svg"), sorted(PINS["charts_sha256"]))
+
+    def test_chart_350_variant_same_numbers(self):  # readability: a 350px <source> below 960px, so chart text stays >= 13px at 390 and 768-959
+        big, small = R / self.META["chart"], R / self.META["chart_350"]
+        self.assertEqual(hashlib.sha256(small.read_bytes()).hexdigest(), self.META["chart_350_sha256"])
+        self.assertEqual((D / "assets/retest" / small.name).read_bytes(), small.read_bytes())
+        self.assertIn(f'<picture><source media="(max-width: 959.98px)" srcset="/assets/retest/{small.name}"><img src="/assets/retest/{big.name}"', self.sec)
+        self.assertIn('viewBox="0 0 252 ', small.read_text())
+        words = lambda f: " ".join(re.findall(r"<text[^>]*>([^<]*)</text>", f.read_text()))
+        nums = lambda f: sorted(re.findall(r"\d+(?:\.\d+)?", words(f)))
+        self.assertEqual(nums(small), nums(big))
+        self.assertEqual(sorted(norm(words(small)).split()), sorted(norm(words(big)).split()))   # exactly the same words, only re-wrapped
+        sizes = [float(x) for x in re.findall(r"font-size: ([\d.]+)px", small.read_text())]
+        self.assertGreaterEqual(min(sizes) * 280 / 252, 13)   # >= 13px down to a 320px viewport (img about 280px wide)
+
+    # Fred rule: no strong claims about other products. The retest is one run on new items, so no time comparison
+    # (previous run, last week, improvement, jump) and no ranking (beats, outperforms, top choice, ahead of) anywhere
+    # in the section: paragraph, caption, chart alt text, and the words inside both chart SVGs.
+    BANNED = (r"\bcompar(?:ed|es|ing|ison)\w*", r"\bversus\b", r"\bvs\.?(?=\s)", r"\bthan\b",
+              r"\bimprov\w*", r"\bjump\w*", r"\bprevious\w*", r"\bearlier run\b", r"\blast (?:week|run|time)\b", r"\bup from\b",
+              r"\bdown from\b", r"\bwas \d", r"\bnow\b", r"\bincrease\w*", r"\bdecrease\w*", r"\bgain\w*", r"\bdrop\w*",
+              r"\boutperform\w*", r"\bunderperform\w*", r"\btop (?:choice|pick|tool|performer)\b", r"\bahead\b", r"\bbehind\b",
+              r"\bbetter\b", r"\bworse\b", r"\bbest\b", r"\bworst\b", r"\bbeat\w*", r"\blead(?:s|ing|er)?\b", r"\bwin\w*",
+              r"\blos(?:e|es|er|ing)\b", r"\bfails?\b", r"\bleaderboard\b", r"\bfaster\b", r"\bslower\b", r"\bclearly\b",
+              r"\bdominat\w*", r"\bsuperior\b", r"\bnumber one\b", r"\b#1\b", r"\brank\w*")
+    # Exempted verbatim and nowhere else: the approved sentence where "better" is about our benchmark, not a product; the caption's
+    # own "no before-and-after comparison"; and the chart's settings note "(was 120s)", which is about a timeout, not a result.
+    ALLOWED = ("feedback like this makes it better.", "no before-and-after comparison", "timeout raised to 240s (was 120s)")
+
+    def retest_text(self):
+        svgs = " ".join(" ".join(re.findall(r"<text[^>]*>([^<]*)</text>", (R / self.META[k]).read_text())) for k in ("chart", "chart_350"))
+        alts = " ".join(html.unescape(a) for a in re.findall(r'alt="([^"]*)"', self.sec))
+        return norm(html.unescape(text_of(self.sec)) + " " + alts + " " + svgs)
+
+    def guard_hits(self, txt):
+        low = txt.lower()
+        for a in self.ALLOWED:
+            low = low.replace(a, " ")
+        return [b for b in self.BANNED if re.search(b, low)]
+
+    def test_fair_wording(self):
+        txt = self.retest_text()
+        self.assertIn(self.ALT, txt)   # alt text is in the scanned text
+        self.assertIn("so there is no before-and-after comparison", txt)   # caption is in the scanned text
+        self.assertIn("Settings this run", txt)   # SVG words are in the scanned text
+        low = txt.lower()
+        self.assertIn("preliminary", low)
+        self.assertIn("thanks to apify", low)
+        self.assertEqual(self.guard_hits(txt), [])
+
+    CAPTION_MUTANTS = ("Web Fetch is up from 4 of 40.", "Compared with the Oct 20 run, both setups did much better.",
+                       "A big improvement over last week.", "Previously RAG search passed 4 of 40.", "That is a big jump from the previous run.",
+                       "Web Fetch beats RAG search.", "Web Fetch clearly outperforms the rest.", "Apify is now the top choice for reading pages.",
+                       "That puts Web Fetch ahead of Tavily.", "Results improved.")
+    TERMS = ("compared", "compares", "comparing", "versus", "vs ", "than", "improvement", "improved", "jump", "previous run", "previously",
+             "earlier run", "last week", "last run", "up from", "down from", "was 4", "now", "increase", "decreased", "gains", "dropped",
+             "outperform", "outperforms", "underperforms", "top choice", "top pick", "ahead of", "behind", "better", "worse", "best",
+             "worst", "beats", "beat", "leads", "leader", "wins", "winner", "loses", "fails", "leaderboard", "faster", "slower",
+             "clearly", "dominates", "superior", "number one", "ranked")
+
+    def test_guard_catches_each_caption_mutant_in_paragraph_caption_and_alt(self):
+        base = self.retest_text()
+        for m in self.CAPTION_MUTANTS:
+            for where in ("Thanks to Apify for the nudge.", "so there is no before-and-after comparison.", "One run per setup on a short set."):
+                with self.subTest(mutant=m, where=where):
+                    self.assertIn(where, base)
+                    self.assertNotEqual(self.guard_hits(base.replace(where, where + " " + m, 1)), [], m)
+
+    def test_guard_catches_each_banned_term(self):
+        base = self.retest_text()
+        for w in self.TERMS:
+            with self.subTest(term=w):
+                self.assertNotEqual(self.guard_hits(base + " Web Fetch " + w + " 7 RAG search."), [], w)
+
+    def test_guard_exemptions_are_exact(self):
+        self.assertNotEqual(self.guard_hits("Web Fetch did better."), [])
+        self.assertNotEqual(self.guard_hits("Compared with the Oct 20 run."), [])
+        self.assertEqual(self.guard_hits("Feedback like this makes it better. There is no before-and-after comparison."), [])
+
+    def test_counts_consistent_and_raw_pass_count_when_data_repo_set(self):  # always: count invariants; with AWI_DATA_REPO also sha256 + raw pass count of each log (no regrade rerun), like the pricing cross-check
+        for r in self.META["runs"]:
+            self.assertEqual(r["rows"], self.META["n"])
+            self.assertLessEqual(r["pass_raw"], r["rows"])
+            self.assertLessEqual(r["pass_regraded"], r["rows"])
+            if r["grader"] is None:
+                self.assertEqual(r["pass_raw"], r["pass_regraded"])
+        if not os.environ.get("AWI_DATA_REPO"):
+            return
+        for r in self.META["runs"]:
+            raw = subprocess.run(["git", "-C", os.environ["AWI_DATA_REPO"], "show", f'{self.META["data_commit"]}:{r["file"]}'], capture_output=True, check=True).stdout
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), r["sha256"])
+            rows = [json.loads(l) for l in raw.decode().splitlines() if l.strip()]
+            self.assertEqual(len(rows), r["rows"])
+            self.assertEqual(sum(1 for x in rows if x.get("pass")), r["pass_raw"])
+
+    def test_weekly_table_data_unchanged_vs_main(self):
+        self.assertEqual(hashlib.sha256((R / "data/benchmarks/latest.json").read_bytes()).hexdigest(), W43GradingNote.MAIN_LATEST_SHA256)
+        self.assertEqual(hashlib.sha256((R / "tests/results_rows_baseline.json").read_bytes()).hexdigest(), W43GradingNote.MAIN_ROWS_SHA256)
+
 
 class BrowserCheckHygiene(unittest.TestCase):
     def test_hygiene_ok_only_when_every_cleanup_check_passes(self):  # OK line never printed alongside BROWSER FAIL
@@ -1177,24 +1341,34 @@ class BrowserCheckHygiene(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertNotIn("temp hygiene OK", out)
 
-
-class W43GradingNote(unittest.TestCase):
-    """AWI-W43-REVIEW-NOTE: the grading note renders, and no number moved versus main 4d56dfd."""
-    NOTE = "We never edit the raw run logs. Each row keeps its original pass mark, and the published count re-grades that row's stored top-10 results under our current URL rules, so recounting the raw pass marks can give a different number."
-    MAIN_LATEST_SHA256 = "391f8a0fd1dd7d34bec3c526b29adbb059e2ebbbcc6d61c0cead9f010b3578ee"  # data/benchmarks/latest.json at origin/main 4d56dfd
-    MAIN_ROWS_SHA256 = "99ec3306779f831e9dd49a161346105d97814eab89a5c4f177c84211e7a9cfb7"  # tests/results_rows_baseline.json at origin/main 4d56dfd
-
-    def test_grading_note_renders_on_methodology(self):
-        txt = norm(html.unescape(page("/methodology/")))
-        self.assertIn(self.NOTE, txt)
-        self.assertIn("**Grading.** Search re-graded with grader canon-2026-10-20. Scrape and browser scored straight from the run log. " + self.NOTE,
-                      (R / "content/copy.md").read_text())
-
-    def test_table_data_unchanged_vs_main(self):
-        self.assertEqual(hashlib.sha256((R / "data/benchmarks/latest.json").read_bytes()).hexdigest(), self.MAIN_LATEST_SHA256)
-        self.assertEqual(hashlib.sha256((R / "tests/results_rows_baseline.json").read_bytes()).hexdigest(), self.MAIN_ROWS_SHA256)
-        pub = json.loads((D / "data/benchmarks/latest.json").read_text())
-        self.assertEqual(pub["tables"], LATEST["tables"])
+    def test_screenshots_dir_removed_and_checked_unless_keep_shots(self):  # M7: the leftover check covers the screenshots dir
+        from tests import browser_check as bc
+        import inspect
+        src = inspect.getsource(bc.main)   # main removes and then checks exactly these dirs
+        self.assertIn("        remove_own_dirs(prof, ctmp, shots)\n", src)
+        self.assertIn("cleanup_errors(before, chrome.pid if chrome else None, own_dirs(prof, ctmp, shots))", src)
+        self.assertNotIn("rmtree", src)
+        before = bc.chrome_tmp_paths()
+        for keep in (None, "1"):
+            dirs = [tempfile.mkdtemp(prefix=f"awi-m7-{n}.") for n in ("prof", "ctmp", "shots")]
+            prof, ctmp, shots = dirs
+            env = {k: v for k, v in os.environ.items() if k != "AWI_KEEP_SHOTS"}
+            if keep:
+                env["AWI_KEEP_SHOTS"] = keep
+            try:
+                with unittest.mock.patch.dict(os.environ, env, clear=True):
+                    own = bc.own_dirs(prof, ctmp, shots)
+                    self.assertEqual(shots in own, not keep)
+                    if not keep:   # a screenshots dir left behind is reported, so the hygiene OK line cannot print
+                        self.assertIn(f"run left its own temp dir behind: {shots}", bc.cleanup_errors(before, None, own))
+                    bc.remove_own_dirs(prof, ctmp, shots)
+                    self.assertEqual(bc.cleanup_errors(before, None, own), [])
+                self.assertFalse(os.path.exists(prof) or os.path.exists(ctmp))
+                self.assertEqual(os.path.exists(shots), bool(keep))   # removed unless AWI_KEEP_SHOTS=1
+            finally:
+                for d in dirs:
+                    if os.path.isdir(d):
+                        os.rmdir(d)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,21 @@
+{
+ "_doc": "Apify retest (preliminary), Oct 26, 2026. Counts recomputed from the raw run logs at hazeydata/agentwebindex 286991a4 (PR #31). One run per setup, n=21 (short week, below the usual minimum of 25). Search rows re-graded with the repo's tables.regrade (grader canon-2026-10-20); the web-fetch log is a browser set and is scored straight from the log, so raw and regraded counts are the same by construction.",
+ "data_commit": "286991a4729e262ece6a34e0b127b8fa65faeefb",
+ "set": "news_2026-44",
+ "set_sha": "e5a95e11f9149d15cc3af657ee6ee251b933a5de1419e73e483734eb43db1a67",
+ "n": 21,
+ "minimum": 25,
+ "runs": [
+  {"tool": "apify/web-fetch", "label": "Web Fetch", "config": "web-fetch-text", "file": "bench/runs/2026-10-26/apify/newsfetch_2026-44.jsonl",
+   "sha256": "39da3fdb9fae8dacce7f0ae91fd5eb4677c17a51032047c018a6aa091891fda3", "rows": 21, "pass_raw": 19, "pass_regraded": 19, "timeouts": 0, "grader": null},
+  {"tool": "apify/rag-web-browser", "label": "RAG search", "config": "rag-raw-http-t240", "timeout_s": 240, "file": "bench/runs/2026-10-26/apify/news_2026-44.jsonl",
+   "sha256": "4aed1c69d9673b5a0569bb02f65a786ad107c2b6043c28d826d7a24d5b26d0f8", "rows": 21, "pass_raw": 16, "pass_regraded": 16, "timeouts": 0, "grader": "canon-2026-10-20"}
+ ],
+ "chart": "src/retest/apify-retest-2026-10-26.svg",
+ "chart_sha256": "f7f05283645fcc1e5383971775c4dad2e8743985efeabea8d67cb8950106b58a",
+ "chart_350": "src/retest/apify-retest-2026-10-26-350.svg",
+ "chart_350_sha256": "f41579378df01018cf3b797730c6e368054800b8c3f17eacfb158b131df6662a",
+ "chart_350_note": "350px variant for screens under 960px: the same words and numbers as the main chart, re-wrapped on a 252-unit viewBox with 12-unit minimum text so it renders at 13px or more from 320px to 959px.",
+ "chart_source": "2026-10-26 Apify retest package chart.svg (Her? and Tobias)",
+ "alt": "Bar chart, preliminary: on 21 AgentWebIndex news items, apify/web-fetch passed 19 and apify/rag-web-browser, with a 240-second timeout, passed 16, with 0 timeouts. One run per setup on a short set."
+}
