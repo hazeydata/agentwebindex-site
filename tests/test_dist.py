@@ -1142,7 +1142,7 @@ class Polish(unittest.TestCase):
 
 class W43GradingNote(unittest.TestCase):
     """AWI-W43-REVIEW-NOTE: the grading note renders, and no number moved versus main 4d56dfd."""
-    NOTE = "The raw run logs are never edited: each search row keeps its original pass field, and the published count re-grades that row's stored top-10 results, so recounting the raw pass field can give a lower number."
+    NOTE = "We never edit the raw run logs. Each row keeps its original pass mark, and the published count re-grades that row's stored top-10 results under our current URL rules, so recounting the raw pass marks can give a different number."
     MAIN_LATEST_SHA256 = "391f8a0fd1dd7d34bec3c526b29adbb059e2ebbbcc6d61c0cead9f010b3578ee"  # data/benchmarks/latest.json at origin/main 4d56dfd
     MAIN_ROWS_SHA256 = "99ec3306779f831e9dd49a161346105d97814eab89a5c4f177c84211e7a9cfb7"  # tests/results_rows_baseline.json at origin/main 4d56dfd
 
