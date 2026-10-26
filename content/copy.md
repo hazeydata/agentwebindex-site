@@ -87,7 +87,7 @@ Weekly news sets, before the frozen sets, plus Apify and Browserless browser run
 
 **Scrape set.** 150 URLs; 79 of 120 tested passed. The 30 skipped are anti-bot URLs, which Browserless's terms forbid, so this score never faced anti-bot pages.
 
-**Grading.** Search re-graded with grader canon-2026-10-20. Scrape and browser scored straight from the run log.
+**Grading.** Search re-graded with grader canon-2026-10-20. Scrape and browser scored straight from the run log. We never edit the raw run logs. Each row keeps its original pass mark, and the published count re-grades that row's stored top-10 results under our current URL rules, so recounting the raw pass marks can give a different number.
 
 **Cost.** Entry-tier list price from each provider's pricing page, dated when we last checked: list price × calls ÷ passes. Free credits never lower it.
 
