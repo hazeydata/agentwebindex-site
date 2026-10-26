@@ -1,9 +1,9 @@
 // AWI-SIGNUP-FORM-001 S1/S2 on mocks. Run: node --test tests/signup/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleSubscribe, retryPending, purgeSent, normalizeEmail, beehiivBody, _resetMemoryLimiter, BOT_CHECKS } from '../../signup/core.js';
+import { handleSubscribe, retryPending, purgeSent, normalizeEmail, beehiivBody, _resetMemoryLimiter, BOT_CHECKS, Q, log } from '../../signup/core.js';
 import { runScheduled } from '../../workers/signup-retry.js';
-import { handleExport } from '../../functions/api/signups/export.csv.js';
+import { handleExport, tokenMatches } from '../../functions/api/signups/export.csv.js';
 import * as CFG from '../../signup/config.js';
 import { mockD1, mockFetch, env, post, capture, SECRET_KEY, SALT, ORIGIN } from './helpers.mjs';
 
@@ -354,6 +354,40 @@ test('Beehiiv failed and the status update fails: not a 500 (the row is stored, 
     const r = await sub(e, OK, { fetch: f });
     assert.notEqual(r.res.status, 500); assert.equal(r.status, 'queued'); assert.equal(e.SIGNUPS.rows.length, 1);
   }
+});
+
+const markCalls = (db) => db.calls.filter((q) => [Q.markSent, Q.markFailed, Q.markQueued].includes(q)).length;
+
+test('accepted, both status writes fail: 500 after exactly two writes (no third), row still pending', async () => {
+  const e = env({ SIGNUPS: mockD1({ failMarkTimes: 2 }) });
+  const r = await sub(e, OK);
+  assert.equal(r.res.status, 500); assert.equal(r.status, 'error'); assert.equal(r.fetch.calls.length, 1);
+  assert.equal(markCalls(e.SIGNUPS), 2); assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'pending');
+});
+
+test('Beehiiv failed and the status write fails once: no second write (retry only for an accepted email)', async () => {
+  for (const resp of [500, 'network']) {
+    const e = env({ SIGNUPS: mockD1({ failMarkTimes: 1 }) });
+    const f = mockFetch(() => (resp === 'network' ? (() => { throw new TypeError('fetch failed'); })() : new Response('', { status: resp })));
+    const r = await sub(e, OK, { fetch: f });
+    assert.equal(r.status, 'queued'); assert.equal(markCalls(e.SIGNUPS), 1);
+    assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'pending'); assert.equal(e.SIGNUPS.rows[0].attempts, 0);
+  }
+});
+
+test('email_raw is stored trimmed', async () => {
+  const e = env(); await sub(e, { email: '  Trim@Example.COM \t', page: '/' });
+  assert.equal(e.SIGNUPS.rows[0].email_raw, 'Trim@Example.COM');
+});
+
+test('log drops a reason outside the fixed enum (never logs an email)', async () => {
+  const { lines } = await capture(async () => { log('signup', 'error', 'kitty@example.com'); log('signup', 'error', 'timeout'); });
+  assert.deepEqual(lines.map((l) => JSON.parse(l).reason), [null, 'timeout']);
+  assert.ok(!lines.join('').includes('kitty@'));
+});
+
+test('export token: an unset or empty secret never matches, whatever is sent', async () => {
+  for (const sec of [undefined, null, '']) for (const g of ['undefined', 'null', String(sec), 'x']) assert.equal(await tokenMatches(g, sec), false, `${g} vs ${sec}`);
 });
 
 for (const [p, want] of [['/newsletter/', '/newsletter/'], ['javascript:alert(1)', '/'], ['https://evil.example.com/x', '/'], ['//evil.example.com', '/'], ['//evil', '/'],

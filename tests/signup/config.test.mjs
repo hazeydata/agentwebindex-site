@@ -27,6 +27,12 @@ test("AC19 privacy line is Lindsay's copy verbatim (+ 'when you signed up': crea
   const L = 'We keep your email, the page you signed up on, when you signed up, a scrambled version of your IP address and delivery records in our own database, pass your email to Beehiiv, which sends the newsletter, and delete our copy 30 days after it reaches Beehiiv.';
   assert.equal(CFG.PRIVACY_LINE, L);
   assert.equal(site.privacy, L);
-  const page = readFileSync(new URL('../../dist/newsletter/index.html', import.meta.url), 'utf8');
-  assert.ok(page.includes(L.replace(/'/g, '&#x27;')), 'privacy line rendered under the form');
+  const want = `<p class="signup-privacy">${L.replace(/'/g, '&#x27;')}</p>`;
+  for (const f of ['../../dist/newsletter/index.html', '../../dist/index.html']) {
+    const page = readFileSync(new URL(f, import.meta.url), 'utf8');
+    const forms = (page.match(/<form[^>]*class="[^"]*signup/g) || []).length;
+    const lines = page.split(want).length - 1;
+    assert.ok(forms >= 1, `${f}: has a signup form`);
+    assert.equal(lines, forms, `${f}: privacy line rendered under each of its ${forms} signup form(s)`);
+  }
 });

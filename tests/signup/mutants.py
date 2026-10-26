@@ -50,9 +50,15 @@ MUTANTS = {
     "page_protocol_relative": (C, "/^\\/(?!\\/)[A-Za-z0-9", "/^\\/[A-Za-z0-9"),
     "status_fail_500_for_all": (C, "    if (out.kind === 'sent') return respond(request, 'error', 500);", "    return respond(request, 'error', 500);"),
     "accepted_no_second_write": (C, "    if (out.kind === 'sent') { try { await record(db, row.id, out, nowIso); saved = true; }", "    if (false) { try { await record(db, row.id, out, nowIso); saved = true; }"),
+    "f2_second_write_for_all": (C, "    if (out.kind === 'sent') { try {", "    if (true) { try {"),
+    "f2_three_writes": (C, "{ try { await record(db, row.id, out, nowIso); saved = true; } catch { /* still pending */ } }", "{ try { await record(db, row.id, out, nowIso); saved = true; } catch { try { await record(db, row.id, out, nowIso); saved = true; } catch {} } }"),
+    "f5_home_privacy_dropped": ("dist/index.html", 'id="top-status" class="signup-status" role="status" aria-live="polite"></p><p class="signup-privacy">', 'id="top-status" class="signup-status" role="status" aria-live="polite"></p><p class="signup-privacy-x">'),
+    "st_raw_untrimmed": (C, ".bind(email, raw.trim(), SOURCE", ".bind(email, raw, SOURCE"),
+    "log_reason_unfiltered": (C, "if (reason != null && !REASONS.test(reason)) reason = null;", ""),
+    "x_secret_unset_open": ("functions/api/signups/export.csv.js", "if (!secret || typeof given", "if (typeof given"),
     "honeypot_trimmed": (C, "String(fields.website || '') === ''", "String(fields.website || '').trim() === ''"),
 }
-COPY = ["signup", "functions", "workers", "migrations", "tests/signup", "site.config.json", "dist/newsletter/thanks"]
+COPY = ["signup", "functions", "workers", "migrations", "tests/signup", "site.config.json", "dist/newsletter/thanks", "dist/index.html", "dist/newsletter/index.html"]
 CMDS = [["node", "--test", "tests/signup/"], [sys.executable, "tests/signup/sql_check.py"]]
 
 def run(cmd, cwd, timeout=60):
