@@ -574,6 +574,28 @@ def check_signup_goatcounter(cdp, errs):
     return n
 
 
+def _singleton_dirs(prof):
+    """The com.google.Chrome.XXXXXX dir(s) this Chrome made, read from its own profile's Singleton* symlinks."""
+    out = set()
+    for name in ("SingletonSocket", "SingletonCookie", "SingletonLock"):
+        t = Path(prof) / name
+        if t.is_symlink():
+            parent = Path(os.readlink(t)).parent
+            if parent.is_absolute() and parent.name.startswith("com.google.Chrome.") and parent != Path(prof):
+                out.add(str(parent))
+    return sorted(out)
+
+
+def _rm_exact(d):
+    """Remove one exact path we created; retry briefly if a dying child was still writing into it."""
+    for _ in range(20):
+        shutil.rmtree(d, ignore_errors=True)
+        if not os.path.lexists(d):
+            return
+        time.sleep(0.1)
+    print(f"browser_check: WARNING could not remove {d}", file=sys.stderr)
+
+
 def main():
     if not Path(CHROME).exists():
         print("browser_check: SKIP (google-chrome not installed)")
@@ -581,7 +603,10 @@ def main():
     if not (D / "index.html").exists():
         print("browser_check: dist/ missing; run python3 build.py first", file=sys.stderr)
         return 2
+    # Every temp path this run creates is recorded here and removed in the finally below (exact paths, never a wildcard).
+    # Chrome's own scratch dirs (com.google.Chrome.*) go under a private TMPDIR so they are removed with it.
     prof = tempfile.mkdtemp(prefix="awi-chrome.")
+    ctmp = tempfile.mkdtemp(prefix="awi-chrome-tmp.")
     shots = Path(tempfile.mkdtemp(prefix="awi-shots."))
     srv = ThreadingHTTPServer(("127.0.0.1", 0), partial(Quiet, directory=str(D)))
     threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -590,7 +615,8 @@ def main():
     try:
         chrome = subprocess.Popen([CHROME, "--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
                                    "--remote-debugging-port=0", "--remote-allow-origins=*", f"--user-data-dir={prof}", "about:blank"],
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+                                  env={**os.environ, "TMPDIR": ctmp, "TMP": ctmp, "TEMP": ctmp})
         port_file = Path(prof) / "DevToolsActivePort"
         for _ in range(100):
             if port_file.exists() and len(port_file.read_text().split()) >= 2:
@@ -627,11 +653,25 @@ def main():
             except (ProcessLookupError, subprocess.TimeoutExpired):
                 try:
                     os.killpg(chrome.pid, signal.SIGKILL)
-                except ProcessLookupError:
+                    chrome.wait(timeout=10)
+                except (ProcessLookupError, subprocess.TimeoutExpired):
                     pass
+            try:   # reap any helper left in Chrome's process group (renderers, crashpad)
+                os.killpg(chrome.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            for _ in range(100):   # wait until the whole group is gone, so nothing writes into the dirs we remove
+                try:
+                    os.killpg(chrome.pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.1)
         srv.shutdown()
         srv.server_close()
-        shutil.rmtree(prof, ignore_errors=True)
+        # Chrome's singleton dir: the Singleton* links in our profile point into it; remove exactly that dir.
+        created = [prof, ctmp] + _singleton_dirs(prof)
+        for d in created:
+            _rm_exact(d)
         if os.environ.get("AWI_KEEP_SHOTS") != "1":
             shutil.rmtree(shots, ignore_errors=True)
     for m in errs:
