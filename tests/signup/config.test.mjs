@@ -22,3 +22,11 @@ test("Lindsay's copy is used verbatim for invalid and error (copy/signup-form-co
   assert.equal(CFG.MESSAGES.invalid, "That email doesn't look right. Check it and try again.");
   assert.equal(CFG.MESSAGES.error, 'Something broke on our end. Try again in a minute, or email fred@hazeydata.ai.');
 });
+
+test("AC19 privacy line is Lindsay's copy verbatim (+ 'when you signed up': created_at is stored) and is on the page", () => {
+  const L = 'We keep your email, the page you signed up on, when you signed up, a scrambled version of your IP address and delivery records in our own database, pass your email to Beehiiv, which sends the newsletter, and delete our copy 30 days after it reaches Beehiiv.';
+  assert.equal(CFG.PRIVACY_LINE, L);
+  assert.equal(site.privacy, L);
+  const page = readFileSync(new URL('../../dist/newsletter/index.html', import.meta.url), 'utf8');
+  assert.ok(page.includes(L.replace(/'/g, '&#x27;')), 'privacy line rendered under the form');
+});

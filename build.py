@@ -37,7 +37,8 @@ def signup_form(prefix, page):
             f'<input type="hidden" name="page" value="{html.escape(page, quote=True)}">'
             f'<div class="signup-hp" aria-hidden="true"><label for="{p}-website">Website</label>'
             f'<input id="{p}-website" name="website" type="text" tabindex="-1" autocomplete="off" value=""></div>'
-            f'<p id="{p}-status" class="signup-status" role="status" aria-live="polite"></p></form>')
+            f'<p id="{p}-status" class="signup-status" role="status" aria-live="polite"></p>'
+            f'<p class="signup-privacy">{html.escape(SIGNUP.get("privacy") or "")}</p></form>')
 
 def signup_js():
     """dist/signup.js: src/signup.js with the status copy from site.config.json "signup" (same copy as signup/config.js; AC 7 drift test)."""

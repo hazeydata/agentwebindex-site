@@ -31,6 +31,9 @@ export const STATUSES = ['pending_confirmation', 'subscribed', 'queued', 'invali
 // The success status after a Beehiiv 2xx depends on the publication's double opt-in setting.
 export const SUCCESS_STATUS = DOUBLE_OPT_IN ? 'pending_confirmation' : 'subscribed';
 
+// AC 19 privacy line: Lindsay's copy, verbatim, plus ', when you signed up' because created_at is stored.
+export const PRIVACY_LINE = "We keep your email, the page you signed up on, when you signed up, a scrambled version of your IP address and delivery records in our own database, pass your email to Beehiiv, which sends the newsletter, and delete our copy 30 days after it reaches Beehiiv.";
+
 export const MESSAGES = {
   pending_confirmation: 'Check your inbox to confirm your subscription.',
   subscribed: "You're subscribed.",
