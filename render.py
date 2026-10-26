@@ -312,7 +312,7 @@ RETEST = "retest-apify-2026-10-26"
 
 def section_retest(ctx):
     """Apify retest (preliminary): own section after the weekly results (layout.md). Copy from copy.md; alt text and
-    counts from content/retest-apify-2026-10-26.json; the SVG is served byte-identical from /assets/retest/ as an <img>, with a 350px <source> below 768px like the weekly charts. The caption is a <p>, not a <figcaption> (CEO R-5: no figcaption on the page)."""
+    counts from content/retest-apify-2026-10-26.json; the SVG is served byte-identical from /assets/retest/ as an <img>, with a 350px <source> below 960px (chart text >= 13px at 320-959px). The caption is a <p>, not a <figcaption> (CEO R-5: no figcaption on the page)."""
     meta = json.loads((ctx.content / f"{RETEST}.json").read_text())
     title = "Apify retest (preliminary)"
     para = [t for k, t in ctx.doc.blocks(title) if k == "p" and not t.startswith(("**", "<!--"))][0]
@@ -320,7 +320,7 @@ def section_retest(ctx):
     src = "/assets/retest/" + Path(meta["chart"]).name
     src350 = "/assets/retest/" + Path(meta["chart_350"]).name   # 350px variant like the weekly charts (252-unit viewBox shown at 350px)
     return (f'<section id="apify-retest" class="retest"><div class="wrap"><div class="col"><h3>{e(title)} <span class="pill">Preliminary</span></h3>'
-            f'<p>{inline(para)}</p></div><figure class="retest-fig"><picture><source media="(max-width: 767.98px)" srcset="{src350}">'
+            f'<p>{inline(para)}</p></div><figure class="retest-fig"><picture><source media="(max-width: 959.98px)" srcset="{src350}">'
             f'<img src="{src}" alt="{e(meta["alt"], quote=True)}" width="768" height="432" loading="lazy"></picture>'
             f'<p class="retest-caption">{e(cap)}</p></figure></div></section>')
 

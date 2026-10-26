@@ -298,25 +298,25 @@ def check_rename_geometry(cdp, base, errs):
 RETEST_MIN_PX = 13
 
 
-def check_retest_chart_390(cdp, scheme, errs):
+def check_retest_chart(cdp, scheme, errs, w=390):
     """The Apify retest chart is an <img>, so its text is measured as (smallest font-size in the served SVG) x (rendered width / viewBox width)."""
     r = json.loads(cdp.js("""(async () => { const i = document.querySelector('.retest-fig img'); i.loading = 'eager'; i.scrollIntoView();
       for (let k = 0; k < 50 && !(i.complete && i.naturalWidth); k++) await new Promise(f => setTimeout(f, 100));
       return JSON.stringify({src: i.currentSrc, w: i.getBoundingClientRect().width,
         pill: parseFloat(getComputedStyle(document.querySelector('.retest .pill')).fontSize)}); })()"""))
-    print(f"browser_check: retest 'Preliminary' pill @390 {scheme}: {r['pill']}px")
+    print(f"browser_check: retest 'Preliminary' pill @{w} {scheme}: {r['pill']}px")
     if r["pill"] < RETEST_MIN_PX:
-        errs.append(f"retest pill @390 {scheme}: {r['pill']}px < {RETEST_MIN_PX}px")
+        errs.append(f"retest pill @{w} {scheme}: {r['pill']}px < {RETEST_MIN_PX}px")
     name = r["src"].rsplit("/", 1)[-1]
-    if not name.endswith("-350.svg"):
-        errs.append(f"retest chart @390 {scheme}: served {name}, not the 350px variant")
+    if (w < 960) != name.endswith("-350.svg"):
+        errs.append(f"retest chart @{w} {scheme}: served {name}, wrong variant for {w}px")
         return
     svg = (D / "assets/retest" / name).read_text()
     vbw = float(re.search(r'viewBox="0 0 ([\d.]+) ', svg).group(1))
     px = min(float(x) for x in re.findall(r"font-size: ([\d.]+)px", svg)) * r["w"] / vbw
-    print(f"browser_check: retest chart @390 {scheme}: {name} rendered {r['w']:.1f}px wide, smallest text {px:.2f}px")
+    print(f"browser_check: retest chart @{w} {scheme}: {name} rendered {r['w']:.1f}px wide, smallest text {px:.2f}px")
     if px < RETEST_MIN_PX:
-        errs.append(f"retest chart @390 {scheme}: smallest text {px:.2f}px < {RETEST_MIN_PX}px")
+        errs.append(f"retest chart @{w} {scheme}: smallest text {px:.2f}px < {RETEST_MIN_PX}px")
 
 
 def check_readability(cdp, base, shots, errs):
@@ -331,7 +331,10 @@ def check_readability(cdp, base, shots, errs):
             if r["small"]:
                 errs.append(f"{p} {scheme}: tap targets under 44px: {r['small'][:4]}")
             if p == "/":
-                check_retest_chart_390(cdp, scheme, errs)
+                check_retest_chart(cdp, scheme, errs)
+        for w in (320, 768, 959, 960, 1440):   # 13px chart-text floor also at 320 and tablet/desktop widths, both sides of the 960px switch
+            open_page(cdp, base, "/", w, 900, scheme)
+            check_retest_chart(cdp, scheme, errs, w)
     for w, h in ((390, 844), (1440, 900)):
         for p in PAGES:
             open_page(cdp, base, p, w, h, "dark")
@@ -440,6 +443,17 @@ def cleanup_errors(before, pgid, own_dirs):
     return errs
 
 
+def own_dirs(prof, ctmp, shots):
+    """The exact dirs this run created that must be gone after cleanup: the screenshots dir too, unless AWI_KEEP_SHOTS=1."""
+    return (prof, ctmp) + (() if os.environ.get("AWI_KEEP_SHOTS") == "1" else (str(shots),))
+
+
+def remove_own_dirs(prof, ctmp, shots):
+    """Remove only the exact paths in own_dirs (never a glob)."""
+    for p in own_dirs(prof, ctmp, shots):
+        shutil.rmtree(p, ignore_errors=True)
+
+
 def report(errs):
     """Print BROWSER FAIL lines, or the hygiene OK line only when every check (cleanup included) passed."""
     for m in errs:
@@ -517,11 +531,8 @@ def main():
                     pass
         srv.shutdown()
         srv.server_close()
-        shutil.rmtree(prof, ignore_errors=True)
-        shutil.rmtree(ctmp, ignore_errors=True)
-        if os.environ.get("AWI_KEEP_SHOTS") != "1":
-            shutil.rmtree(shots, ignore_errors=True)
-    errs += cleanup_errors(before, chrome.pid if chrome else None, (prof, ctmp))
+        remove_own_dirs(prof, ctmp, shots)
+    errs += cleanup_errors(before, chrome.pid if chrome else None, own_dirs(prof, ctmp, shots))
     return report(errs)
 
 

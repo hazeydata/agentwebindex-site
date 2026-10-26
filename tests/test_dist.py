@@ -4,6 +4,7 @@ AC numbers refer to specs/awi-page-redo-001.md (rev 2 + R3-R6). SHIP gates live 
 the headless-Chrome checks (AC16/AC17/AC14 served bytes, readability) live in tests/browser_check.py.
 """
 import csv, hashlib, html, json, os, re, shutil, subprocess, sys, tempfile, unittest
+import unittest.mock
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -1178,7 +1179,9 @@ class ApifyRetest(unittest.TestCase):
         self.assertIn('<span class="pill">Preliminary</span>', self.sec)
 
     def test_copy_verbatim_and_numbers_match_run_data(self):
-        self.assertIn(self.PARA, norm(html.unescape(text_of(self.sec))))
+        paras = re.findall(r"<p>(.*?)</p>", self.sec, re.S)
+        self.assertEqual([norm(html.unescape(text_of(x))) for x in paras], [self.PARA])   # word-for-word approved paragraph, nothing added before or after
+        self.assertEqual(norm(html.unescape(text_of(self.sec[self.sec.index(">") + 1:]))), "Apify retest (preliminary) Preliminary " + self.PARA + " " + self.CAPTION)   # and no other text anywhere in the section
         m, runs = self.META, {r["tool"]: r for r in self.META["runs"]}
         wf, rag = runs["apify/web-fetch"], runs["apify/rag-web-browser"]
         n = m["n"]
@@ -1204,18 +1207,18 @@ class ApifyRetest(unittest.TestCase):
         self.assertIn("no before-and-after comparison", text_of(self.sec))
         self.assertEqual(sorted(p.name for p in (D / "assets/charts").iterdir() if p.suffix == ".svg"), sorted(PINS["charts_sha256"]))
 
-    def test_chart_350_variant_same_numbers(self):  # 390px readability: a 350px <source> below 768px, like the weekly charts
+    def test_chart_350_variant_same_numbers(self):  # readability: a 350px <source> below 960px, so chart text stays >= 13px at 390 and 768-959
         big, small = R / self.META["chart"], R / self.META["chart_350"]
         self.assertEqual(hashlib.sha256(small.read_bytes()).hexdigest(), self.META["chart_350_sha256"])
         self.assertEqual((D / "assets/retest" / small.name).read_bytes(), small.read_bytes())
-        self.assertIn(f'<picture><source media="(max-width: 767.98px)" srcset="/assets/retest/{small.name}"><img src="/assets/retest/{big.name}"', self.sec)
+        self.assertIn(f'<picture><source media="(max-width: 959.98px)" srcset="/assets/retest/{small.name}"><img src="/assets/retest/{big.name}"', self.sec)
         self.assertIn('viewBox="0 0 252 ', small.read_text())
         words = lambda f: " ".join(re.findall(r"<text[^>]*>([^<]*)</text>", f.read_text()))
         nums = lambda f: sorted(re.findall(r"\d+(?:\.\d+)?", words(f)))
         self.assertEqual(nums(small), nums(big))
         self.assertEqual(sorted(norm(words(small)).split()), sorted(norm(words(big)).split()))   # exactly the same words, only re-wrapped
         sizes = [float(x) for x in re.findall(r"font-size: ([\d.]+)px", small.read_text())]
-        self.assertGreaterEqual(min(sizes) * 340 / 252, 13)   # >= 13px even if the column is a little under 350px
+        self.assertGreaterEqual(min(sizes) * 280 / 252, 13)   # >= 13px down to a 320px viewport (img about 280px wide)
 
     # Fred rule: no strong claims about other products. The retest is one run on new items, so no time comparison
     # (previous run, last week, improvement, jump) and no ranking (beats, outperforms, top choice, ahead of) anywhere
@@ -1337,6 +1340,35 @@ class BrowserCheckHygiene(unittest.TestCase):
         rc, out, err = run(["some chart check failed"])   # a non-cleanup failure also suppresses OK
         self.assertEqual(rc, 1)
         self.assertNotIn("temp hygiene OK", out)
+
+    def test_screenshots_dir_removed_and_checked_unless_keep_shots(self):  # M7: the leftover check covers the screenshots dir
+        from tests import browser_check as bc
+        import inspect
+        src = inspect.getsource(bc.main)   # main removes and then checks exactly these dirs
+        self.assertIn("        remove_own_dirs(prof, ctmp, shots)\n", src)
+        self.assertIn("cleanup_errors(before, chrome.pid if chrome else None, own_dirs(prof, ctmp, shots))", src)
+        self.assertNotIn("rmtree", src)
+        before = bc.chrome_tmp_paths()
+        for keep in (None, "1"):
+            dirs = [tempfile.mkdtemp(prefix=f"awi-m7-{n}.") for n in ("prof", "ctmp", "shots")]
+            prof, ctmp, shots = dirs
+            env = {k: v for k, v in os.environ.items() if k != "AWI_KEEP_SHOTS"}
+            if keep:
+                env["AWI_KEEP_SHOTS"] = keep
+            try:
+                with unittest.mock.patch.dict(os.environ, env, clear=True):
+                    own = bc.own_dirs(prof, ctmp, shots)
+                    self.assertEqual(shots in own, not keep)
+                    if not keep:   # a screenshots dir left behind is reported, so the hygiene OK line cannot print
+                        self.assertIn(f"run left its own temp dir behind: {shots}", bc.cleanup_errors(before, None, own))
+                    bc.remove_own_dirs(prof, ctmp, shots)
+                    self.assertEqual(bc.cleanup_errors(before, None, own), [])
+                self.assertFalse(os.path.exists(prof) or os.path.exists(ctmp))
+                self.assertEqual(os.path.exists(shots), bool(keep))   # removed unless AWI_KEEP_SHOTS=1
+            finally:
+                for d in dirs:
+                    if os.path.isdir(d):
+                        os.rmdir(d)
 
 
 if __name__ == "__main__":
