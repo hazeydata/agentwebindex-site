@@ -233,6 +233,18 @@ test('AC9 retry stops calling Beehiiv in a run once it answers 401/403 (plan lap
   assert.equal(f.calls.length, 1);
   assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'queued');
 });
+test('AC9 retry batch: at most RETRY_BATCH (40) Beehiiv calls per run, under the Workers Free 50-subrequest limit; the rest wait', async () => {
+  assert.equal(CFG.RETRY_BATCH, 40); assert.ok(CFG.RETRY_BATCH < 50);
+  const e = env(); const db = e.SIGNUPS;
+  for (let i = 1; i <= 45; i++) db.rows.push({ id: i, email_norm: `b${i}@example.com`, email_raw: `b${i}@example.com`, source: 'awi', page: '/',
+    created_at: '2026-10-26T13:00:00.000Z', beehiiv_status: 'failed', beehiiv_sub_id: null, attempts: 0, last_error: 'http_500', ip_hash: 'h', sent_at: null, deleted_at: null });
+  const f = mockFetch(); const { out } = await capture(() => retryPending(e, { fetch: f }));
+  assert.equal(f.calls.length, 40); assert.equal(out.tried, 40); assert.equal(out.sent, 40);
+  assert.deepEqual(f.calls.map((c) => c.body.email), Array.from({ length: 40 }, (_, i) => `b${i + 1}@example.com`));
+  const f2 = mockFetch(); await capture(() => retryPending(e, { fetch: f2 }));
+  assert.deepEqual(f2.calls.map((c) => c.body.email), ['b41@example.com', 'b42@example.com', 'b43@example.com', 'b44@example.com', 'b45@example.com']);
+  assert.ok(db.rows.every((r) => r.beehiiv_status === 'sent'));
+});
 test('AC10 export: 401 without or with a wrong X-Export-Token', async () => {
   const e = env();
   for (const h of [{}, { 'X-Export-Token': 'nope' }, { Authorization: 'Bearer fake-TEST-export' }]) {

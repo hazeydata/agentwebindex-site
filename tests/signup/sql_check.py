@@ -45,6 +45,16 @@ MAX = int(subprocess.run(["node", "--input-type=module", "-e", "import {MAX_ATTE
 ok(MAX == 5, "MAX_ATTEMPTS is 5")
 ok([r[1] for r in db.execute(Q["due"], (MAX,))] == ["cap4@x.io"], "retry: attempts 4 due, attempts 5 capped, deleted row skipped")
 ok(sorted(r[0] for r in db.execute(Q["exportRows"])) == ["cap4@x.io", "cap5@x.io", "liveq@x.io"], "export skips deleted rows")
+# retry batch cap (Workers Free: 50 external subrequests per invocation; one Beehiiv fetch per due row)
+BATCH = int(subprocess.run(["node", "--input-type=module", "-e", "import {RETRY_BATCH} from './signup/config.js'; console.log(RETRY_BATCH)"],
+                           cwd=R, capture_output=True, text=True, check=True).stdout)
+ok(BATCH == 40, "RETRY_BATCH is 40 (< 50 subrequests)")
+db.execute("DELETE FROM signups")
+for i in range(1, 46):
+    db.execute("INSERT INTO signups (email_norm, email_raw, source, page, created_at, beehiiv_status, attempts, ip_hash) VALUES (?,?,?,?,?,?,?,?)",
+               (f"b{i}@x.io", f"b{i}@x.io", "awi", "/", "2026-10-01T00:00:00Z", "failed", 0, "h"))
+due = [r[1] for r in db.execute(Q["due"], (MAX,))]
+ok(len(due) == 40 and due == [f"b{i}@x.io" for i in range(1, 41)], "retry: 45 due rows -> first 40 by id (LIMIT RETRY_BATCH)")
 # AC 18 retention against real SQLite: same seed as endpoint.test.mjs; cutoff = 2026-10-26T13:00Z - 30 days
 db.execute("DELETE FROM signups")
 seed = [("old@x.io", "sent", "2026-09-25T13:00:00.000Z"), ("edge@x.io", "sent", "2026-09-26T13:00:00.000Z"),

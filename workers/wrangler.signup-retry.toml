@@ -1,0 +1,19 @@
+# Scheduled retry + retention Worker for AWI-SIGNUP-FORM-001 (Pages Functions have no cron). Deploy from workers/ of a checkout
+# at the deployed site sha: `wrangler deploy -c wrangler.signup-retry.toml`, after replacing the PLACEHOLDER id below with the id
+# printed by `wrangler d1 create awi-signups` (same database as the Pages project's SIGNUPS binding).
+name = "awi-signup-retry"
+main = "signup-retry.js"
+compatibility_date = "2026-10-01"
+workers_dev = false   # scheduled-only: no public *.workers.dev URL (the script has no fetch handler)
+preview_urls = false
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[d1_databases]]
+binding = "SIGNUPS"
+database_name = "awi-signups"
+database_id = "<PLACEHOLDER: awi-signups database_id, set at deploy>"
+
+# Secrets: never in this file. Set with `wrangler secret put <NAME> --name awi-signup-retry` (value on stdin):
+# secrets = BEEHIIV_PUB_ID, BEEHIIV_API_KEY

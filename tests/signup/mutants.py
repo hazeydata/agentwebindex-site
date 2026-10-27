@@ -24,6 +24,12 @@ MUTANTS = {
     "retry_includes_queued": (C, "WHERE beehiiv_status IN ('failed', 'pending') AND attempts", "WHERE beehiiv_status IN ('failed', 'pending', 'queued') AND attempts"),
     "sent_downgradable": (C, "last_error = ? WHERE id = ? AND beehiiv_status != 'sent'\",\n  markQueued", "last_error = ? WHERE id = ?\",\n  markQueued"),
     "retry_keeps_calling_after_403": (C, "    if (out.kind === 'queued') break;", ""),
+    "retry_batch_100": (CFG, "export const RETRY_BATCH = 40;", "export const RETRY_BATCH = 100;"),
+    "retry_batch_ignored": (C, "ORDER BY id LIMIT ${RETRY_BATCH}`", "ORDER BY id LIMIT 100`"),
+    "worker_public_url": ("workers/wrangler.signup-retry.toml", "workers_dev = false", "workers_dev = true"),
+    "worker_cron_hourly": ("workers/wrangler.signup-retry.toml", 'crons = ["*/15 * * * *"]', 'crons = ["0 * * * *"]'),
+    "pages_no_d1": ("wrangler.pages.toml", 'binding = "SIGNUPS"', 'binding = "DB"'),
+    "pages_secret_unnamed": ("wrangler.pages.toml", "# secrets = IP_SALT, EXPORT_TOKEN, BEEHIIV_PUB_ID, BEEHIIV_API_KEY", "# secrets = IP_SALT, BEEHIIV_PUB_ID, BEEHIIV_API_KEY"),
     "max_attempts_6": (CFG, "export const MAX_ATTEMPTS = 5;", "export const MAX_ATTEMPTS = 6;"),
     "export_includes_sent": (C, "FROM signups WHERE beehiiv_status != 'sent' AND deleted_at IS NULL ORDER BY id", "FROM signups WHERE deleted_at IS NULL ORDER BY id"),
     "export_no_auth": ("functions/api/signups/export.csv.js", "if (!(await tokenMatches(", "if (false && !(await tokenMatches("),
@@ -60,7 +66,7 @@ MUTANTS = {
     "st_markSent_unguarded": (C, "WHERE id = ? AND beehiiv_status != 'sent'`,\n  markFailed", "WHERE id = ?`,\n  markFailed"),
     "honeypot_trimmed": (C, "String(fields.website || '') === ''", "String(fields.website || '').trim() === ''"),
 }
-COPY = ["signup", "functions", "workers", "migrations", "tests/signup", "site.config.json", "dist/newsletter/thanks", "dist/index.html", "dist/newsletter/index.html"]
+COPY = ["signup", "functions", "workers", "migrations", "tests/signup", "site.config.json", "wrangler.pages.toml", "dist/newsletter/thanks", "dist/index.html", "dist/newsletter/index.html"]
 CMDS = [["node", "--test", "tests/signup/"], [sys.executable, "tests/signup/sql_check.py"]]
 
 def run(cmd, cwd, timeout=60):
