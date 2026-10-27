@@ -125,7 +125,7 @@ Store-first, same-origin signup. Copied and adapted from hazeydata/hazeydata.ai 
   however old; a second run deletes nothing more (idempotent). Purge runs even when retry is skipped for lack of a key.
 - `migrations/0001_signups.sql`: D1 table `signups` (idempotent). `ip_hash` = SHA-256 of `IP_SALT` + IP; the raw IP is never stored.
 - Bindings and secrets (names only; chief creates them at deploy): D1 `SIGNUPS`, optional KV `SIGNUP_RL`, secrets `BEEHIIV_API_KEY`, `BEEHIIV_PUB_ID`,
-  `IP_SALT`, `EXPORT_TOKEN`. The Beehiiv `source` custom field (string) exists on the publication (created 2026-10-26), so the AWI tag is stored.
+  `IP_SALT`, `EXPORT_TOKEN`. The Beehiiv `source` custom field (string) was created on the publication on 2026-10-26 (asserted by implement; not independently verified by Test), so the AWI tag should be stored.
 - Tests (in `run_tests.sh`): `node --test tests/signup/` (mocked D1/KV/fetch/clock; no network), `tests/signup/sql_check.py` (every statement against
   the migration in real SQLite), `tests/signup/secret_scan.sh`, `tests/signup/mutants.py` (defects injected into the save order and fallback logic must
   all be caught), plus `test_dist` (`test_signup_*`) and `browser_check.check_signup` (first screenful at 1280x800 and 390x844, label, "Subscribe",
@@ -144,7 +144,7 @@ Deploy route (chief's deploy script, `refresh_dist`): after the tests pass and `
 `wrangler pages functions build functions --outdir dist/_worker.js --output-routes-path dist/_routes.json --compatibility-date 2026-10-01`
 and checks that `dist/_worker.js/index.js` exists and that `dist/_routes.json` includes exactly `/api/subscribe` and `/api/signups/export.csv`
 (everything else stays static). The run fails if the Functions don't compile, and `--rollback` restores the previous `dist/` with its worker.
-`wrangler pages deploy` uploads `_worker.js` as the advanced-mode worker and does not publish it as a static file.
+`wrangler pages deploy` uploads `_worker.js` as the advanced-mode worker; that it is not published as a static file is still to check on the preview (as listed in the meta backend plan).
 
 Backend setup (names only; every step is gated on Fred's approval via chief, and none of it is done by this repo's code):
 1. D1 database `awi-signups`; apply `migrations/0001_signups.sql` (`wrangler d1 migrations apply awi-signups --remote`).
