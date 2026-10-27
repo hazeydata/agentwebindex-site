@@ -22,7 +22,7 @@ export function mockD1({ failInsert = false, failMark = false, failMarkTimes = 0
       case Q.markSent: { const r = rows.find((x) => x.id === a[2] && x.beehiiv_status !== 'sent'); if (r) Object.assign(r, { beehiiv_status: 'sent', beehiiv_sub_id: a[0], sent_at: a[1], attempts: r.attempts + 1, last_error: null }); return { changes: r ? 1 : 0 }; }
       case Q.markFailed: { const r = rows.find((x) => x.id === a[1] && x.beehiiv_status !== 'sent'); if (r) Object.assign(r, { beehiiv_status: 'failed', attempts: r.attempts + 1, last_error: a[0] }); return { changes: r ? 1 : 0 }; }
       case Q.markQueued: { const r = rows.find((x) => x.id === a[1] && x.beehiiv_status !== 'sent'); if (r) Object.assign(r, { beehiiv_status: 'queued', last_error: a[0] }); return { changes: r ? 1 : 0 }; }
-      case Q.due: return rows.filter((r) => ['failed', 'pending'].includes(r.beehiiv_status) && r.attempts < a[0] && live(r)).slice(0, 100).map((r) => ({ ...r }));
+      case Q.due: return rows.filter((r) => ['failed', 'pending'].includes(r.beehiiv_status) && r.attempts < a[0] && live(r)).slice(0, Number(/LIMIT (\d+)/.exec(sql)[1])).map((r) => ({ ...r })); // limit read from the SQL text, as SQLite does
       case Q.purge: {
         const before = rows.length;
         for (let i = rows.length - 1; i >= 0; i--) { const r = rows[i]; if (r.beehiiv_status === 'sent' && r.sent_at != null && r.sent_at <= a[0]) rows.splice(i, 1); }

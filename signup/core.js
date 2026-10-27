@@ -3,7 +3,7 @@
 // Everything external is injected (env bindings, opts.fetch, opts.now) so tests run on mocks with no network.
 import {
   SOURCE, BEEHIIV_SOURCE_TAG, BEEHIIV_SOURCE_FIELD, UTM_SOURCE, DOUBLE_OPT_IN, SEND_WELCOME_EMAIL, ALLOW_UNICODE_LOCAL,
-  RATE_LIMIT, BEEHIIV_TIMEOUT_MS, MAX_ATTEMPTS, RETENTION_DAYS, BOT_CHECK, STATUSES, SUCCESS_STATUS,
+  RATE_LIMIT, BEEHIIV_TIMEOUT_MS, MAX_ATTEMPTS, RETRY_BATCH, RETENTION_DAYS, BOT_CHECK, STATUSES, SUCCESS_STATUS,
 } from './config.js';
 
 const HTTP = { pending_confirmation: 200, subscribed: 200, queued: 200, invalid: 400, rate_limited: 429, error: 502 };
@@ -18,7 +18,7 @@ export const Q = {
   markFailed: "UPDATE signups SET beehiiv_status = 'failed', attempts = attempts + 1, last_error = ? WHERE id = ? AND beehiiv_status != 'sent'",
   markQueued: "UPDATE signups SET beehiiv_status = 'queued', last_error = ? WHERE id = ? AND beehiiv_status != 'sent'",
   due: `SELECT id, email_norm, page FROM signups WHERE beehiiv_status IN ('failed', 'pending') AND attempts < ? AND deleted_at IS NULL
-        ORDER BY id LIMIT 100`,
+        ORDER BY id LIMIT ${RETRY_BATCH}`,
   // AC 18: only rows Beehiiv accepted (status 'sent' with a sent_at) and only once sent_at is at or before the cutoff.
   purge: "DELETE FROM signups WHERE beehiiv_status = 'sent' AND sent_at IS NOT NULL AND sent_at <= ?",
   exportRows: "SELECT email_norm AS email, source, created_at FROM signups WHERE beehiiv_status != 'sent' AND deleted_at IS NULL ORDER BY id",

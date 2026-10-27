@@ -1,0 +1,20 @@
+# Pages config template for the AWI signup backend (AWI-SIGNUP-FORM-001). NOT read from here: wrangler only reads a file named
+# wrangler.toml. At deploy, chief copies this file as wrangler.toml into the directory `wrangler pages deploy dist` runs from, after
+# replacing the PLACEHOLDER ids below with the ids printed by `wrangler d1 create awi-signups` and `wrangler kv namespace create awi-signup-rl`.
+# With it present, this config (not the dashboard) is the source of truth for the project's bindings.
+name = "agentwebindex"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "SIGNUPS"
+database_name = "awi-signups"
+database_id = "<PLACEHOLDER: awi-signups database_id, set at deploy>"
+
+# Optional: rate-limit counters. Without it the limiter falls back to per-isolate memory (D1 uniqueness still dedupes).
+[[kv_namespaces]]
+binding = "SIGNUP_RL"
+id = "<PLACEHOLDER: awi-signup-rl namespace id, set at deploy>"
+
+# Secrets: never in this file. Set with `wrangler pages secret put <NAME> --project-name agentwebindex` (value on stdin):
+# secrets = IP_SALT, EXPORT_TOKEN, BEEHIIV_PUB_ID, BEEHIIV_API_KEY

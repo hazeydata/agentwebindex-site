@@ -18,6 +18,9 @@ export const ALLOW_UNICODE_LOCAL = false;    // OQ-5 open, R2 default: ASCII onl
 export const RATE_LIMIT = { perIp: { max: 5, windowSeconds: 600 }, site: { max: 50, windowSeconds: 60 } };
 export const BEEHIIV_TIMEOUT_MS = 5000;
 export const MAX_ATTEMPTS = 5;
+// Rows per scheduled retry run. Workers Free allows 50 external subrequests per invocation and each row is one Beehiiv fetch,
+// so the batch stays under 50 with headroom; rows past the cap wait for the next run (every 15 min), oldest id first.
+export const RETRY_BATCH = 40;
 // AC 18 (R2): a row is deleted RETENTION_DAYS after it reached Beehiiv (sent_at). queued/pending/failed rows are never deleted.
 export const RETENTION_DAYS = 30;
 

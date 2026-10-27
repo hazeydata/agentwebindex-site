@@ -117,14 +117,15 @@ Store-first, same-origin signup. Copied and adapted from hazeydata/hazeydata.ai 
   (built by `build.py`, noindex, not in the sitemap), so the form works with JS off. (Spec data shape said `?s=<status>`; a per-status page needs no JS.)
 - `functions/api/subscribe.js`: the Pages Function. `functions/api/signups/export.csv.js`: `GET` with header `X-Export-Token: <EXPORT_TOKEN>` -> CSV
   `email,source,created_at` of every row not `sent` and not deleted (`deleted_at` set) (formula-guarded); missing or wrong token -> 401. Exporting deletes nothing.
-- `workers/signup-retry.js`: scheduled Worker (`*/15 * * * *`, example config `workers/wrangler.signup-retry.toml.example`) running `retryPending`:
-  `failed`/`pending` rows with attempts < 5; `sent` rows are never touched (every UPDATE is guarded by `beehiiv_status != 'sent'`); no key -> skips Beehiiv;
+- `workers/signup-retry.js`: scheduled Worker (`*/15 * * * *`, config `workers/wrangler.signup-retry.toml`) running `retryPending`:
+  `failed`/`pending` rows with attempts < 5, at most `RETRY_BATCH` (40) per run, oldest id first (Workers Free allows 50 external
+  subrequests per invocation; the rest wait for the next run); `sent` rows are never touched (every UPDATE is guarded by `beehiiv_status != 'sent'`); no key -> skips Beehiiv;
   a 401/403 marks the row `queued` and stops the run. The same run then calls `purgeSent` (AC 18, R2): it deletes rows whose
   `beehiiv_status` is `sent` and whose `sent_at` is 30 days (`RETENTION_DAYS`) or more ago. `queued`, `pending` and `failed` rows are never deleted,
   however old; a second run deletes nothing more (idempotent). Purge runs even when retry is skipped for lack of a key.
 - `migrations/0001_signups.sql`: D1 table `signups` (idempotent). `ip_hash` = SHA-256 of `IP_SALT` + IP; the raw IP is never stored.
 - Bindings and secrets (names only; chief creates them at deploy): D1 `SIGNUPS`, optional KV `SIGNUP_RL`, secrets `BEEHIIV_API_KEY`, `BEEHIIV_PUB_ID`,
-  `IP_SALT`, `EXPORT_TOKEN`. Beehiiv needs a `source` custom field on the publication for the AWI tag to be stored.
+  `IP_SALT`, `EXPORT_TOKEN`. The Beehiiv `source` custom field (string) exists on the publication (created 2026-10-26), so the AWI tag is stored.
 - Tests (in `run_tests.sh`): `node --test tests/signup/` (mocked D1/KV/fetch/clock; no network), `tests/signup/sql_check.py` (every statement against
   the migration in real SQLite), `tests/signup/secret_scan.sh`, `tests/signup/mutants.py` (defects injected into the save order and fallback logic must
   all be caught), plus `test_dist` (`test_signup_*`) and `browser_check.check_signup` (first screenful at 1280x800 and 390x844, label, "Subscribe",
@@ -134,8 +135,32 @@ Store-first, same-origin signup. Copied and adapted from hazeydata/hazeydata.ai 
   in its URL, Referer or body). AC 13 covers the form and `/api/subscribe` only; the site-wide GoatCounter script is left as it was.
 
 ## Deploy (Cloudflare Pages)
-Build command `python3 build.py`, output directory `dist`, env `PYTHON_VERSION=3.12`. The signup needs the Pages project to deploy `functions/`
-alongside `dist/` (a direct `wrangler pages deploy dist` from the repo root picks up `functions/`), the bindings above and the D1 migration applied
-first. Not done by this repo's code: deploy is gated on Fred's approval via chief.
+Build command `python3 build.py`, output directory `dist`, env `PYTHON_VERSION=3.12`.
+
+Why `/api/subscribe` returns 405 today: the site is a Pages direct upload, and wrangler compiles Functions only from a `functions/` folder in the
+directory it runs in. The deploy directory has none, so the upload is static-only and every POST gets 405 from the static asset server.
+
+Deploy route (chief's deploy script, `refresh_dist`): after the tests pass and `dist/` is built, if `functions/` exists it runs
+`wrangler pages functions build functions --outdir dist/_worker.js --output-routes-path dist/_routes.json --compatibility-date 2026-10-01`
+and checks that `dist/_worker.js/index.js` exists and that `dist/_routes.json` includes exactly `/api/subscribe` and `/api/signups/export.csv`
+(everything else stays static). The run fails if the Functions don't compile, and `--rollback` restores the previous `dist/` with its worker.
+`wrangler pages deploy` uploads `_worker.js` as the advanced-mode worker and does not publish it as a static file.
+
+Backend setup (names only; every step is gated on Fred's approval via chief, and none of it is done by this repo's code):
+1. D1 database `awi-signups`; apply `migrations/0001_signups.sql` (`wrangler d1 migrations apply awi-signups --remote`).
+2. Optional KV namespace `awi-signup-rl` (without it the rate limit falls back to per-isolate memory).
+3. Pages project `agentwebindex`: copy `wrangler.pages.toml` as `wrangler.toml` into the deploy directory and replace the two
+   `<PLACEHOLDER ...>` ids (D1 `SIGNUPS`, KV `SIGNUP_RL`). Secrets: `IP_SALT`, `EXPORT_TOKEN`, `BEEHIIV_PUB_ID`, `BEEHIIV_API_KEY`
+   (`wrangler pages secret put NAME --project-name agentwebindex`).
+4. Retry Worker `awi-signup-retry`: `workers/wrangler.signup-retry.toml` (cron `*/15 * * * *`, `workers_dev = false`, no route, D1 `SIGNUPS`);
+   replace the placeholder id, set secrets `BEEHIIV_PUB_ID`, `BEEHIIV_API_KEY` (`wrangler secret put NAME -c wrangler.signup-retry.toml`), then
+   `wrangler deploy -c wrangler.signup-retry.toml` from `workers/`.
+5. Test plan: on a preview deploy first, then production, submit `hazeydata@mail.grokbot.com` (the agreed test address); expect
+   `/newsletter/thanks/pending_confirmation/` (double opt-in), one D1 row with `beehiiv_status` `sent`, and a Beehiiv subscriber with
+   `source` = `AWI`. A second submit of the same address gets the same answer and adds no row (AC 3).
+
+`tests/signup/deploy_config.test.mjs` checks both config files: the env names the code reads equal the declared bindings plus the named secrets,
+ids are placeholders, and neither file holds a secret value or publication id. Local `wrangler pages dev` (wrangler 4.86) supports compatibility
+dates only up to 2026-05-03, so a local smoke run needs an earlier `--compatibility-date`; deployed Cloudflare uses 2026-10-01.
 
 License: MIT (code); data under data/ is CC BY 4.0 (data/LICENSE).
