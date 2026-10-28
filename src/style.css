@@ -130,6 +130,17 @@ main section h2 { margin-bottom: var(--s2); }
 @media (min-width: 768px) { :root[data-theme=light] .ch-720.ch-light { display: block; } }
 @media (max-width: 767.98px) { :root[data-theme=light] .ch-350.ch-light { display: block; } }
 
+/* Apify retest (layout.md: 64px top margin, 48px padding, 1px rule; 16px h3->p; 24px p->figure; 8px caption) */
+.retest { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--line, currentColor); }
+.retest h3 + p { margin-top: var(--s1); }
+.retest p { line-height: 1.6; }
+.retest .pill { display: inline-block; font-size: max(13px, 0.7em); letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border: 1px solid currentColor; border-radius: 999px; vertical-align: middle; }
+.retest-fig { margin: var(--s2) 0 0; max-width: var(--wide); }
+.retest-fig img { display: block; width: 100%; height: auto; border: 0; box-shadow: none; }
+.retest-fig picture { display: block; }
+@media (max-width: 959.98px) { .retest-fig img { max-width: 350px; } }   /* 350px file below 960px: the 576 file's 9px text needs >= 832px rendered (960px viewport) to reach 13px */
+.retest-fig .retest-caption { margin-top: var(--s0); }
+
 /* details */
 details { margin-top: var(--s3); border: 1px solid var(--line); border-radius: var(--radius); padding: 0 var(--s2) var(--s2); background: var(--surface); }
 summary { cursor: pointer; font-weight: 600; min-height: var(--hit); display: flex; align-items: center; padding-top: var(--s1); padding-bottom: var(--s0); }
@@ -166,8 +177,17 @@ details > p, details > ul, details > h4 { max-width: 68ch; }
 .btn.ghost { background: none; color: var(--text); border: 1px solid var(--acc-tint); }
 .sponsor { border: 1px solid var(--line); border-left: 4px solid var(--acc-tint); border-radius: var(--radius); padding: var(--s1) var(--s2); color: var(--muted); font-size: var(--fs-1); margin-bottom: var(--s3); }
 .sponsor a { display: inline-flex; align-items: center; min-height: var(--hit); }
-.beehiiv-embed { display: block; width: 100%; min-height: 240px; max-width: 100%; border: 0; margin-top: var(--s1); }
-#signup input, #signup button { min-height: var(--hit); }
+/* first-party signup form (AWI-SIGNUP-FORM-001); button uses the site's --acc/--on-acc pair like every .btn */
+.awi-signup { width: 100%; }
+.signup-label { display: block; font-weight: 600; margin-bottom: var(--s0); }
+.signup-row { display: flex; flex-wrap: wrap; gap: var(--s0); }
+.signup-row input { flex: 1 1 200px; min-width: 0; min-height: var(--hit); padding: 0 12px; font: inherit; color: var(--text); background: var(--raised); border: 1px solid var(--muted); border-radius: 8px; }
+.signup-row input[aria-invalid="true"] { border-color: var(--acc-tint); }
+.signup-row .btn { margin: 0; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
+.awi-signup input:focus-visible, .awi-signup button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.signup-status { margin: var(--s0) 0 0; min-height: 1.5em; }
+.signup-status:empty { min-height: 0; }
+.signup-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 
 /* footer */
 .site-footer { margin-top: var(--s5); border-top: 1px solid var(--line); padding: var(--s5) 0 var(--s4); background: var(--surface); color: var(--muted); }

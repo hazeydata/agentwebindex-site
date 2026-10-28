@@ -4,7 +4,7 @@ Static text comes from content/copy.md via copydoc.py and is therefore verbatim.
 Methodology is computed from data/benchmarks/latest.json (rows) and bench/pricing.yaml (prices) through the
 prices.py helpers; nothing numeric is typed in here. Tests compare the computed strings with copy.md.
 
-Public entry points (all take the build context `ctx`: latest, pricing, providers, doc, alt, pins, newsletter, charts):
+Public entry points (all take the build context `ctx`: latest, pricing, providers, doc, alt, pins, signup_form, charts):
   slots(ctx)       -> {slot name: html} used to fill src/*.html
   page_meta(ctx)   -> {page stem: (title, description)}
   footer_html(ctx), nav_html(path)
@@ -172,6 +172,12 @@ def cta_card(ctx, key=None, href="/newsletter/"):
     return f'<aside class="cta cta-hero" aria-label="Newsletter">{lead}{cta_btn(ctx, href)}</aside>'
 
 
+def signup_card(ctx, key, prefix, page):
+    """Hero card holding the first-party signup form itself, so it sits in the first screenful (AWI-SIGNUP-FORM-001 AC 14)."""
+    return (f'<aside class="cta cta-hero cta-form" id="signup-top" aria-label="Newsletter"><p class="cta-lead">{e(ctx.doc.field("CTA boxes", key))}</p>'
+            f'{ctx.signup_form(prefix, page)}</aside>')
+
+
 def info_card(ctx, key, body, label):
     """Hero card that is not a newsletter signup (Data downloads, Disclosures corrections): one lead-in from copy-cuts "Hero card lead-ins"."""
     return f'<aside class="cta cta-hero cta-info" aria-label="{e(label)}"><p class="cta-lead">{e(ctx.doc.field("CTA boxes", key))}</p>{body}</aside>'
@@ -179,7 +185,7 @@ def info_card(ctx, key, body, label):
 
 def cta_end(ctx, key, form=False):
     """Full-width repeat at the end of a page; `form` embeds the signup itself instead of a button."""
-    body = ctx.newsletter if form else cta_btn(ctx)
+    body = ctx.signup_form("end", "/") if form else cta_btn(ctx)
     return (f'<section class="cta-end-wrap"><div class="wrap"><div class="cta cta-end"{' id="signup-end"' if form else ''}>'
             f'<p class="cta-lead">{e(ctx.doc.field("CTA boxes", key))}</p>{body}</div></div></section>')
 
@@ -199,7 +205,7 @@ def hero_results(ctx):
     rest = (f'<p class="lede body-lede">{inline(d.field("Home: hero", "Lede"))}</p>'
             f'<p class="byline">{inline(d.para("Home: hero", "Built by"))}</p>'
             '<ul class="meta"><li class="chip">Data CC BY 4.0</li><li class="chip">No paid placement</li></ul>')
-    return hero(top, rest, cta_card(ctx, "Results top", "#signup-end"))
+    return hero(top, rest, signup_card(ctx, "Results top", "top", "/"))
 
 
 def results_row(ctx, r):
@@ -307,6 +313,24 @@ def section_not_tested(ctx):
             f'{foot}<h3>Not tested</h3><p>{inline(t)}</p><p><a href="/methodology/">Methodology and limits</a></p></details></div></section>')
 
 
+RETEST = "retest-apify-2026-10-26"
+
+
+def section_retest(ctx):
+    """Apify retest (preliminary): own section after the weekly results (layout.md). Copy from copy.md; alt text and
+    counts from content/retest-apify-2026-10-26.json; the SVG is served byte-identical from /assets/retest/ as an <img>, with a 350px <source> below 960px (chart text >= 13px at 320-959px). The caption is a <p>, not a <figcaption> (CEO R-5: no figcaption on the page)."""
+    meta = json.loads((ctx.content / f"{RETEST}.json").read_text())
+    title = "Apify retest (preliminary)"
+    para = [t for k, t in ctx.doc.blocks(title) if k == "p" and not t.startswith(("**", "<!--"))][0]
+    cap = ctx.doc.field(title, "Caption")
+    src = "/assets/retest/" + Path(meta["chart"]).name
+    src350 = "/assets/retest/" + Path(meta["chart_350"]).name   # 350px variant like the weekly charts (252-unit viewBox shown at 350px)
+    return (f'<section id="apify-retest" class="retest"><div class="wrap"><div class="col"><h3>{e(title)} <span class="pill">Preliminary</span></h3>'
+            f'<p>{inline(para)}</p></div><figure class="retest-fig"><picture><source media="(max-width: 959.98px)" srcset="{src350}">'
+            f'<img src="{src}" alt="{e(meta["alt"], quote=True)}" width="768" height="432" loading="lazy"></picture>'
+            f'<p class="retest-caption">{e(cap)}</p></figure></div></section>')
+
+
 def earlier_runs(ctx):
     bl = ctx.doc.blocks("Earlier runs")
     summary = next(t for k, t in bl if t.startswith("**Summary line:**")).split(":**", 1)[1].strip()
@@ -362,7 +386,7 @@ def section_sponsor(ctx):
     return ('<section id="sponsor-newsletter"><div class="wrap">'
             '<aside id="sponsor-banner" class="sponsor"><b>Sponsored</b> <a href="/sponsors/">No sponsors yet</a></aside>'
             f'<h2>Newsletter</h2><p class="lcopy">{inline(line)}</p>'
-            f'<div class="cta cta-end" id="signup-end"><p class="cta-lead">{e(ctx.doc.field("CTA boxes", "Results end"))}</p>{ctx.newsletter}</div>'
+            f'<div class="cta cta-end" id="signup-end"><p class="cta-lead">{e(ctx.doc.field("CTA boxes", "Results end"))}</p>{ctx.signup_form("end", "/")}</div>'
             '</div></section>')
 
 
@@ -471,7 +495,7 @@ def newsletter_body(ctx):
     line = next(l.strip() for l in ctx.doc.lines("Layout slot: newsletter") if l.strip())
     return ('<section class="hero"><div class="wrap"><div class="col"><p class="kicker">Newsletter</p><h1>Newsletter</h1>'
             f'<p class="lede">{inline(line)}</p><div class="cta cta-news" id="signup">'
-            f'<p class="cta-lead">{e(ctx.doc.field("CTA boxes", "Newsletter box"))}</p>{ctx.newsletter}</div></div></div></section>')
+            f'<p class="cta-lead">{e(ctx.doc.field("CTA boxes", "Newsletter box"))}</p>{ctx.signup_form("news", "/newsletter/")}</div></div></div></section>')
 
 
 # ---------------------------------------------------------------- shell
@@ -514,7 +538,7 @@ def slots(ctx):
         "hero_results": hero_results(ctx), "run": section_run(ctx),
         "pass_rate": section_chart(ctx, "pass-rate", "Pass rate", "pass-rate", headline_sentence(ctx)),
         "cost": section_chart(ctx, "cost", "Cost per passed check", "cost-per-success", cost_title(ctx)),
-        "not_tested": section_not_tested(ctx), "details": section_details(ctx), "sponsor": section_sponsor(ctx),
+        "not_tested": section_not_tested(ctx), "retest": section_retest(ctx), "details": section_details(ctx), "sponsor": section_sponsor(ctx),
         "prices_body": prices_body(ctx), "methodology_body": methodology_body(ctx), "data_body": data_body(ctx),
         "tell_us_body": tell_us_body(ctx), "newsletter_body": newsletter_body(ctx),
         "disclosures_body": field_page(ctx, "Disclosures page", end_key="Disclosures end",

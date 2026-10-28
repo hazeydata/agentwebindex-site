@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="576pt" height="324pt" viewBox="0 0 576 324" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-26T10:51:20.135514</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 324 
+L 576 324 
+L 576 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="line2d_1">
+    <path d="M 489.6 226.6704 
+L 489.6 136.9296 
+" clip-path="url(#pb68844371c)" style="fill: none; stroke: #999999; stroke-linecap: round"/>
+   </g>
+   <g id="patch_2">
+    <path d="M 28.8 168.12 
+L 489.6 168.12 
+L 489.6 140.76 
+L 28.8 140.76 
+z
+" clip-path="url(#pb68844371c)" style="fill: #eeeeee"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 28.8 222.84 
+L 489.6 222.84 
+L 489.6 195.48 
+L 28.8 195.48 
+z
+" clip-path="url(#pb68844371c)" style="fill: #eeeeee"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 28.8 168.12 
+L 445.714286 168.12 
+L 445.714286 140.76 
+L 28.8 140.76 
+z
+" clip-path="url(#pb68844371c)" style="fill: #0072b2"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 28.8 222.84 
+L 379.885714 222.84 
+L 379.885714 195.48 
+L 28.8 195.48 
+z
+" clip-path="url(#pb68844371c)" style="fill: #0072b2"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans', sans-serif; text-anchor: end; fill: #ffffff" x="439.131429" y="157.297852" transform="rotate(-0 439.131429 157.297852)">19 of 21</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="28.8" y="132.098222" transform="rotate(-0 28.8 132.098222)">apify/web-fetch</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans', sans-serif; text-anchor: end; fill: #ffffff" x="373.302857" y="212.017852" transform="rotate(-0 373.302857 212.017852)">16 of 21</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="28.8" y="186.818222" transform="rotate(-0 28.8 186.818222)">apify/rag-web-browser (240s timeout)</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #999999" x="489.6" y="239.740056" transform="rotate(-0 489.6 239.740056)">21</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #999999" x="28.8" y="239.740056" transform="rotate(-0 28.8 239.740056)">0</text>
+   </g>
+  </g>
+  <g id="text_7">
+   <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(28.8 38.819121)">Apify passed 19 of 21 with web-fetch</text>
+   <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(28.8 56.823223)">and 16 of 21 with its RAG browser</text>
+  </g>
+  <g id="text_8">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="28.8" y="86.978437" transform="rotate(-0 28.8 86.978437)">Items passed out of 21 on the AgentWebIndex news set, 0 timeouts</text>
+  </g>
+  <g id="text_9">
+   <g id="patch_6">
+    <path d="M 487.677656 38.07 
+L 547.2 38.07 
+Q 550.35 38.07 550.35 34.92 
+L 550.35 25.92 
+Q 550.35 22.77 547.2 22.77 
+L 487.677656 22.77 
+Q 484.527656 22.77 484.527656 25.92 
+L 484.527656 34.92 
+Q 484.527656 38.07 487.677656 38.07 
+z
+" style="fill: #f0f0f0"/>
+   </g>
+   <text style="font-size: 9px; font-family: 'DejaVu Sans', sans-serif; text-anchor: end; fill: #666666" x="547.2" y="32.757891" transform="rotate(-0 547.2 32.757891)">PRELIMINARY</text>
+  </g>
+  <g id="text_10">
+   <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #333333" x="28.8" y="273.78" transform="rotate(-0 28.8 273.78)">Preliminary: one run per setup, short 21-item set.</text>
+  </g>
+  <g id="text_11">
+   <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #999999" x="28.8" y="293.22" transform="rotate(-0 28.8 293.22)">Settings this run: RAG browser timeout raised to 240s (was 120s); web-fetch actor added.</text>
+  </g>
+  <g id="text_12">
+   <text style="font-size: 9.5px; font-family: 'DejaVu Sans', sans-serif; text-anchor: start; fill: #999999" x="28.8" y="311.04" transform="rotate(-0 28.8 311.04)">Source: AgentWebIndex Apify retest, Oct 26, 2026</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pb68844371c">
+   <rect x="28.8" y="113.4" width="460.8" height="123.12"/>
+  </clipPath>
+ </defs>
+</svg>

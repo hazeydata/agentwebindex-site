@@ -54,7 +54,7 @@ python3 -m tests.test_ship
   `tests/test_dist.py` and exactly `EXPECTED_CANARIES` canaries that inject real defects and must be caught; bump the counts by hand when
   tests change), `tests/test_dist.py` (set `AWI_DATA_REPO` to a local agentwebindex clone and the pre-Phase-0 pin test re-vendors a real 6b8bd87 tree with `sync_data.sh` in a temp copy; without it the case is built by editing the temp copy's SOURCE and pins.json), then `tests/browser_check.py` (headless Chrome over the DevTools protocol: one visible chart variant
   per chart at 390/720/1440 in both colour schemes, hidden variants display:none, role=img + alt-text name, served chart SVG bytes vs pinned sha256, C2 stacked under C1; per chart, ONE non-title Inter `<text>` element is checked: computed font-family Inter via document.fonts and rendered in Inter with no fallback font (CDP CSS.getPlatformFontsForNode); chart titles are not in the SVGs (since e18a54a they are the `<h3>` only); id rename leaves every element's text and box unchanged vs the original file markup; no sideways scroll, body >=16px and
-  tap targets >=44px at 390px; then `check_layout` (above); screenshots go to a temp /tmp/awi-shots.* dir that is deleted on exit unless AWI_KEEP_SHOTS=1, which keeps it and prints the path; prints SKIP without Chrome).
+  tap targets >=44px at 390px; then `check_layout` (above); screenshots go to a temp /tmp/awi-shots.* dir that is deleted on exit and included in the leftover check (M7) unless AWI_KEEP_SHOTS=1, which keeps it and prints the path; prints SKIP without Chrome).
 - `tests/test_ship.py`: SHIP gates, run separately, all must pass: `test_no_placeholders` (no `[[LINDSAY-PLACEHOLDER]]` in dist), Tavily price equals
   pricing.yaml, `test_tavily_date_is_phase0` (R3: rendered Tavily date == 2026-10-24) and `test_data_pin_moved` (R4/R8: pin is not 6b8bd87, no Tavily input before `phase0_date`).
 - `tests/agent_surface_baseline.json`: hashes of the agent surfaces main's code (60a8f4b) builds from the pinned data (regenerated at 8ab7ccc and carried to 303efdf4, whose data files are identical, by building
@@ -66,15 +66,13 @@ Inter 400/600/700 and Space Grotesk 600 (`inter-{400,600,700}-latin.woff2`, `spa
 of the 2c28c0a charts with fontTools, Latin range. Those TrueType files are not in the repo or in `dist/`. Weights kept are the ones the CSS uses (Inter 700 is the default `<b>` weight).
 Charts (R9 supersedes the R8 font bullet; AC14): `dist/assets/charts` holds exactly the 8 pinned SVGs, byte-identical, and the same markup is inlined on `/`; fonts are not byte-checked. A test fails if any font file in the repo
 (`git ls-files`) or in `dist/` is over 100 KB (102,400 bytes) or is a TrueType/OpenType file.
-Newsletter: when `site.config.json` -> `beehiiv_embed_url` is set, the form is a direct `<iframe class="beehiiv-embed" src="<url>" loading="eager">`
-(width 100%, min-height 240px) on `/newsletter/` (`#signup`) and in the end box of Results (`#signup-end`); otherwise a disabled "Coming soon" form.
-It used to be beehiiv's `loader.js` + `data-beehiiv-form`, which rendered nothing at the end of Results (AWI-PAGE-POLISH-001 P0). The
-beehiiv URLs answer the build box with a Cloudflare challenge, so the root cause of the blank loader embed is not verified; the iframe removes the script dependency.
-The submit button inside the iframe is set in the beehiiv dashboard, not here.
+Newsletter: a first-party signup form (AWI-SIGNUP-FORM-001, see "Signup" below) in the Results hero card (`aside#signup-top`, first screenful),
+in the Results end box (`#signup-end`) and on `/newsletter/` (`#signup`). No Beehiiv iframe, loader or other third-party script (the earlier
+`beehiiv_embed_url` iframe is gone; the site's only external script is the pre-existing GoatCounter analytics).
 
 Page polish (AWI-PAGE-POLISH-001):
 - CTA boxes: every page except Newsletter has a hero card (`aside.cta.cta-hero`, 2-column hero at >=768px, compact row at 390) and/or an
-  end box (`.cta.cta-end`). The hero signup button links to `#signup-end` on pages that have the end form (only Results), otherwise to
+  end box (`.cta.cta-end`). On Results the hero card holds the signup form itself; every other hero signup button links to
   `/newsletter/` (`test_hero_button_target`). Data and Disclosures hero cards are not signups (`.cta-info`): Data holds the latest.json/latest.csv
   buttons, Disclosures the Open an issue / Email links, each under one lead-in from copy-cuts "Hero card lead-ins" (`test_hero_lead_ins_from_copy_cuts`). Lead-ins and the button label come from the `## CTA boxes` section of `content/copy.md`; the button text is
   exactly "Get the results by email" on every page (`test_cta_label_same_on_every_page`). Buttons use `--acc` with `--on-acc` text, links `--link`; brand, nav current and the h1 underline use `--acc-tint`;
@@ -90,14 +88,79 @@ Page polish (AWI-PAGE-POLISH-001):
 - Guards in `test_dist.Polish`: numbers on each page are a subset of `tests/numbers_baseline.json` (built from main 385a6e3, chart SVGs
   excluded), unranked Results rows equal to what the data pin produces, in main's order (`tests/results_rows_baseline.json`; at 303efdf4: run summary 3 rows (Exa, Tavily, Browserless) and the full Every row table 11 rows / 4 providers, Apify 2 rows), no raw hex in button rules (`--on-acc` token), neither excluded provider name (the AC-4 list; the test assembles its pattern so the repo itself stays clean) in any tracked file or `dist/` file, the Tavily claim once
   (in `#run`) and "No provider pays us" once (Disclosures), chart `<h3>` == every SVG root `aria-label`, no trailing period.
-  `browser_check.check_layout`: header <=88px with 8px padding at 390, run-row values Plex Mono 13px <=2 lines, Methodology paragraphs >=480px (1440) / >=300px (390), signup iframe fills its box and
-  is >=240px tall, hero CTA top <=420px (1440) / <=560px (390).
+  `browser_check.check_layout`: header <=88px with 8px padding at 390, run-row values Plex Mono 13px <=2 lines, Methodology paragraphs >=480px (1440) / >=300px (390), hero CTA top <=420px (1440) / <=560px (390).
   Every visible `main p` except `.headline` is capped at 68ch of its own font (AC-20; also `test_prose_max_width_68ch`), and every rendered
   chart `<text>` is >=12px at 390 (font-size x screen CTM scale; 390 runs with overlay scrollbars as on phones).
 
 PR proof map: `python3 tools/proof_map.py` prints the "Proof by AC" section with line numbers read from the test names.
 
+## Signup (AWI-SIGNUP-FORM-001)
+Store-first, same-origin signup. Copied and adapted from hazeydata/hazeydata.ai `functions/api/subscribe.js` and
+`assets/signup/signup-config.js` at **d8ef4bbfa53dd819a5e5a11e1a8eba45707082a5** (HD-SIGNUP-001, PRs #30/#32); the endpoint is not shared (spec R1).
+- `signup/config.js`: limits, statuses, visitor copy, `DOUBLE_OPT_IN` (true: every Beehiiv call sends `double_opt_override: "on"`, so the confirmation
+  email and the "Check your inbox to confirm your subscription." copy follow one flag), `SEND_WELCOME_EMAIL=false` (R2: the welcome automation is
+  switched on only by chief after Fred approves its copy), ASCII-only emails (OQ-5 default). `site.config.json` `signup` carries the same copy and
+  double opt-in flag for the build; `tests/signup/config.test.mjs` fails on any drift.
+- `signup/core.js`: `handleSubscribe` and `retryPending`. Order: POST only (else 405); `Origin` must equal the request's own origin (else 403, no CORS);
+  `IP_SALT` required (else `error`); rate limit (5 per `ip_hash` per 10 min, 50 site-wide per minute; KV binding `SIGNUP_RL`, per-isolate memory without
+  it; KV errors fail open); bot check (pluggable `BOT_CHECKS`, only `honeypot` = field `website`; R2: no Turnstile) with a fake success; email
+  validation (trim, lowercase the domain; <=254 chars, one `@`, dotted domain) -> `invalid`; INSERT into D1 `SIGNUPS` (unique `email_norm, source`; a
+  missing binding or failed write -> `error`, and Beehiiv is never called); then Beehiiv `POST /v2/publications/{BEEHIIV_PUB_ID}/subscriptions` (5 s timeout)
+  with `utm_source=agentwebindex`, `custom_fields [{source: AWI}]`, `reactivate_existing:false`.
+  2xx -> `sent` + sub id, status `pending_confirmation`. Timeout, network, 5xx, 429, other 4xx -> `failed`, status `queued`.
+  No key, 401 or 403 -> `queued` row (CSV main path, AC 8a), status `queued`. A repeat writes nothing and calls nothing, and answers what a first
+  signup in that row's state would get (if Beehiiv accepted the email but the D1 status update fails, the answer is a 500 `error`),
+  so the response never reveals membership (`already_subscribed` is never sent). Logs hold fixed enums only.
+- Statuses and copy: `pending_confirmation` "Check your inbox to confirm your subscription.", `queued` "Thanks, you're on the list. We'll send a confirmation
+  email soon.", `invalid`, `rate_limited` "Too many tries, please wait a few minutes.", `error` (`subscribed` only if `DOUBLE_OPT_IN` is false).
+  JSON when the request is JSON or `Accept: application/json` (`/signup.js`); otherwise a 303 to the static `/newsletter/thanks/<status>/` page
+  (built by `build.py`, noindex, not in the sitemap), so the form works with JS off. (Spec data shape said `?s=<status>`; a per-status page needs no JS.)
+- `functions/api/subscribe.js`: the Pages Function. `functions/api/signups/export.csv.js`: `GET` with header `X-Export-Token: <EXPORT_TOKEN>` -> CSV
+  `email,source,created_at` of every row not `sent` and not deleted (`deleted_at` set) (formula-guarded); missing or wrong token -> 401. Exporting deletes nothing.
+- `workers/signup-retry.js`: scheduled Worker (`*/15 * * * *`, config `workers/wrangler.signup-retry.toml`) running `retryPending`:
+  `failed`/`pending` rows with attempts < 5, at most `RETRY_BATCH` (40) per run, oldest id first (Workers Free allows 50 external
+  subrequests per invocation; the rest wait for the next run); `sent` rows are never touched (every UPDATE is guarded by `beehiiv_status != 'sent'`); no key -> skips Beehiiv;
+  a 401/403 marks the row `queued` and stops the run. The same run then calls `purgeSent` (AC 18, R2): it deletes rows whose
+  `beehiiv_status` is `sent` and whose `sent_at` is 30 days (`RETENTION_DAYS`) or more ago. `queued`, `pending` and `failed` rows are never deleted,
+  however old; a second run deletes nothing more (idempotent). Purge runs even when retry is skipped for lack of a key.
+- `migrations/0001_signups.sql`: D1 table `signups` (idempotent). `ip_hash` = SHA-256 of `IP_SALT` + IP; the raw IP is never stored.
+- Bindings and secrets (names only; chief creates them at deploy): D1 `SIGNUPS`, optional KV `SIGNUP_RL`, secrets `BEEHIIV_API_KEY`, `BEEHIIV_PUB_ID`,
+  `IP_SALT`, `EXPORT_TOKEN`. The Beehiiv `source` custom field (string) was created on the publication on 2026-10-26 (asserted by implement; not independently verified by Test), so the AWI tag should be stored.
+- Tests (in `run_tests.sh`): `node --test tests/signup/` (mocked D1/KV/fetch/clock; no network), `tests/signup/sql_check.py` (every statement against
+  the migration in real SQLite), `tests/signup/secret_scan.sh`, `tests/signup/mutants.py` (defects injected into the save order and fallback logic must
+  all be caught), plus `test_dist` (`test_signup_*`) and `browser_check.check_signup` (first screenful at 1280x800 and 390x844, label, "Subscribe",
+  honeypot off-screen, contrast >= 4.5:1, keyboard order, aria-live error) and `browser_check.check_signup_goatcounter` (R3, AC 13: against
+  `tests/signup/dev_server.mjs`, which serves `dist/` and the real handler on mocks, the form submits with JS on and off while gc.zgo.at is
+  blocked, and with GoatCounter allowed (a stub `count.js` that beacons path, query, hash, referrer and title) no third-party request carries the email
+  in its URL, Referer or body). AC 13 covers the form and `/api/subscribe` only; the site-wide GoatCounter script is left as it was.
+
 ## Deploy (Cloudflare Pages)
-Build command `python3 build.py`, output directory `dist`, env `PYTHON_VERSION=3.12`. Not deployed yet.
+Build command `python3 build.py`, output directory `dist`, env `PYTHON_VERSION=3.12`.
+
+Why `/api/subscribe` returns 405 today: the site is a Pages direct upload, and wrangler compiles Functions only from a `functions/` folder in the
+directory it runs in. The deploy directory has none, so the upload is static-only and every POST gets 405 from the static asset server.
+
+Deploy route (chief's deploy script, `refresh_dist`): after the tests pass and `dist/` is built, if `functions/` exists it runs
+`wrangler pages functions build functions --outdir dist/_worker.js --output-routes-path dist/_routes.json --compatibility-date 2026-10-01`
+and checks that `dist/_worker.js/index.js` exists and that `dist/_routes.json` includes exactly `/api/subscribe` and `/api/signups/export.csv`
+(everything else stays static). The run fails if the Functions don't compile, and `--rollback` restores the previous `dist/` with its worker.
+`wrangler pages deploy` uploads `_worker.js` as the advanced-mode worker; that it is not published as a static file is still to check on the preview (as listed in the meta backend plan).
+
+Backend setup (names only; every step is gated on Fred's approval via chief, and none of it is done by this repo's code):
+1. D1 database `awi-signups`; apply `migrations/0001_signups.sql` (`wrangler d1 migrations apply awi-signups --remote`).
+2. Optional KV namespace `awi-signup-rl` (without it the rate limit falls back to per-isolate memory).
+3. Pages project `agentwebindex`: copy `wrangler.pages.toml` as `wrangler.toml` into the deploy directory and replace the two
+   `<PLACEHOLDER ...>` ids (D1 `SIGNUPS`, KV `SIGNUP_RL`). Secrets: `IP_SALT`, `EXPORT_TOKEN`, `BEEHIIV_PUB_ID`, `BEEHIIV_API_KEY`
+   (`wrangler pages secret put NAME --project-name agentwebindex`).
+4. Retry Worker `awi-signup-retry`: `workers/wrangler.signup-retry.toml` (cron `*/15 * * * *`, `workers_dev = false`, no route, D1 `SIGNUPS`);
+   replace the placeholder id, set secrets `BEEHIIV_PUB_ID`, `BEEHIIV_API_KEY` (`wrangler secret put NAME -c wrangler.signup-retry.toml`), then
+   `wrangler deploy -c wrangler.signup-retry.toml` from `workers/`.
+5. Test plan: on a preview deploy first, then production, submit `hazeydata@mail.grokbot.com` (the agreed test address); expect
+   `/newsletter/thanks/pending_confirmation/` (double opt-in), one D1 row with `beehiiv_status` `sent`, and a Beehiiv subscriber with
+   `source` = `AWI`. A second submit of the same address gets the same answer and adds no row (AC 3).
+
+`tests/signup/deploy_config.test.mjs` checks both config files: the env names the code reads equal the declared bindings plus the named secrets,
+ids are placeholders, and neither file holds a secret value or publication id. Local `wrangler pages dev` (wrangler 4.86) supports compatibility
+dates only up to 2026-05-03, so a local smoke run needs an earlier `--compatibility-date`; deployed Cloudflare uses 2026-10-01.
 
 License: MIT (code); data under data/ is CC BY 4.0 (data/LICENSE).

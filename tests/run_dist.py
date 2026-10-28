@@ -8,7 +8,7 @@
 import os, re, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
-EXPECTED = 79  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
+EXPECTED = 96  # exact number of tests in tests.test_dist; update deliberately when adding or removing tests
 
 R = Path(__file__).resolve().parent.parent
 # name -> (exact text in the file, defect replacement, tests that must fail[, file])
@@ -30,8 +30,10 @@ CANARIES = {
     # published exclusions must use the allowlist; a denylist of just "note" leaks any other internal key
     "exclusion_denylist": ("{k:x[k] for k in EXCLUSION_PUBLIC if k in x}", '{k:v for k,v in x.items() if k!="note"}',
                            {"test_unknown_exclusion_key_never_published"}, "build.py"),
+    # AWI-SIGNUP-FORM-001 AC 4: a honeypot reachable by Tab must be caught
+    "honeypot_tabbable": ('type="text" tabindex="-1" autocomplete="off"', 'type="text" autocomplete="off"', {"test_signup_form_markup"}, "build.py"),
 }
-EXPECTED_CANARIES = 6  # emptying or trimming CANARIES fails the runner
+EXPECTED_CANARIES = 7  # emptying or trimming CANARIES fails the runner
 
 
 def real_run():

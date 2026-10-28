@@ -1,5 +1,5 @@
 {
- "_doc": "Numeric tokens in the visible text (chart SVGs excluded; they are sha256-pinned) of each page as built from main 385a6e3, before AWI-PAGE-POLISH-001. A page may drop a number (copy cut) but never add or change one.",
+ "_doc": "Numeric tokens in the visible text (chart SVGs excluded; they are sha256-pinned) of each page as built from main 385a6e3, before AWI-PAGE-POLISH-001. A page may drop a number (copy cut) but never add or change one. Added on purpose for the Apify retest section (2026-10-26): 21, '21,', 240, 25 on / (19 and 16 were already present); each checked against content/retest-apify-2026-10-26.json.",
  "pages": {
   "/": [
    "$0",
@@ -34,8 +34,12 @@
    "20,",
    "2026",
    "2026,",
+   "21",
+   "21,",
    "23",
    "23,",
+   "240",
+   "25",
    "29",
    "30",
    "37",
@@ -108,6 +112,7 @@
    "4.0"
   ],
   "/newsletter/": [
+   "30",
    "4.0"
   ],
   "/tell-us/": [

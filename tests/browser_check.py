@@ -7,7 +7,7 @@ deleted on exit; with AWI_KEEP_SHOTS=1 it is kept and its path is printed for th
 
 Run after `python3 build.py`:  python3 -m tests.browser_check
 """
-import base64, hashlib, http.client, json, os, re, shutil, signal, socket, struct, subprocess, sys, tempfile, threading, time, urllib.request
+import base64, hashlib, http.client, json, os, re, shutil, signal, socket, struct, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -26,6 +26,7 @@ VIEWPORTS = [(390, 844), (720, 900), (1440, 900)]
 
 class WS:
     def __init__(self, host, port, path):
+        self.addr = (host, port, path)   # kept so Cdp can reconnect to the same page target once
         self.s = socket.create_connection((host, port), timeout=30)
         key = base64.b64encode(os.urandom(16)).decode()
         self.s.sendall((f"GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
@@ -83,28 +84,58 @@ class Cdp:
     def __init__(self, ws):
         self.ws, self.n, self.events = ws, 0, []
 
+    hook = None   # optional fn(cdp, message) for events that need an answer (Fetch.requestPaused)
+
+    def _dispatch(self, m):
+        if "id" in m:
+            sent = getattr(self, "pending_ids", {}).pop(m["id"], None)
+            if sent:
+                if "error" in m:
+                    self.send_errors = getattr(self, "send_errors", []) + [f"{sent}: {m['error']}"]
+                return
+            self.responses[m["id"]] = m
+        elif "method" in m:
+            self.events.append(m["method"])
+            if self.hook:
+                self.hook(self, m)
+
+    def send(self, method, **params):
+        """Fire-and-forget command (used from hooks, which must not block on a reply). Errors are kept in self.send_errors."""
+        self.n += 1
+        self.pending_ids = getattr(self, "pending_ids", {}); self.pending_ids[self.n] = method
+        self.ws.send(json.dumps({"id": self.n, "method": method, "params": params}))
+
     def call(self, method, **params):
+        try:
+            return self._call(method, **params)
+        except ConnectionError as ex:   # seen once under load: "websocket closed" at captureScreenshot. Reconnect to the same target, retry once.
+            print(f"browser_check: {method}: {ex}; reconnecting to the same page and retrying once", file=sys.stderr)
+            self.ws.close()
+            self.ws = WS(*self.ws.addr)
+            self._call("Page.enable")
+            self._call("Runtime.enable")
+            return self._call(method, **params)
+
+    def _call(self, method, **params):
         self.n += 1
         mid = self.n
+        self.responses = getattr(self, "responses", {})
         self.ws.send(json.dumps({"id": mid, "method": method, "params": params}))
-        while True:
-            m = json.loads(self.ws.recv())
-            if m.get("id") == mid:
-                if "error" in m:
-                    raise RuntimeError(f"{method}: {m['error']}")
-                return m.get("result", {})
-            if "method" in m:
-                self.events.append(m["method"])
+        while mid not in self.responses:
+            self._dispatch(json.loads(self.ws.recv()))
+        m = self.responses.pop(mid)
+        if "error" in m:
+            raise RuntimeError(f"{method}: {m['error']}")
+        return m.get("result", {})
 
     def wait_event(self, name, timeout=20):
+        self.responses = getattr(self, "responses", {})
         end = time.time() + timeout
         while name not in self.events:
             if time.time() > end:
                 raise TimeoutError(name)
             self.ws.s.settimeout(max(0.1, end - time.time()))
-            m = json.loads(self.ws.recv())
-            if "method" in m:
-                self.events.append(m["method"])
+            self._dispatch(json.loads(self.ws.recv()))
         self.ws.s.settimeout(30)
 
     def js(self, expr):
@@ -283,6 +314,30 @@ def check_rename_geometry(cdp, base, errs):
     return n
 
 
+RETEST_MIN_PX = 13
+
+
+def check_retest_chart(cdp, scheme, errs, w=390):
+    """The Apify retest chart is an <img>, so its text is measured as (smallest font-size in the served SVG) x (rendered width / viewBox width)."""
+    r = json.loads(cdp.js("""(async () => { const i = document.querySelector('.retest-fig img'); i.loading = 'eager'; i.scrollIntoView();
+      for (let k = 0; k < 50 && !(i.complete && i.naturalWidth); k++) await new Promise(f => setTimeout(f, 100));
+      return JSON.stringify({src: i.currentSrc, w: i.getBoundingClientRect().width,
+        pill: parseFloat(getComputedStyle(document.querySelector('.retest .pill')).fontSize)}); })()"""))
+    print(f"browser_check: retest 'Preliminary' pill @{w} {scheme}: {r['pill']}px")
+    if r["pill"] < RETEST_MIN_PX:
+        errs.append(f"retest pill @{w} {scheme}: {r['pill']}px < {RETEST_MIN_PX}px")
+    name = r["src"].rsplit("/", 1)[-1]
+    if (w < 960) != name.endswith("-350.svg"):
+        errs.append(f"retest chart @{w} {scheme}: served {name}, wrong variant for {w}px")
+        return
+    svg = (D / "assets/retest" / name).read_text()
+    vbw = float(re.search(r'viewBox="0 0 ([\d.]+) ', svg).group(1))
+    px = min(float(x) for x in re.findall(r"font-size: ([\d.]+)px", svg)) * r["w"] / vbw
+    print(f"browser_check: retest chart @{w} {scheme}: {name} rendered {r['w']:.1f}px wide, smallest text {px:.2f}px")
+    if px < RETEST_MIN_PX:
+        errs.append(f"retest chart @{w} {scheme}: smallest text {px:.2f}px < {RETEST_MIN_PX}px")
+
+
 def check_readability(cdp, base, shots, errs):
     for scheme in ("dark", "light"):
         for p in PAGES:
@@ -294,6 +349,11 @@ def check_readability(cdp, base, shots, errs):
                 errs.append(f"{p} {scheme}: body font {r['font']}px < 16px")
             if r["small"]:
                 errs.append(f"{p} {scheme}: tap targets under 44px: {r['small'][:4]}")
+            if p == "/":
+                check_retest_chart(cdp, scheme, errs)
+        for w in (320, 768, 959, 960, 1440):   # 13px chart-text floor also at 320 and tablet/desktop widths, both sides of the 960px switch
+            open_page(cdp, base, "/", w, 900, scheme)
+            check_retest_chart(cdp, scheme, errs, w)
     for w, h in ((390, 844), (1440, 900)):
         for p in PAGES:
             open_page(cdp, base, p, w, h, "dark")
@@ -309,8 +369,6 @@ const steps = [...document.querySelectorAll('.steps li')].map(li => { const cs =
   const inner = lr.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); const h2 = li.querySelector('h2');
   return {beforeRow: b.gridRowStart, h2Row: getComputedStyle(h2).gridRowStart, h2Top: r(h2).top - lr.top - parseFloat(cs.paddingTop), h2Left: r(h2).left - lr.left,
           pw: [...li.querySelectorAll(':scope > p')].map(p => r(p).width), inner}; });
-const f = document.querySelector('iframe.beehiiv-embed'); const fb = r(f); const box = f ? r(f.parentElement) : null;
-const pad = f ? parseFloat(getComputedStyle(f.parentElement).paddingLeft) + parseFloat(getComputedStyle(f.parentElement).paddingRight) : 0;
 const cta = document.querySelector('.cta-hero');
 const vals = [...document.querySelectorAll('.rows .row .mono')].map(e => ({h: r(e).height, f: getComputedStyle(e).fontSize, ff: getComputedStyle(e).fontFamily}));
 const probe = document.createElement('span'); probe.style.cssText = 'position:absolute;visibility:hidden;width:68ch';
@@ -318,13 +376,12 @@ const pw = [...document.querySelectorAll('main p:not(.headline)')].filter(p => p
   const want = probe.getBoundingClientRect().width; probe.remove(); return {mw: getComputedStyle(p).maxWidth, want, cls: p.className}; });
 const ctext = [...document.querySelectorAll('.ch svg text')].filter(t => t.getClientRects().length).map(t => parseFloat(getComputedStyle(t).fontSize) * t.getScreenCTM().a);
 return JSON.stringify({pw, ctext, steps, vals, hpad: getComputedStyle(document.querySelector('.site-header .wrap')).paddingTop, header: r(document.querySelector('.site-header')).height, stepMin: ps.length ? Math.min(...ps) : null,
-  iframe: f ? {w: fb.width, h: fb.height, inner: box.width - pad - 2, src: f.getAttribute('src'), loading: f.getAttribute('loading')} : null,
   ctaTop: cta ? r(cta).top + scrollY : null}); })()"""
 
 
 def check_layout(cdp, base, errs):
     """AWI-PAGE-POLISH-001: header <= 88px at 390; Methodology paragraphs are not squeezed into the number column (P0);
-    the signup iframe fills its box (width 100%, >= 240px tall) on /newsletter/ and at the end of Results (P0); hero CTA above the fold."""
+    hero CTA above the fold. (The signup form itself is checked by check_signup.)"""
     n = 0
     for w, h in ((390, 844), (1440, 900)):
         for p in PAGES:
@@ -355,16 +412,284 @@ def check_layout(cdp, base, errs):
                         errs.append(f"{tag}: step {i + 1} number and h2 not on one line: {st}")
                     if not st["pw"] or any(abs(x - st["inner"]) > 1 for x in st["pw"]):
                         errs.append(f"{tag}: step {i + 1} paragraph width {st['pw']} != content width {st['inner']}")
-            if p in ("/", "/newsletter/"):
-                f = m["iframe"]
-                if not f or f["h"] < 239.5 or abs(f["w"] - f["inner"]) > 1.5 or not f["src"] or f["loading"] == "lazy":
-                    errs.append(f"{tag}: signup iframe not full-width / >=240px / eager: {f}")
             if p in ("/", "/prices/", "/methodology/", "/data/", "/disclosures/"):
                 lim = 420 if w >= 768 else 560
                 if m["ctaTop"] is None or m["ctaTop"] > lim:
                     errs.append(f"{tag}: hero CTA top {m['ctaTop']} > {lim}px")
             n += 1
     return n
+
+
+SIGNUP = """(() => { const f = document.querySelector('form.awi-signup'); if (!f) return 'null';
+const r = e => e.getBoundingClientRect(), lab = f.querySelector('label.signup-label'), inp = f.querySelector('input[name=email]'), b = f.querySelector('button[type=submit]');
+const hp = f.querySelector('.signup-hp'), hr = r(hp), cs = getComputedStyle(b);
+const vis = e => { const x = r(e); return x.width > 0 && x.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+return JSON.stringify({bottom: Math.max(r(lab).bottom, r(inp).bottom, r(b).bottom) + scrollY, labelVisible: vis(lab), labelText: lab.textContent,
+  button: b.textContent, bg: cs.backgroundColor, fg: cs.color, hpOff: hr.right <= 0 || hr.left >= innerWidth, inputH: r(inp).height, buttonH: r(b).height}); })()"""
+
+
+def _lum(rgb):
+    v = [int(x) / 255 for x in re.findall(r"\d+", rgb)[:3]]
+    v = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in v]
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
+
+
+def contrast(a, b):
+    x, y = sorted((_lum(a), _lum(b)), reverse=True)
+    return (x + 0.05) / (y + 0.05)
+
+
+def press_tab(cdp):
+    for t in ("rawKeyDown", "keyUp"):
+        cdp.call("Input.dispatchKeyEvent", type=t, key="Tab", code="Tab", windowsVirtualKeyCode=9, nativeVirtualKeyCode=9)
+
+
+def press_enter(cdp):
+    cdp.call("Input.dispatchKeyEvent", type="rawKeyDown", key="Enter", code="Enter", windowsVirtualKeyCode=13, nativeVirtualKeyCode=13)
+    cdp.call("Input.dispatchKeyEvent", type="char", text="\r", key="Enter")
+    cdp.call("Input.dispatchKeyEvent", type="keyUp", key="Enter", code="Enter", windowsVirtualKeyCode=13, nativeVirtualKeyCode=13)
+
+
+def check_signup(cdp, base, errs):
+    """AWI-SIGNUP-FORM-001 AC 14: the first form's label, input and Subscribe button end inside the top 800px at 1280x800
+    (and 844px at 390x844) on / and /newsletter/, label visible, honeypot off-screen. AC 16: button text/background contrast
+    >= 4.5:1 (the site's standard, same --acc/--on-acc pair as every .btn) in both schemes; keyboard only: Tab reaches the
+    email input then the Subscribe button and never the honeypot; Enter on an invalid address announces the error in the
+    aria-live status (client-side, no request is sent)."""
+    n = 0
+    for w, h in ((1280, 800), (390, 844)):
+        for scheme in ("dark", "light"):
+            for p in ("/", "/newsletter/"):
+                open_page(cdp, base, p, w, h, scheme)
+                m = json.loads(cdp.js(SIGNUP)); tag = f"{p} @{w}x{h} {scheme}"
+                if not m:
+                    errs.append(f"{tag}: no signup form"); continue
+                if m["bottom"] > min(h, 800) + 0.5:
+                    errs.append(f"{tag}: signup form ends at {m['bottom']:.0f}px, below the first screenful")
+                if not m["labelVisible"] or m["labelText"] != "Email address" or m["button"] != "Subscribe":
+                    errs.append(f"{tag}: label/button wrong: {m}")
+                if not m["hpOff"]:
+                    errs.append(f"{tag}: honeypot is on screen")
+                if m["inputH"] < 43.5 or m["buttonH"] < 43.5:
+                    errs.append(f"{tag}: input/button below the 44px tap target")
+                c = contrast(m["bg"], m["fg"])
+                if c < 4.5:
+                    errs.append(f"{tag}: Subscribe contrast {c:.2f} < 4.5")
+                n += 1
+    for p in ("/", "/newsletter/"):
+        open_page(cdp, base, p, 1280, 800, "dark")
+        seq = []
+        for _ in range(40):
+            press_tab(cdp)
+            seq.append(cdp.js("(() => { const a = document.activeElement; return (a.name || a.tagName) + '|' + (a.closest('form.awi-signup') ? 'f' : '') })()"))
+            if seq[-1] == "BUTTON|f":
+                break
+        if "website|f" in seq or "email|f" not in seq or seq[-1] != "BUTTON|f" or seq.index("email|f") != len(seq) - 2:
+            errs.append(f"{p}: keyboard order to the form wrong: {seq[-4:]}")
+        cdp.js("(() => { const i = document.querySelector('form.awi-signup input[name=email]'); i.value = 'a@b'; i.focus(); return 1 })()")
+        press_enter(cdp)
+        time.sleep(0.2)
+        st = json.loads(cdp.js("(() => { const f = document.querySelector('form.awi-signup'); const s = f.querySelector('.signup-status'); return JSON.stringify({t: s.textContent, live: s.getAttribute('aria-live'), inv: f.querySelector('input[name=email]').getAttribute('aria-invalid'), url: location.pathname}); })()"))
+        if st["t"] != "That email doesn't look right. Check it and try again." or st["live"] != "polite" or st["inv"] != "true" or st["url"] != p:
+            errs.append(f"{p}: invalid email not announced inline: {st}")
+        n += 1
+    return n
+
+
+# Stand-in for gc.zgo.at/count.js (the box has no network): it beacons a superset of what GoatCounter sends -- the
+# path through the page's own window.goatcounter.path, plus search, hash, referrer and title -- to the data-goatcounter endpoint.
+GC_STUB = """(function(){var g=window.goatcounter||{};var p=location.pathname+location.search+location.hash;if(typeof g.path==='function')p=g.path(p);
+var s=document.querySelector('script[data-goatcounter]');var ep=(s&&s.getAttribute('data-goatcounter'))||'https://gc.zgo.at/count';
+new Image().src=ep+'?p='+encodeURIComponent(p)+'&r='+encodeURIComponent(document.referrer)+'&t='+encodeURIComponent(document.title)+'&u='+encodeURIComponent(location.href);})();"""
+
+
+def check_signup_goatcounter(cdp, errs):
+    """AWI-SIGNUP-FORM-001 R3 (AC 13 / AC 15 locally): with tests/signup/dev_server.mjs (dist/ + the real /api/subscribe on mocks),
+    (a) with gc.zgo.at blocked the form still submits, with JS on (inline status) and with JS off (303 to /newsletter/thanks/<status>/),
+    and a row is stored for each; (b) with GoatCounter allowed (stub count.js), no request to any non-local host carries the email
+    (raw, URL-encoded or lowercased) in its URL, path, query, Referer or body, while beacons do fire (incl. the thanks page)."""
+    proc = subprocess.Popen(["node", str(R / "tests/signup/dev_server.mjs")], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, start_new_session=True)
+    seen, mode = [], {"block": True}
+
+    def hook(c, m):
+        if m.get("method") != "Fetch.requestPaused":
+            return
+        p = m["params"]; rq = p["request"]; url = rq["url"]; rid = p["requestId"]
+        if url.startswith(base) or not url.startswith(("http:", "https:")):   # local server, chrome-extension:// internals
+            c.send("Fetch.continueRequest", requestId=rid)
+            return
+        seen.append({"url": url, "referer": rq.get("headers", {}).get("Referer", ""), "body": rq.get("postData", ""), "blocked": mode["block"]})
+        if mode["block"]:
+            c.send("Fetch.failRequest", requestId=rid, errorReason="BlockedByClient")
+        else:
+            body = GC_STUB if url.endswith("count.js") else ""
+            c.send("Fetch.fulfillRequest", requestId=rid, responseCode=200,
+                   responseHeaders=[{"name": "Content-Type", "value": "text/javascript" if body else "image/gif"}], body=base64.b64encode(body.encode()).decode())
+
+    def rows():
+        with urllib.request.urlopen(base + "/__rows", timeout=10) as r:
+            return json.loads(r.read())["rows"]
+
+    def submit(path, email, js_on):
+        cdp.call("Emulation.setScriptExecutionDisabled", value=not js_on)
+        cdp.events.clear()
+        cdp.call("Page.navigate", url=base + path)
+        try:
+            cdp.wait_event("Page.loadEventFired")
+        except (TimeoutError, OSError) as ex:
+            raise RuntimeError(f"R3 {path}: no load; events={cdp.events[-20:]} paused={len(seen)} send_errors={getattr(cdp, 'send_errors', [])}") from ex
+        root = cdp.call("DOM.getDocument")["root"]["nodeId"]
+        node = cdp.call("DOM.querySelector", nodeId=root, selector="form.awi-signup input[name=email]")["nodeId"]
+        cdp.call("DOM.focus", nodeId=node)
+        cdp.call("Input.insertText", text=email)
+        cdp.events.clear()
+        press_enter(cdp)
+        if not js_on:
+            cdp.wait_event("Page.loadEventFired")
+            # reload the landing page with JS on, so GoatCounter (when allowed) runs there with the real document.referrer
+            cdp.call("Emulation.setScriptExecutionDisabled", value=False)
+            cdp.events.clear(); cdp.call("Page.reload"); cdp.wait_event("Page.loadEventFired")
+        else:
+            cdp.js("new Promise(r => { const t0 = Date.now(); (function w() { const s = document.querySelector('.signup-status');"
+                   " if ((s && s.textContent.trim()) || Date.now() - t0 > 8000) r(); else setTimeout(w, 100); })(); })")
+        time.sleep(0.6)
+        hist = cdp.call("Page.getNavigationHistory"); url = hist["entries"][hist["currentIndex"]]["url"]
+        cdp.call("Emulation.setScriptExecutionDisabled", value=False)
+        txt = cdp.js("(() => { const s = document.querySelector('.signup-status, .signup-result'); return s ? s.textContent : '' })()")
+        return url, txt
+
+    n = 0
+    try:
+        line = proc.stdout.readline()
+        base = f"http://127.0.0.1:{int(line.split()[1])}"
+        cdp.hook = hook
+        cdp.call("Fetch.enable", patterns=[{"urlPattern": "*"}])
+        cdp.call("Emulation.setDeviceMetricsOverride", width=1280, height=800, deviceScaleFactor=1, mobile=False)
+        ok_msg = "Check your inbox to confirm your subscription."
+        flows = [("/", "Kitty.Blocked+js@Example.COM", True, True), ("/newsletter/", "kitty.blocked.nojs@example.com", False, True),
+                 ("/", "Kitty.Leak+js@Example.COM", True, False), ("/newsletter/", "kitty.leak.nojs@example.com", False, False)]
+        for path, email, js_on, block in flows:
+            mode["block"] = block
+            before = len(rows())
+            url, txt = submit(path, email, js_on)
+            tag = f"{path} js={'on' if js_on else 'off'} gc={'blocked' if block else 'stubbed'}"
+            want_url = base + path if js_on else base + "/newsletter/thanks/pending_confirmation/"
+            if url != want_url or txt.strip() != ok_msg:
+                errs.append(f"{tag}: signup did not complete: url={url} text={txt!r}")
+            if len(rows()) != before + 1:
+                errs.append(f"{tag}: no row stored")
+            if js_on is False:   # no-JS: the landing page must also load GoatCounter normally (when allowed), so the leak check covers it
+                time.sleep(0.4)
+            n += 1
+        gc = [x for x in seen if not x["blocked"]]
+        if not any("goatcounter" in x["url"] and "thanks" in x["url"] for x in gc) or not any(x["url"].endswith("count.js") for x in gc):
+            errs.append(f"GoatCounter beacons did not fire with gc allowed (test would be vacuous): {[x['url'][:80] for x in gc]}")
+        if not any(x["blocked"] and "gc.zgo.at" in x["url"] for x in seen):
+            errs.append("gc.zgo.at was never requested while blocked (block test vacuous)")
+        for _, email, _, _ in flows:
+            forms = {email, email.lower(), email.split("@")[0] + "@" + email.split("@")[1].lower()}
+            forms |= {urllib.parse.quote(f, safe="") for f in list(forms)} | {urllib.parse.quote_plus(f) for f in list(forms)} | {email.split("@")[0]}
+            for x in seen:
+                blob = urllib.parse.unquote(x["url"]) + " " + x["url"] + " " + x["referer"] + " " + x["body"]
+                hit = [f for f in forms if f and f in blob]
+                if hit:
+                    errs.append(f"third-party request carries the email: {x['url'][:120]} (matched {hit[0]!r})")
+        others = sorted({urllib.parse.urlsplit(x["url"]).hostname for x in seen} - {"gc.zgo.at", "openmillage.goatcounter.com"})
+        if others:
+            errs.append(f"unexpected third-party hosts requested: {others}")
+        print(f"browser_check: GoatCounter (R3): {n} submits ok with gc.zgo.at blocked/stubbed, JS on/off; {len(seen)} third-party requests, 0 carry the email"
+              if not errs else "browser_check: GoatCounter (R3): see failures")
+    finally:
+        cdp.hook = None
+        try:
+            cdp.call("Fetch.disable")
+        except Exception:
+            pass
+        try:
+            os.killpg(proc.pid, signal.SIGTERM); proc.wait(timeout=10)
+        except (ProcessLookupError, subprocess.TimeoutExpired):
+            try:
+                os.killpg(proc.pid, signal.SIGKILL); proc.wait(timeout=5)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
+                pass
+    return n
+
+
+def _singleton_dirs(prof):
+    """The com.google.Chrome.XXXXXX dir(s) this Chrome made, read from its own profile's Singleton* symlinks."""
+    out = set()
+    for name in ("SingletonSocket", "SingletonCookie", "SingletonLock"):
+        t = Path(prof) / name
+        if t.is_symlink():
+            parent = Path(os.readlink(t)).parent
+            if parent.is_absolute() and parent.name.startswith("com.google.Chrome.") and parent != Path(prof):
+                out.add(str(parent))
+    return sorted(out)
+
+
+def _rm_exact(d):
+    """Remove one exact path we created; retry briefly if a dying child was still writing into it."""
+    for _ in range(20):
+        shutil.rmtree(d, ignore_errors=True)
+        if not os.path.lexists(d):
+            return
+        time.sleep(0.1)
+    print(f"browser_check: WARNING could not remove {d}", file=sys.stderr)
+
+
+CHROME_TMP_PREFIXES = ("com.google.Chrome.", ".com.google.Chrome.", ".org.chromium.", "scoped_dir")
+
+
+def chrome_tmp_paths():
+    """Existing Chrome scratch paths (com.google.Chrome.*, .com.google.Chrome.*, .org.chromium.*, scoped_dir*) in the
+    system temp dirs. Read-only listing; never used to delete."""
+    out = set()
+    for d in {"/tmp", tempfile.gettempdir()}:
+        try:
+            out |= {os.path.join(d, n) for n in os.listdir(d) if n.startswith(CHROME_TMP_PREFIXES)}
+        except OSError:
+            pass
+    return out
+
+
+HYGIENE_OK = ("browser_check: temp hygiene OK: 0 new Chrome temp paths (com.google.Chrome.*, .com.google.Chrome.*, .org.chromium.*, "
+              "scoped_dir*), no live Chrome process group; profile and Chrome TMPDIR removed")
+
+
+def cleanup_errors(before, pgid, own_dirs):
+    """All post-cleanup checks: new Chrome temp paths, a surviving Chrome process group, our own dirs still present."""
+    errs = []
+    left = sorted(chrome_tmp_paths() - before)
+    if left:
+        errs.append(f"run left {len(left)} new Chrome temp path(s) behind: {left}")
+    if pgid is not None:
+        try:
+            os.killpg(pgid, 0)   # signal 0: existence probe only
+            errs.append(f"Chrome process group {pgid} still alive after cleanup")
+        except (ProcessLookupError, PermissionError):
+            pass
+    errs += [f"run left its own temp dir behind: {p}" for p in own_dirs if os.path.exists(p)]
+    return errs
+
+
+def own_dirs(prof, ctmp, shots):
+    """The exact dirs this run created that must be gone after cleanup: the screenshots dir too, unless AWI_KEEP_SHOTS=1."""
+    return (prof, ctmp) + (() if os.environ.get("AWI_KEEP_SHOTS") == "1" else (str(shots),))
+
+
+def remove_own_dirs(prof, ctmp, shots):
+    """Remove only the exact paths in own_dirs (never a glob)."""
+    for p in own_dirs(prof, ctmp, shots):
+        _rm_exact(p)
+
+
+def report(errs):
+    """Print BROWSER FAIL lines, or the hygiene OK line only when every check (cleanup included) passed."""
+    for m in errs:
+        print("BROWSER FAIL:", m, file=sys.stderr)
+    if not errs:
+        print(HYGIENE_OK)
+    return 1 if errs else 0
 
 
 def main():
@@ -374,16 +699,20 @@ def main():
     if not (D / "index.html").exists():
         print("browser_check: dist/ missing; run python3 build.py first", file=sys.stderr)
         return 2
+    before = chrome_tmp_paths()
+    # Every path this run creates is recorded here and only these exact paths are removed in finally.
     prof = tempfile.mkdtemp(prefix="awi-chrome.")
+    ctmp = tempfile.mkdtemp(prefix="awi-chrome-tmp.")   # Chrome's own TMPDIR: its com.google.Chrome.* scratch lands here
     shots = Path(tempfile.mkdtemp(prefix="awi-shots."))
     srv = ThreadingHTTPServer(("127.0.0.1", 0), partial(Quiet, directory=str(D)))
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"
-    chrome, ws, errs = None, None, []
+    chrome, ws, cdp, errs = None, None, None, []
     try:
         chrome = subprocess.Popen([CHROME, "--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
                                    "--remote-debugging-port=0", "--remote-allow-origins=*", f"--user-data-dir={prof}", "about:blank"],
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+                                  env=dict(os.environ, TMPDIR=ctmp, TMP=ctmp, TEMP=ctmp))
         port_file = Path(prof) / "DevToolsActivePort"
         for _ in range(100):
             if port_file.exists() and len(port_file.read_text().split()) >= 2:
@@ -402,31 +731,56 @@ def main():
         ng = check_rename_geometry(cdp, base, errs)
         check_readability(cdp, base, shots, errs)
         nl = check_layout(cdp, base, errs)
+        nsu = check_signup(cdp, base, errs)
+        check_signup_goatcounter(cdp, errs)
         print(f"browser_check: {n} chart/viewport/scheme combinations checked; readability checked on {len(PAGES)} pages x 2 schemes at 390px")
         print(f"browser_check: one non-title Inter chart text element rendered with Inter (no fallback) in {nf} chart/viewport/scheme cases; id-rename text+geometry equal in {ng}")
-        print(f"browser_check: layout (header <= 88px at 390, Methodology grid, signup iframe, hero CTA fold) checked on {nl} page/viewport cases")
+        print(f"browser_check: layout (header <= 88px at 390, Methodology grid, hero CTA fold) checked on {nl} page/viewport cases")
+        print(f"browser_check: signup form (first screenful, label, Subscribe, honeypot off-screen, contrast, keyboard, aria-live error) checked in {nsu} cases")
         if os.environ.get("AWI_KEEP_SHOTS") == "1":
             print(f"browser_check: screenshots (390 and 1440) for a human readability check: {shots}")
     finally:
+        if cdp:
+            ws = cdp.ws   # the reconnect retry may have replaced it
         if ws:
+            try:
+                Cdp(ws)._call("Browser.close")   # graceful close first, so Chrome removes its own scratch (no reconnect here)
+            except Exception:
+                pass
             ws.close()
         if chrome:
+            try:
+                chrome.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
             try:
                 os.killpg(chrome.pid, signal.SIGTERM)
                 chrome.wait(timeout=10)
             except (ProcessLookupError, subprocess.TimeoutExpired):
                 try:
                     os.killpg(chrome.pid, signal.SIGKILL)
-                except ProcessLookupError:
+                    chrome.wait(timeout=10)
+                except (ProcessLookupError, subprocess.TimeoutExpired):
                     pass
+            try:   # reap any helper left in Chrome's process group (renderers, crashpad)
+                os.killpg(chrome.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            for _ in range(100):   # wait until the whole group is gone, so nothing writes into the dirs we remove
+                try:
+                    os.killpg(chrome.pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.1)
         srv.shutdown()
         srv.server_close()
-        shutil.rmtree(prof, ignore_errors=True)
-        if os.environ.get("AWI_KEEP_SHOTS") != "1":
-            shutil.rmtree(shots, ignore_errors=True)
-    for m in errs:
-        print("BROWSER FAIL:", m, file=sys.stderr)
-    return 1 if errs else 0
+        singles = _singleton_dirs(prof)   # Chrome's singleton dir(s), read from our profile's Singleton* links before it goes
+        remove_own_dirs(prof, ctmp, shots)
+        for d in singles:
+            _rm_exact(d)
+    errs += cleanup_errors(before, chrome.pid if chrome else None, own_dirs(prof, ctmp, shots))
+    errs += [f"run left its own temp dir behind: {d}" for d in singles if os.path.lexists(d)]
+    return report(errs)
 
 
 if __name__ == "__main__":
