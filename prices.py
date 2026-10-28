@@ -145,7 +145,9 @@ def price_rows(pricing, latest, providers=()):
 
 
 def untested_providers(pricing, latest, providers):
-    """Display names (sorted) of providers in pricing.yaml that have no published results: the other 11."""
+    """Display names (sorted) of providers in pricing.yaml that have no published results: the other 11.
+    A providers.json entry with `exclude_from_also_priced: true` is left off (provider ticket R3, 2026-10-25; absent = false)."""
     names = provider_names(providers)
     tested = {r["provider"] for _, r in _rows(latest)}
-    return sorted(names.get(pid, pid) for pid in (pricing.get("providers") or {}) if pid not in tested)
+    held = {p["id"] for p in providers if p.get("exclude_from_also_priced") is True}
+    return sorted(names.get(pid, pid) for pid in (pricing.get("providers") or {}) if pid not in tested and pid not in held)

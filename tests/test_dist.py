@@ -276,6 +276,41 @@ class Helpers(unittest.TestCase):
         self.assertFalse(priced & set(u))
         self.assertEqual(len(priced | set(u)), 15)
 
+    # Provider ticket AC22/AC21/AC6 (spec rev 4): the providers.json flag exclude_from_also_priced keeps a held vendor off the line.
+    # The vendor's real name is never written here (AC-4 banned-name guard), so the fixture uses a neutral id and the assembled pattern.
+    HELD = re.compile("context" + r"\.?" + "dev", re.I)
+    @staticmethod
+    def _held_fixture(flag=True):
+        pricing = json.loads(json.dumps(PRICING))
+        pricing.setdefault("providers", {})["heldvendor"] = {"search": {"model": "credits", "free_tier": {"units_per_month": 1000}}}
+        entry = {"id": "heldvendor", "name": "Held Vendor", "categories": ["search", "scrape"],
+                 "pricing_url": "https://example.com/pricing", "key_env": "HELD_VENDOR_API_KEY"}
+        if flag:
+            entry["exclude_from_also_priced"] = True
+        return pricing, [p for p in PROVIDERS if p["id"] != "heldvendor"] + [entry]
+
+    def test_also_priced_flag_keeps_held_vendor_off_line_eleven(self):  # AC22 (a)(b)
+        pricing, provs = self._held_fixture(True)
+        u = P.untested_providers(pricing, LATEST, provs)
+        self.assertEqual(len(u), 11)
+        self.assertNotIn("Held Vendor", u)
+
+    def test_also_priced_without_flag_is_twelve(self):  # AC22 (c): the flag, not chance, excludes it
+        pricing, provs = self._held_fixture(False)
+        u = P.untested_providers(pricing, LATEST, provs)
+        self.assertEqual(len(u), 12)
+        self.assertIn("Held Vendor", u)
+
+    def test_held_vendor_not_on_prices_page_and_no_logo(self):  # AC21, AC6
+        self.assertNotRegex(page("/prices/"), self.HELD)
+        self.assertEqual([r["provider"] for r in P.price_rows(PRICING, LATEST, PROVIDERS)], ["apify", "browserless", "exa", "tavily"])
+        logo = re.compile(self.HELD.pattern + r"[^\s\"']*\.(svg|png|jpe?g|webp)", re.I)
+        for base in (R / "src", D):
+            for f in base.rglob("*"):
+                self.assertNotRegex(f.name, self.HELD, str(f))
+                if f.is_file() and f.suffix in TEXT_SUFFIXES:
+                    self.assertNotRegex(f.read_text(errors="ignore"), logo, str(f))
+
     def test_placeholder_constant(self):  # AC27 (constant kept)
         self.assertEqual(P.PLACEHOLDER, "[[LINDSAY-PLACEHOLDER]]")
 
