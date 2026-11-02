@@ -1224,7 +1224,7 @@ class W43GradingNote(unittest.TestCase):
 class ApifyRetest(unittest.TestCase):
     """AWI Apify retest (preliminary): section placement, copy numbers vs the pinned retest JSON, chart bytes and alt text, fairness wording."""
     META = json.loads((R / "content/retest-apify-2026-10-26.json").read_text())
-    PARA = "Apify suggested a fairer setup, so we reran their tools on this week's 21 news items. Their RAG Web Browser search got a longer timeout (240 seconds per request), and we added their Web Fetch tool for reading pages. In one run, Web Fetch passed 19 of 21 and RAG search passed 16 of 21, with no timeouts. This week's set is short, below our usual minimum of 25 items, so treat these numbers as preliminary. Thanks to Apify for the nudge. My bots and I run this benchmark, and feedback like this makes it better."
+    PARA = "Apify suggested a fairer setup, so on Oct 26 we reran their tools on that week's 21 news items. Their RAG Web Browser search got a longer timeout (240 seconds per request), and we added their Web Fetch tool for reading pages. In one run, Web Fetch passed 19 of 21 and RAG search passed 16 of 21, with no timeouts. That set is short, below our usual minimum of 25 items, so treat these numbers as preliminary. Thanks to Apify for the nudge. My bots and I run this benchmark, and feedback like this makes it better."
     CAPTION = "Preliminary: one run per setup on a short 21-item set. No earlier Apify run used these items, so there is no before-and-after comparison."
     ALT = "Bar chart, preliminary: on 21 AgentWebIndex news items, apify/web-fetch passed 19 and apify/rag-web-browser, with a 240-second timeout, passed 16, with 0 timeouts. One run per setup on a short set."
 
@@ -1241,9 +1241,9 @@ class ApifyRetest(unittest.TestCase):
         self.assertIn('<span class="pill">Preliminary</span>', self.sec)
 
     def test_copy_verbatim_and_numbers_match_run_data(self):
-        paras = re.findall(r"<p>(.*?)</p>", self.sec, re.S)
+        paras = re.findall(r"<p>(.*?)</p>", self.sec, re.S)   # the prior-run label is a <p class=...>, tested in test_dated_as_prior_run
         self.assertEqual([norm(html.unescape(text_of(x))) for x in paras], [self.PARA])   # word-for-word approved paragraph, nothing added before or after
-        self.assertEqual(norm(html.unescape(text_of(self.sec[self.sec.index(">") + 1:]))), "Apify retest (preliminary) Preliminary " + self.PARA + " " + self.CAPTION)   # and no other text anywhere in the section
+        self.assertEqual(norm(html.unescape(text_of(self.sec[self.sec.index(">") + 1:]))), "Prior run: Oct 26, 2026 Apify retest (preliminary) Preliminary " + self.PARA + " " + self.CAPTION)   # and no other text anywhere in the section
         m, runs = self.META, {r["tool"]: r for r in self.META["runs"]}
         wf, rag = runs["apify/web-fetch"], runs["apify/rag-web-browser"]
         n = m["n"]
@@ -1252,9 +1252,21 @@ class ApifyRetest(unittest.TestCase):
         self.assertEqual((wf["timeouts"], rag["timeouts"]), (0, 0))
         self.assertIn(f"Web Fetch passed {wf['pass_regraded']} of {n} and RAG search passed {rag['pass_regraded']} of {n}, with no timeouts", self.PARA)
         self.assertIn(f"({rag['timeout_s']} seconds per request)", self.PARA)
-        self.assertIn(f"this week's {n} news items", self.PARA)
+        self.assertIn(f"on Oct 26 we reran their tools on that week's {n} news items", self.PARA)
         self.assertIn(f"usual minimum of {m['minimum']} items", self.PARA)
         self.assertEqual(rag["grader"], "canon-2026-10-20")
+
+    def test_dated_as_prior_run(self):  # Kitty t1 X2: the Oct 26 retest must not read as this week's Apify data under "Apify did not run this week"
+        self.assertIn('<section id="apify-retest" class="retest"><div class="wrap"><div class="col"><p class="prior-run pill" data-prior-run>Prior run: Oct 26, 2026</p><h3>', self.s)
+        self.assertTrue(self.sec.startswith('id="apify-retest" class="retest"><div class="wrap"><div class="col"><p class="prior-run pill" data-prior-run>Prior run: Oct 26, 2026</p><h3>'))
+        self.assertTrue(render.RETEST.endswith("2026-10-26"))
+        t = norm(html.unescape(text_of(self.sec)))
+        self.assertNotRegex(t, r"(?i)this week")
+        for mutant in (self.PARA.replace("on Oct 26 we reran their tools on that week's", "we reran their tools on this week's"),
+                       self.PARA.replace("That set is short", "This week's set is short")):
+            self.assertRegex(mutant, r"(?i)this week")   # mutants: the old wording would be caught
+        stripped = self.sec.replace('<p class="prior-run pill" data-prior-run>Prior run: Oct 26, 2026</p>', "", 1)   # mutant: label missing
+        self.assertFalse(stripped.startswith(self.sec[:self.sec.index("<h3>")]))
 
     def test_chart_bytes_alt_and_caption(self):
         f = R / self.META["chart"]
@@ -1497,8 +1509,25 @@ class W45Results(unittest.TestCase):
             self.assertRegex(sec, r'^<section id="' + sid + r'"><div class="wrap"><div class="col"><p class="prior-run pill" data-prior-run>' + re.escape(want) + "</p>")
         self.assertNotIn("Prior run", self.s[self.s.index('<section id="latest-week">'):self.s.index('<section id="run">')])
         stripped = re.sub(r'<p class="prior-run pill" data-prior-run>.*?</p>', "", self.s, count=1)   # mutant: label missing
-        self.assertEqual(stripped.count("data-prior-run"), 1)
+        self.assertEqual(stripped.count("data-prior-run"), self.s.count("data-prior-run") - 1)
         self.assertFalse(all(f'<section id="{sid}"><div class="wrap"><div class="col"><p class="prior-run' in stripped for sid in ("run", "details")))
+
+    def test_live_not_held_pinned_to_keenable_only(self):  # kills Kitty's T11: an extra provider in live_not_held
+        self.assertEqual(self.MAN["live_not_held"], {"keenable": "Keenable"})
+        self.assertEqual(pinmod.W45_LIVE_NOT_HELD, {"keenable": "Keenable"})
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / "site"
+            shutil.copytree(R, root, ignore=shutil.ignore_patterns("dist", ".git", "node_modules"))
+            f = root / "content/w45-results.json"
+            for bad in ({"keenable": "Keenable", "exa": "Exa"}, {}, {"keenable": "Keen"}, {"exa": "Exa"}):
+                m = json.loads(f.read_text()); m["live_not_held"] = bad; f.write_text(json.dumps(m))
+                self.assertTrue(any("live_not_held" in x for x in pinmod.check(root)), bad)   # build fails
+        man = dict(self.MAN, live_not_held={"keenable": "Keenable", "exa": "Exa"})
+        real = json.loads
+        with unittest.mock.patch.object(self.tr, "json", wraps=json) as j:
+            j.loads.side_effect = lambda t, *a, **k: man if t == (R / "content/w45-results.json").read_text() else real(t, *a, **k)
+            errs, _, _ = self.tr.trace(D / "index.html")
+        self.assertTrue(any("Keenable-only" in x for x in errs), errs)   # trace fails too, independently
 
     def test_build_fails_if_regrade_file_edited(self):
         with tempfile.TemporaryDirectory() as d:

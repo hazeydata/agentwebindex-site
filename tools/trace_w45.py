@@ -162,6 +162,8 @@ def trace(index_html, evidence=None):
         ok.append(f"provider (ran this week) = {heads['provider']}")
     # 'X: not run this week' lines: one per live provider (manifest live_not_held) with no week-45 regrade row, derived from the rows
     ran_ids = {r["provider"] for _, r in want.values()}
+    if man.get("live_not_held") != {"keenable": "Keenable"}:   # Keenable-only ruling (Lucille 2, Nov 2 2026); independent of pins.py
+        errs.append(f"manifest live_not_held {man.get('live_not_held')} is not exactly Keenable (Keenable-only ruling)")
     exp_nr = [nm for pid, nm in (man.get("live_not_held") or {}).items() if pid not in ran_ids]
     got_nr = [norm(c["text"]) for c in sec.cells if c["label"] is None and c["src"] == "not_run"]
     full = full_text = norm("".join(sec.text))

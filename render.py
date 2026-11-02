@@ -425,7 +425,9 @@ def section_retest(ctx):
     cap = ctx.doc.field(title, "Caption")
     src = "/assets/retest/" + Path(meta["chart"]).name
     src350 = "/assets/retest/" + Path(meta["chart_350"]).name   # 350px variant like the weekly charts (252-unit viewBox shown at 350px)
-    return (f'<section id="apify-retest" class="retest"><div class="wrap"><div class="col"><h3>{e(title)} <span class="pill">Preliminary</span></h3>'
+    y, mo, dd = (int(t) for t in RETEST.rsplit("-", 3)[1:])   # the retest's run date is in its pinned content name
+    prior = f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 45 results", "Prior run"))} {MONTHS[mo - 1]} {dd}, {y}</p>'
+    return (f'<section id="apify-retest" class="retest"><div class="wrap"><div class="col">{prior}<h3>{e(title)} <span class="pill">Preliminary</span></h3>'
             f'<p>{inline(para)}</p></div><figure class="retest-fig"><picture><source media="(max-width: 959.98px)" srcset="{src350}">'
             f'<img src="{src}" alt="{e(meta["alt"], quote=True)}" width="768" height="432" loading="lazy"></picture>'
             f'<p class="retest-caption">{e(cap)}</p></figure></div></section>')
