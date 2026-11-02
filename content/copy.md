@@ -61,6 +61,8 @@ Apify suggested a fairer setup, so we reran their tools on this week's 21 news i
 <!-- Source: AWI-W45-PUBLISH-001 (stage only). No numbers here: every number in this section is computed from content/w45-tables-regrade.json, the tables.py regrade of the Nov 2, 2026 run. -->
 **Title:** Week 45 results
 **Ran:** Ran this week:
+**Not run:** not run this week
+**Prior run:** Prior run:
 **Coverage:** Coverage is partial this week. Only the providers in this table ran; no other provider has a week 45 result, and their latest results are the older runs further down the page.
 **Apify:** Apify did not run this week. It reached its monthly spending cap, so it has no week 45 results and stays out until its billing cycle resets on Nov 16.
 **Failed:** Failed checks stay failed. We do not rerun or drop them, and every pass rate counts every check we attempted.

@@ -8,5 +8,9 @@
  "regrade_source": "AWI-W45-BASE-RUN-001 evidence implement/tables-regrade.json",
  "regrade_commit": "7b40782af09b5fb7d5b79bca0c636b315892382c",
  "run_logs_commit": "7651c2d02079da76f7204cc963f339e1270991a9",
- "run_logs_pr": "https://github.com/hazeydata/agentwebindex/pull/48"
+ "run_logs_pr": "https://github.com/hazeydata/agentwebindex/pull/48",
+ "live_not_held": {
+  "keenable": "Keenable"
+ },
+ "live_not_held_note": "Providers that are live (not publish_hold) and must be accounted for in week 45: a provider here with no week-45 regrade row gets the copy line '<Name>: not run this week'. Lucille 2 ruling, Nov 2 2026: Keenable is live; AC-4 lifted for Keenable only because it predates Fred's Oct 26 publish approval for Keenable. Whether it ran is never typed here: it is derived from the regrade rows."
 }

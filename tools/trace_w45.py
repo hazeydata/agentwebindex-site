@@ -9,7 +9,8 @@ Checks (exit 1 on any failure):
      and its text equals that field formatted here (own half-up formatters, independent of prices.py);
   4. the Passed link points to the row's own run log at the manifest run_logs_commit;
   5. no number appears in the section outside a traced cell unless it is in the copy.md "Week 45 results" text;
-  6. Apify has no week-45 row (cap reached, out until its Nov 16 cycle).
+  6. Apify has no week-45 row (cap reached, out until its Nov 16 cycle);
+  7. each live provider in the manifest's live_not_held with no week-45 regrade row has exactly one '<Name>: not run this week' line, and no other.
 """
 import hashlib, html, json, re, sys
 from decimal import Decimal, ROUND_HALF_UP
@@ -144,7 +145,7 @@ def trace(index_html, evidence=None):
                     if c["hrefs"] != [url]:
                         errs.append(f"{key} Passed link {c['hrefs']} != {url}")
     # header cells: run date and the ran-this-week list are derived from the same rows
-    heads = {c["src"]: norm(c["text"]) for c in sec.cells if c["label"] is None}
+    heads = {c["src"]: norm(c["text"]) for c in sec.cells if c["label"] is None and c["src"] != "not_run"}
     dates = sorted({r["run_date"] for _, r in want.values()})
     if heads.get("run_date") != (day(dates[0]) if len(dates) == 1 else None):
         errs.append(f"heading run date {heads.get('run_date')!r} != {dates}")
@@ -158,6 +159,19 @@ def trace(index_html, evidence=None):
         errs.append(f"ran-this-week {heads.get('provider')!r} != {ran}")
     else:
         ok.append(f"provider (ran this week) = {heads['provider']}")
+    # 'X: not run this week' lines: one per live provider (manifest live_not_held) with no week-45 regrade row, derived from the rows
+    ran_ids = {r["provider"] for _, r in want.values()}
+    exp_nr = [nm for pid, nm in (man.get("live_not_held") or {}).items() if pid not in ran_ids]
+    got_nr = [norm(c["text"]) for c in sec.cells if c["label"] is None and c["src"] == "not_run"]
+    full = norm("".join(sec.text))
+    if got_nr != exp_nr:
+        errs.append(f"not-run lines {got_nr} != live providers with no week-45 row {exp_nr}")
+    else:
+        for nm in exp_nr:
+            if f"{nm}: not run this week" not in full:
+                errs.append(f"not-run line for {nm} is not '{nm}: not run this week'")
+            else:
+                ok.append(f"not_run = {nm} (no week-45 regrade row)")
     copy = "\n".join(_copy_section())
     allowed = set(NUM.findall(copy + " " + " ".join(COLUMNS)))   # copy text and the fixed column headers
     stray = sorted({t for t in NUM.findall(" ".join(sec.untraced)) if t not in allowed})

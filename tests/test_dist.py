@@ -1089,14 +1089,26 @@ class Polish(unittest.TestCase):
         for body in roots:
             self.assertIn("--on-acc: #FFFFFF;", body)
 
-    # Pattern is assembled from parts so this file itself never contains the names: AC-4 requires
-    # the repo-wide case-insensitive grep for the two names (dotted or not) to return nothing, guard included.
-    BANNED = re.compile(("keen" + "able|context" + r"\.?" + "dev").encode(), re.I)
+    # Pattern is assembled from parts so this file itself never contains the name: AC-4 requires
+    # the repo-wide case-insensitive grep for the held provider name (dotted or not) to return nothing, guard included.
+    # Keenable is no longer banned (Lucille 2 ruling, Nov 2 2026): "AC-4 predates Fred's Oct 26 publish approval for Keenable."
+    BANNED = re.compile(("context" + r"\.?" + "dev").encode(), re.I)
+    AC4_KEENABLE_REASON = "AC-4 predates Fred's Oct 26 publish approval for Keenable."
 
-    def test_banned_names_absent(self):  # AC-4: every tracked file in the repo AND every file in dist/
+    def banned_hits(self, files, root=R):
+        return sorted({str(f.relative_to(root)) for f in files if f.is_file() and self.BANNED.search(f.read_bytes())})
+
+    def test_banned_names_absent(self):  # AC-4 (held provider only): every tracked file in the repo AND every file in dist/
         files = repo_files() + [f for f in D.rglob("*") if f.is_file()]
-        hits = sorted({str(f.relative_to(R)) for f in files if f.is_file() and self.BANNED.search(f.read_bytes())})
-        self.assertEqual(hits, [])
+        self.assertEqual(self.banned_hits(files), [])
+
+    def test_ac4_lifted_for_keenable_only(self):  # Lucille 2 ruling, Nov 2 2026: AC-4 predates Fred's Oct 26 publish approval for Keenable.
+        self.assertIn("Fred's Oct 26 publish approval for Keenable", self.AC4_KEENABLE_REASON)
+        self.assertFalse(self.BANNED.search(b"Keenable: not run this week"))
+        with tempfile.TemporaryDirectory() as d:
+            for i, txt in enumerate(("context" + "dev", "Context" + ".dev results", "CONTEXT" + "DEV")):   # mutant: the held name mentioned
+                f = Path(d) / f"m{i}.html"; f.write_text(f"<p>{txt}</p>")
+                self.assertEqual(self.banned_hits([f], Path(d)), [f.name], txt)
 
     def test_each_claim_once(self):
         site = " ".join(text_of(page(p)) for p in PAGES)
@@ -1403,6 +1415,36 @@ class W45Results(unittest.TestCase):
         self.assertEqual(re.findall(r'<tr data-provider="([a-z]+)"', sec), ["firecrawl", "firecrawl", "brightdata"])
         fails = re.findall(r'data-src="tables\.[a-z]+\.\d+\.failed\.v" class="mono">(\d+)<', sec)
         self.assertEqual(fails, ["3", "7", "51"])   # failed rows stay failed (values traced in test_every_cell_traces_to_regrade)
+
+    def test_keenable_not_run_line_derived_from_regrade(self):
+        sec = self.s[self.s.index('<section id="latest-week">'):]
+        sec = sec[:sec.index("</section>") + 10]
+        self.assertIn("Keenable: not run this week", norm(html.unescape(text_of(sec))))
+        line = re.search(r'<p class="lcopy" data-copy="not-run">.*?</p>', sec).group(0)
+        for name, m in {"keenable line missing": sec.replace(line, "", 1),
+                        "keenable name changed": sec.replace('data-src="not_run">Keenable<', 'data-src="not_run">Keen<', 1),
+                        "extra not-run line": sec.replace(line, line + line.replace("Keenable", "Exa"), 1)}.items():
+            errs, _, _ = self._trace(self.s.replace(sec, m))
+            self.assertTrue(errs, name)
+        # if the regrade had a keenable week-45 row, the line must go: the trace derives it from the rows, not from the page
+        man = dict(self.MAN, live_not_held={"firecrawl": "Firecrawl"})
+        with unittest.mock.patch.object(self.tr, "json", wraps=json) as j:
+            real = json.loads
+            j.loads.side_effect = lambda t, *a, **k: man if t == (R / "content/w45-results.json").read_text() else real(t, *a, **k)
+            errs, _, _ = self.tr.trace(D / "index.html")
+        self.assertTrue(any("not-run lines" in x for x in errs), errs)
+
+    def test_prior_run_label_on_old_tables(self):
+        want = "Prior run: " + render.day_label(LATEST["run_date"])
+        self.assertEqual(want, "Prior run: Oct 23, 2026")
+        for sid in ("run", "details"):
+            sec = self.s[self.s.index(f'<section id="{sid}">'):]
+            sec = sec[:sec.index("</section>")]
+            self.assertRegex(sec, r'^<section id="' + sid + r'"><div class="wrap"><div class="col"><p class="prior-run pill" data-prior-run>' + re.escape(want) + "</p>")
+        self.assertNotIn("Prior run", self.s[self.s.index('<section id="latest-week">'):self.s.index('<section id="run">')])
+        stripped = re.sub(r'<p class="prior-run pill" data-prior-run>.*?</p>', "", self.s, count=1)   # mutant: label missing
+        self.assertEqual(stripped.count("data-prior-run"), 1)
+        self.assertFalse(all(f'<section id="{sid}"><div class="wrap"><div class="col"><p class="prior-run' in stripped for sid in ("run", "details")))
 
     def test_build_fails_if_regrade_file_edited(self):
         with tempfile.TemporaryDirectory() as d:

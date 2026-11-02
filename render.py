@@ -224,6 +224,7 @@ def section_run(ctx):
     rows = "".join(results_row(ctx, r) for r in run_rows(ctx))
     bullets = "".join(f"<li><b>{e(a)}</b>{' ' + e(b) if b else ''}</li>" for a, b in findings(ctx))
     return ('<section id="run"><div class="wrap"><div class="col">'
+            f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 45 results", "Prior run"))} {e(day_label(ctx.latest["run_date"]))}</p>'
             f'<h2>Results, {e(day_label(ctx.latest["run_date"]))} run</h2>'
             f'<p class="lcopy">{e(intro_sentence(ctx))}</p><p class="lcopy strong">{e(headline_sentence(ctx))}.</p></div>'
             f'<div class="rows" role="list">{rows}</div>'
@@ -371,7 +372,11 @@ def section_w45(ctx):
         tds = "".join(f'<td data-label="{e(c)}" data-src="{e(s)}"{"" if c in ("Category", "Flags") else mono}>{h}</td>' for c, s, h in cells[1:])
         body.append(f'<tr data-provider="{e(r["provider"])}"><th scope="row" data-label="{first[0]}" data-src="{e(first[1])}">{first[2]}</th>{tds}</tr>')
     head = "".join(f'<th scope="col">{e(c)}</th>' for c in W45_COLS)
-    paras = "".join(f'<p class="lcopy" data-copy="{k.lower()}">{inline(d.field("Week 45 results", k))}</p>' for k in ("Coverage", "Apify", "Failed", "Skipped"))
+    meta, _ = w45_doc(ctx)
+    ran_ids = {r["provider"] for _, _, r in rows}
+    not_run = "".join(f'<p class="lcopy" data-copy="not-run"><span data-src="not_run">{e(nm)}</span>: {e(d.field("Week 45 results", "Not run"))}</p>'
+                      for pid, nm in (meta.get("live_not_held") or {}).items() if pid not in ran_ids)   # derived from the regrade rows, never typed
+    paras = not_run + "".join(f'<p class="lcopy" data-copy="{k.lower()}">{inline(d.field("Week 45 results", k))}</p>' for k in ("Coverage", "Apify", "Failed", "Skipped"))
     return ('<section id="latest-week"><div class="wrap"><div class="col">'
             f'<h2>{e(d.field("Week 45 results", "Title"))}, <span data-src="run_date">{e(day_label(day)) if day else ""}</span> run</h2>'
             f'<p class="lcopy" data-copy="ran">{e(d.field("Week 45 results", "Ran"))} <span data-src="provider">{e(", ".join(ran))}</span>.</p>{paras}</div>'
@@ -443,7 +448,8 @@ def every_row(ctx):
 
 
 def section_details(ctx):
-    return f'<section id="details"><div class="wrap"><div class="col"><h2>Details</h2></div>{earlier_runs(ctx)}{every_row(ctx)}</div></section>'
+    prior = f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 45 results", "Prior run"))} {e(day_label(ctx.latest["run_date"]))}</p>'
+    return f'<section id="details"><div class="wrap"><div class="col">{prior}<h2>Details</h2></div>{earlier_runs(ctx)}{every_row(ctx)}</div></section>'
 
 
 def section_sponsor(ctx):

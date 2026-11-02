@@ -271,3 +271,6 @@ h1 { font-size: 2.25rem; line-height: 44px; } h2 { font-size: 1.75rem; line-heig
   .rows .row { display: grid; grid-template-columns: 1fr; gap: var(--s-1); }
   .rows .row .val-pass, .rows .row .val-cost { font: 400 13px/20px var(--font-mono); font-variant-numeric: tabular-nums; }
 }
+
+/* AWI-W45-PUBLISH-001: label on the older weekly tables (Lucille 2 ruling) */
+.prior-run { font-weight: 600; margin: 0 0 8px; }
