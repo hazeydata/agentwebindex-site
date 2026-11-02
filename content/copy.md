@@ -63,8 +63,11 @@ Apify suggested a fairer setup, so we reran their tools on this week's 21 news i
 **Ran:** Ran this week:
 **Not run:** not run this week
 **Prior run:** Prior run:
-**Coverage:** Coverage is partial this week. Only the providers in this table ran; no other provider has a week 45 result, and their latest results are the older runs further down the page.
-**Apify:** Apify did not run this week. It reached its monthly spending cap, so it has no week 45 results and stays out until its billing cycle resets on Nov 16.
+**Coverage:** Coverage is partial this week. Only the providers in this table ran. For everyone else, the latest results are the older runs further down the page.
+**Apify:** Apify did not run this week. It hit its monthly spending cap and stays out until its billing resets on Nov 16.
+**Comparison:** Week 45 and the Oct 23 run below tested different providers, so compare rows only within a run.
+**Sample:** {provider}'s evergreen run used {n} of the {total} evergreen questions
+**Source:** Source: tables.py regrade of the {date} run logs (agentwebindex {sha})
 **Failed:** Failed checks stay failed. We do not rerun or drop them, and every pass rate counts every check we attempted.
 **Skipped:** Skipped (terms) means URLs we never called because the provider's terms are unclear for them. They count as neither passed nor failed.
 

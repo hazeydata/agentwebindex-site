@@ -173,7 +173,7 @@ def copy_strings():
                     add("/", body(l))
         elif title == "Week 45 results":
             for l in lines:
-                if not l.startswith("<!--"):
+                if not l.startswith("<!--") and "{" not in body(l):   # templated fields (Sample, Source) are checked filled-in by W45Results
                     add("/", body(l))
         elif title == "Methodology and limits":
             for l in lines:
@@ -1394,7 +1394,7 @@ class W45Results(unittest.TestCase):
         sec = sec[:sec.index("</section>") + 10]
         mutants = {
             "number changed": sec.replace(">18 of 21<", ">19 of 21<", 1),
-            "failed hidden": sec.replace('data-src="tables.scrape.0.failed.v" class="mono">51<', 'data-src="tables.scrape.0.failed.v" class="mono">0<', 1),
+            "failed hidden": sec.replace('data-src="tables.scrape.0.failed.v" class="mono num">51<', 'data-src="tables.scrape.0.failed.v" class="mono num">0<', 1),
             "row dropped": re.sub(r'<tr data-provider="brightdata">.*?</tr>', "", sec, count=1, flags=re.S),
             "wrong field": sec.replace('data-src="tables.search.6.entry_tier_cost_per_successful_1k.display"', 'data-src="tables.search.6.volume_tier_cost_per_successful_1k.display"', 1),
             "stray number": sec.replace("Coverage is partial", "Coverage is 99% partial", 1),
@@ -1410,10 +1410,10 @@ class W45Results(unittest.TestCase):
         sec = self.s[self.s.index('<section id="latest-week">'):]
         sec = sec[:sec.index("</section>")]
         d = copydoc.load()
-        for k in ("Coverage", "Apify", "Failed", "Skipped"):
+        for k in ("Coverage", "Apify", "Comparison", "Failed", "Skipped"):
             self.assertIn(norm(d.field("Week 45 results", k)), norm(html.unescape(text_of(sec))), k)
         self.assertEqual(re.findall(r'<tr data-provider="([a-z]+)"', sec), ["firecrawl", "firecrawl", "brightdata"])
-        fails = re.findall(r'data-src="tables\.[a-z]+\.\d+\.failed\.v" class="mono">(\d+)<', sec)
+        fails = re.findall(r'data-src="tables\.[a-z]+\.\d+\.failed\.v" class="mono num">(\d+)<', sec)
         self.assertEqual(fails, ["3", "7", "51"])   # failed rows stay failed (values traced in test_every_cell_traces_to_regrade)
 
     def test_keenable_not_run_line_derived_from_regrade(self):
@@ -1433,6 +1433,60 @@ class W45Results(unittest.TestCase):
             j.loads.side_effect = lambda t, *a, **k: man if t == (R / "content/w45-results.json").read_text() else real(t, *a, **k)
             errs, _, _ = self.tr.trace(D / "index.html")
         self.assertTrue(any("not-run lines" in x for x in errs), errs)
+
+    def _sec(self):
+        sec = self.s[self.s.index('<section id="latest-week">'):]
+        return sec[:sec.index("</section>") + 10]
+
+    def test_review_copy_and_headers(self):  # Lindsay (voice) and Ann (dataviz) review edits
+        t = norm(html.unescape(text_of(self._sec())))
+        for want in ("Coverage is partial this week. Only the providers in this table ran. For everyone else, the latest results are the older runs further down the page.",
+                     "Apify did not run this week. It hit its monthly spending cap and stays out until its billing resets on Nov 16.",
+                     "Week 45 and the " + render.day_label(LATEST["run_date"]).rsplit(",", 1)[0] + " run below tested different providers, so compare rows only within a run.",
+                     "Firecrawl's evergreen run used 40 of the 100 evergreen questions.",
+                     "Source: tables.py regrade of the Nov 2, 2026 run logs (agentwebindex 7651c2d)"):
+            self.assertIn(want, t)
+        heads = re.findall(r'<th scope="col"[^>]*>([^<]*)</th>', self._sec())
+        self.assertEqual(heads[4:6], ["Passed / checks", "Failed / checks"])
+        self.assertEqual(list(render.W45_COLS), list(self.tr.COLUMNS))
+        self.assertIn('<th scope="col" class="num">Pass rate</th>', self._sec())
+        self.assertLess(self._sec().index("</table>"), self._sec().index('data-copy="source"'))   # source line after the table
+
+    def test_numeric_columns_right_aligned(self):
+        css = (R / "src/style.css").read_text()
+        rule = "#w45-table td.num, #w45-table th.num { text-align: right; font-variant-numeric: tabular-nums; }"
+        self.assertIn(rule, css)
+        m = re.search(r"@media \(max-width: 767\.98px\) \{\n  \.dt thead \{ display: none; \}.*?\n\}", css, re.S)
+        self.assertIn("#w45-table td.num, #w45-table th.num { text-align: left; }", m.group(0))
+        self.assertLess(css.index(rule), m.start())
+        cells = re.findall(r'<td data-label="([^"]+)" data-src="[^"]+"( class="[^"]*")?>', self._sec())
+        self.assertEqual({l for l, c in cells if "num" in c}, set(render.W45_NUM))
+
+    def test_skipped_missing_renders_na(self):
+        self.assertEqual(render.w45_skipped({"skipped_tos": {"count": 30}}), "30")
+        self.assertEqual(render.w45_skipped({"skipped_tos": {"count": 0}}), "0")
+        for r in ({}, {"skipped_tos": None}, {"skipped_tos": {"count": None}}):
+            self.assertEqual(render.w45_skipped(r), "n/a", r)
+            self.assertEqual(self.tr.COLUMNS["Skipped (terms)"][1](r), "n/a", r)
+
+    def test_review_mutants_caught(self):
+        sec = self._sec()
+        sha = self.MAN["run_logs_commit"]
+        mutants = {
+            "evergreen total changed": sec.replace('data-src="sample_total:tables.search.7">100<', 'data-src="sample_total:tables.search.7">120<', 1),
+            "evergreen n changed": sec.replace('data-src="sample_n:tables.search.7">40<', 'data-src="sample_n:tables.search.7">41<', 1),
+            "sample clause dropped": re.sub(r' <span data-src="sample_provider:.*?evergreen questions\.', "", sec, count=1),
+            "comparison dropped": re.sub(r'<p class="lcopy" data-copy="comparison">.*?</p>', "", sec, count=1),
+            "source sha wrong": sec.replace(f'>{sha[:7]}</a>', ">7b40782</a>", 1),
+            "source link wrong": sec.replace(f"/commit/{sha}", "/commit/main", 1),
+            "source dropped": re.sub(r'<p class="lcopy" data-copy="source">.*?</p>', "", sec, count=1),
+            "old header": sec.replace('data-label="Passed / checks"', 'data-label="Passed"'),
+            "skipped 0 for 30": sec.replace('data-src="tables.scrape.0.skipped_tos.count" class="mono num">30<', 'data-src="tables.scrape.0.skipped_tos.count" class="mono num">n/a<', 1),
+        }
+        for name, m in mutants.items():
+            self.assertNotEqual(m, sec, name)
+            errs, _, _ = self._trace(self.s.replace(sec, m))
+            self.assertTrue(errs, name)
 
     def test_prior_run_label_on_old_tables(self):
         want = "Prior run: " + render.day_label(LATEST["run_date"])

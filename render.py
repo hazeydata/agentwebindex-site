@@ -315,7 +315,7 @@ def section_not_tested(ctx):
 
 
 W45 = "w45-results"
-W45_COLS = ("Provider", "Category", "Set", "Run date", "Passed", "Failed", "Pass rate",
+W45_COLS = ("Provider", "Category", "Set", "Run date", "Passed / checks", "Failed / checks", "Pass rate",
             "Per 1,000 passed checks", "List price per 1,000 calls", "Skipped (terms)", "Flags")
 
 
@@ -333,6 +333,27 @@ def w45_rows(ctx):
             if r.get("run_date") == meta["run_date"]]
 
 
+W45_NUM = ("Passed / checks", "Failed / checks", "Pass rate", "Per 1,000 passed checks", "List price per 1,000 calls", "Skipped (terms)")
+SAMPLE = re.compile(r"first (\d+) of (\d+) items")
+
+
+def w45_skipped(r):
+    """Skipped (terms) cell: the regrade's skipped_tos.count, or 'n/a' when the regrade has no skipped_tos (never a made-up 0)."""
+    c = (r.get("skipped_tos") or {}).get("count")
+    return "n/a" if c is None else str(c)
+
+
+def w45_samples(ctx):
+    """[(row index key, provider name, n, total)] for week-45 search_evergreen rows on a reduced sample. n and total come from the
+    regrade row's sample_note (tables.py writes it from the run log's set_rows and sample_of); n must equal the row's set_rows."""
+    out = []
+    for cat, i, r in w45_rows(ctx):
+        m = SAMPLE.search(r.get("sample_note") or "")
+        if r.get("set") == "search_evergreen" and m and int(m.group(1)) == r.get("set_rows"):
+            out.append((f"tables.{cat}.{i}", names(ctx).get(r["provider"], r["provider"]), m.group(1), m.group(2)))
+    return out
+
+
 def w45_cells(ctx, cat, i, r):
     """[(column, data-src, html)] for one row. data-src names the regrade fields the cell is computed from (tools/trace_w45.py checks it)."""
     meta, _ = w45_doc(ctx)
@@ -345,12 +366,12 @@ def w45_cells(ctx, cat, i, r):
             ("Category", f"{p}", e(cat)),
             ("Set", f"{p}.set", e(r["set"])),
             ("Run date", f"{p}.run_date", e(r["run_date"])),
-            ("Passed", f"{p}.passed.v,{p}.attempted.v", link(log, f"{v(r['passed'])} of {v(r['attempted'])}")),
-            ("Failed", f"{p}.failed.v", e(str(v(r["failed"])))),
+            ("Passed / checks", f"{p}.passed.v,{p}.attempted.v", link(log, f"{v(r['passed'])} of {v(r['attempted'])}")),
+            ("Failed / checks", f"{p}.failed.v", e(str(v(r["failed"])))),
             ("Pass rate", f"{p}.success_rate.v", e(P.fmt_pct(v(r["success_rate"])))),
             ("Per 1,000 passed checks", f"{p}.entry_tier_cost_per_successful_1k.display", e((r.get("entry_tier_cost_per_successful_1k") or {}).get("display") or "n/a")),
             ("List price per 1,000 calls", f"{p}.entry_tier_cost_per_1k.display", e((r.get("entry_tier_cost_per_1k") or {}).get("display") or "n/a")),
-            ("Skipped (terms)", f"{p}.skipped_tos.count", e(str((r.get("skipped_tos") or {}).get("count", 0)))),
+            ("Skipped (terms)", f"{p}.skipped_tos.count", e(w45_skipped(r))),
             ("Flags", f"{p}.flags", e(flags))]
 
 
@@ -369,19 +390,27 @@ def section_w45(ctx):
         cells = w45_cells(ctx, cat, i, r)
         first = cells[0]
         mono = ' class="mono"'
-        tds = "".join(f'<td data-label="{e(c)}" data-src="{e(s)}"{"" if c in ("Category", "Flags") else mono}>{h}</td>' for c, s, h in cells[1:])
+        tds = "".join(f'<td data-label="{e(c)}" data-src="{e(s)}"{' class="mono num"' if c in W45_NUM else "" if c in ("Category", "Flags") else mono}>{h}</td>' for c, s, h in cells[1:])
         body.append(f'<tr data-provider="{e(r["provider"])}"><th scope="row" data-label="{first[0]}" data-src="{e(first[1])}">{first[2]}</th>{tds}</tr>')
-    head = "".join(f'<th scope="col">{e(c)}</th>' for c in W45_COLS)
+    head = "".join(f'<th scope="col"{' class="num"' if c in W45_COLS and c in W45_NUM else ""}>{e(c)}</th>' for c in W45_COLS)
     meta, _ = w45_doc(ctx)
     ran_ids = {r["provider"] for _, _, r in rows}
     not_run = "".join(f'<p class="lcopy" data-copy="not-run"><span data-src="not_run">{e(nm)}</span>: {e(d.field("Week 45 results", "Not run"))}</p>'
                       for pid, nm in (meta.get("live_not_held") or {}).items() if pid not in ran_ids)   # derived from the regrade rows, never typed
     paras = not_run + "".join(f'<p class="lcopy" data-copy="{k.lower()}">{inline(d.field("Week 45 results", k))}</p>' for k in ("Coverage", "Apify", "Failed", "Skipped"))
+    f = lambda k: d.field("Week 45 results", k)
+    samples = "".join(" " + e(f("Sample")).replace("{provider}", f'<span data-src="sample_provider:{k}">{e(nm)}</span>')
+                      .replace("{n}", f'<span data-src="sample_n:{k}">{n}</span>').replace("{total}", f'<span data-src="sample_total:{k}">{t}</span>') + "."
+                      for k, nm, n, t in w45_samples(ctx))
+    paras += f'<p class="lcopy" data-copy="comparison">{e(f("Comparison"))}{samples}</p>'
+    sha = meta["run_logs_commit"]
+    source = (f'<p class="lcopy" data-copy="source">' + e(f("Source")).replace("{date}", f'<span data-src="source_date">{e(day_label(day)) if day else ""}</span>')
+              .replace("{sha}", f'<a data-src="run_logs_commit" href="{DATA_REPO}/commit/{e(sha)}">{e(sha[:7])}</a>') + '</p>')
     return ('<section id="latest-week"><div class="wrap"><div class="col">'
             f'<h2>{e(d.field("Week 45 results", "Title"))}, <span data-src="run_date">{e(day_label(day)) if day else ""}</span> run</h2>'
             f'<p class="lcopy" data-copy="ran">{e(d.field("Week 45 results", "Ran"))} <span data-src="provider">{e(", ".join(ran))}</span>.</p>{paras}</div>'
             f'<div class="tablewrap"><table class="dt" id="w45-table"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
-            '</div></section>')
+            f'<div class="col">{source}</div></div></section>')
 
 
 RETEST = "retest-apify-2026-10-26"

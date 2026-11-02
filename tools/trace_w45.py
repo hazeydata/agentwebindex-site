@@ -37,12 +37,12 @@ COLUMNS = {
     "Category": ([""], None),           # the regrade table key
     "Set": (["set"], lambda r: r["set"]),
     "Run date": (["run_date"], lambda r: r["run_date"]),
-    "Passed": (["passed.v", "attempted.v"], lambda r: f'{r["passed"]["v"]} of {r["attempted"]["v"]}'),
-    "Failed": (["failed.v"], lambda r: str(r["failed"]["v"])),
+    "Passed / checks": (["passed.v", "attempted.v"], lambda r: f'{r["passed"]["v"]} of {r["attempted"]["v"]}'),
+    "Failed / checks": (["failed.v"], lambda r: str(r["failed"]["v"])),
     "Pass rate": (["success_rate.v"], lambda r: pct(r["success_rate"]["v"])),
     "Per 1,000 passed checks": (["entry_tier_cost_per_successful_1k.display"], lambda r: r["entry_tier_cost_per_successful_1k"]["display"] or "n/a"),
     "List price per 1,000 calls": (["entry_tier_cost_per_1k.display"], lambda r: r["entry_tier_cost_per_1k"]["display"] or "n/a"),
-    "Skipped (terms)": (["skipped_tos.count"], lambda r: str(r["skipped_tos"]["count"])),
+    "Skipped (terms)": (["skipped_tos.count"], lambda r: "n/a" if (r.get("skipped_tos") or {}).get("count") is None else str(r["skipped_tos"]["count"])),
     "Flags": (["flags"], lambda r: ", ".join(r["flags"]) or "none"),
 }
 
@@ -139,13 +139,14 @@ def trace(index_html, evidence=None):
                     errs.append(f"{key} {col}: page {got!r} != regrade {exp!r}")
                 else:
                     ok.append(f"{exp_src} = {got}")
-                if col == "Passed":
+                if col == "Passed / checks":
                     files = [s.get("file") for s in r["passed"].get("src", [])]
                     url = f"https://github.com/hazeydata/agentwebindex/blob/{man['run_logs_commit']}/bench/{files[0]}" if files else None
                     if c["hrefs"] != [url]:
                         errs.append(f"{key} Passed link {c['hrefs']} != {url}")
     # header cells: run date and the ran-this-week list are derived from the same rows
     heads = {c["src"]: norm(c["text"]) for c in sec.cells if c["label"] is None and c["src"] != "not_run"}
+    href = {c["src"]: c["hrefs"] for c in sec.cells if c["label"] is None}
     dates = sorted({r["run_date"] for _, r in want.values()})
     if heads.get("run_date") != (day(dates[0]) if len(dates) == 1 else None):
         errs.append(f"heading run date {heads.get('run_date')!r} != {dates}")
@@ -163,7 +164,7 @@ def trace(index_html, evidence=None):
     ran_ids = {r["provider"] for _, r in want.values()}
     exp_nr = [nm for pid, nm in (man.get("live_not_held") or {}).items() if pid not in ran_ids]
     got_nr = [norm(c["text"]) for c in sec.cells if c["label"] is None and c["src"] == "not_run"]
-    full = norm("".join(sec.text))
+    full = full_text = norm("".join(sec.text))
     if got_nr != exp_nr:
         errs.append(f"not-run lines {got_nr} != live providers with no week-45 row {exp_nr}")
     else:
@@ -172,6 +173,40 @@ def trace(index_html, evidence=None):
                 errs.append(f"not-run line for {nm} is not '{nm}: not run this week'")
             else:
                 ok.append(f"not_run = {nm} (no week-45 regrade row)")
+    # sample clause: a week-45 search_evergreen row whose set_rows is below the full set's size. The total is the set_rows of a
+    # regrade row (any week) on the same set_sha with no sample_note, i.e. a full-set run; the row's own sample_note must agree.
+    exp_s = []
+    for key, (c, r) in want.items():
+        if r.get("set") != "search_evergreen":
+            continue
+        full = {x.get("set_rows") for rows in doc["tables"].values() for x in rows if x.get("set_sha") == r.get("set_sha") and not x.get("sample_note")}
+        if len(full) == 1 and r.get("set_rows") < next(iter(full)):
+            tot = next(iter(full))
+            if f"first {r['set_rows']} of {tot} items" not in (r.get("sample_note") or ""):
+                errs.append(f"{key}: sample_note {r.get('sample_note')!r} disagrees with full-set size {tot}")
+            exp_s.append((key, names.get(r["provider"], r["provider"]), str(r["set_rows"]), str(tot)))
+    got_s = [(k.split(":", 1)[1], heads.get(f"sample_provider:{k.split(':', 1)[1]}"), heads.get(f"sample_n:{k.split(':', 1)[1]}"), heads.get(k))
+             for k in heads if k.startswith("sample_total:")]
+    if sorted(got_s) != sorted(exp_s) or any(k.startswith(("sample_n:", "sample_provider:")) and k.split(":", 1)[1] not in [g[0] for g in got_s] for k in heads):
+        errs.append(f"sample clause {got_s} != regrade-derived {exp_s}")
+    else:
+        for key, nm, a, t in exp_s:
+            if f"{nm}'s evergreen run used {a} of the {t} evergreen questions." not in full_text:
+                errs.append(f"sample clause for {key} not worded as copy")
+            else:
+                ok.append(f"sample = {nm} {a} of {t} ({key} set_rows; full-set size from same set_sha)")
+    if "compare rows only within a run." not in full_text:
+        errs.append("comparison line missing")
+    # source line: the run-logs commit from the manifest, and the run date from the rows
+    sha = man["run_logs_commit"]
+    if heads.get("run_logs_commit") != sha[:7] or href.get("run_logs_commit") != [f"https://github.com/hazeydata/agentwebindex/commit/{sha}"]:
+        errs.append(f"source sha {heads.get('run_logs_commit')!r} {href.get('run_logs_commit')} != manifest run_logs_commit {sha}")
+    elif heads.get("source_date") != (day(dates[0]) if len(dates) == 1 else None):
+        errs.append(f"source date {heads.get('source_date')!r} != {dates}")
+    elif f"Source: tables.py regrade of the {heads['source_date']} run logs (agentwebindex {sha[:7]})" not in full_text:
+        errs.append("source line not worded as copy")
+    else:
+        ok.append(f"source = agentwebindex {sha[:7]}, {heads['source_date']}")
     copy = "\n".join(_copy_section())
     allowed = set(NUM.findall(copy + " " + " ".join(COLUMNS)))   # copy text and the fixed column headers
     stray = sorted({t for t in NUM.findall(" ".join(sec.untraced)) if t not in allowed})
