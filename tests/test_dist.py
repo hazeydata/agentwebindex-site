@@ -171,6 +171,10 @@ def copy_strings():
                     chart = l[4:]
                 elif chart and chart.startswith(("Chart 1", "Chart 2")) and re.match(r"\*\*(Title|Caption):\*\*", l):
                     add("/", body(l))
+        elif title == "Week 45 results":
+            for l in lines:
+                if not l.startswith("<!--"):
+                    add("/", body(l))
         elif title == "Methodology and limits":
             for l in lines:
                 add("/methodology/", l[2:] if l.startswith("- ") else l)
@@ -657,7 +661,7 @@ class Results(unittest.TestCase):
     def test_section_order(self):  # AC12
         ids = re.findall(r'<(?:section|footer)\b[^>]*?(?:id="([a-z-]+)"|class="(site-footer)")', self.s)
         order = [a or b for a, b in ids]
-        self.assertEqual([x for x in order if x != ""], ["run", "pass-rate", "cost", "apify-retest", "not-tested", "details", "sponsor-newsletter", "site-footer"])
+        self.assertEqual([x for x in order if x != ""], ["latest-week", "run", "pass-rate", "cost", "apify-retest", "not-tested", "details", "sponsor-newsletter", "site-footer"])
         self.assertTrue(self.s.index('class="hero"') < self.s.index('id="run"'))
         self.assertIn('<aside id="sponsor-banner" class="sponsor"><b>Sponsored</b>', self.s)
         run = self.s[self.s.index('id="run"'):self.s.index('id="pass-rate"')]
@@ -1013,7 +1017,8 @@ class Polish(unittest.TestCase):
     def test_no_number_added_or_changed(self):
         base = json.loads((R / "tests/numbers_baseline.json").read_text())["pages"]
         for p in PAGES:
-            now = set(self.NUM.findall(text_of(re.sub(r"<svg\b.*?</svg>", " ", page(p), flags=re.S))))   # chart SVGs: pinned by sha256
+            body = re.sub(r'<section id="latest-week">.*?</section>', " ", page(p), flags=re.S)   # week-45 numbers: traced cell by cell by tools/trace_w45.py (W45Results)
+            now = set(self.NUM.findall(text_of(re.sub(r"<svg\b.*?</svg>", " ", body, flags=re.S))))   # chart SVGs: pinned by sha256
             self.assertEqual(sorted(now - set(base[p])), [], p)
         home = text_of(page("/"))
         for k, val in expected_numbers().items():
@@ -1348,6 +1353,65 @@ class ApifyRetest(unittest.TestCase):
     def test_weekly_table_data_unchanged_vs_main(self):
         self.assertEqual(hashlib.sha256((R / "data/benchmarks/latest.json").read_bytes()).hexdigest(), W43GradingNote.MAIN_LATEST_SHA256)
         self.assertEqual(hashlib.sha256((R / "tests/results_rows_baseline.json").read_bytes()).hexdigest(), W43GradingNote.MAIN_ROWS_SHA256)
+
+
+class W45Results(unittest.TestCase):
+    """AWI-W45-PUBLISH-001: week-45 section built only from content/w45-tables-regrade.json; every cell traced back to it."""
+    MAN = json.loads((R / "content/w45-results.json").read_text())
+
+    def setUp(self):
+        import importlib
+        self.tr = importlib.import_module("tools.trace_w45")
+        self.s = page("/")
+
+    def _trace(self, html_text):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "index.html"; f.write_text(html_text)
+            return self.tr.trace(f)
+
+    def test_every_cell_traces_to_regrade(self):
+        errs, ok, n = self.tr.trace(D / "index.html")
+        self.assertEqual(errs, [])
+        doc = json.loads((R / self.MAN["regrade_file"]).read_text())
+        rows = [r for t in doc["tables"].values() for r in t if r["run_date"] == self.MAN["run_date"]]
+        self.assertEqual(n, len(rows) * len(self.tr.COLUMNS))
+        self.assertEqual(hashlib.sha256((R / self.MAN["regrade_file"]).read_bytes()).hexdigest(), self.MAN["regrade_sha256"])
+
+    def test_trace_catches_each_defect(self):
+        sec = self.s[self.s.index('<section id="latest-week">'):]
+        sec = sec[:sec.index("</section>") + 10]
+        mutants = {
+            "number changed": sec.replace(">18 of 21<", ">19 of 21<", 1),
+            "failed hidden": sec.replace('data-src="tables.scrape.0.failed.v" class="mono">51<', 'data-src="tables.scrape.0.failed.v" class="mono">0<', 1),
+            "row dropped": re.sub(r'<tr data-provider="brightdata">.*?</tr>', "", sec, count=1, flags=re.S),
+            "wrong field": sec.replace('data-src="tables.search.6.entry_tier_cost_per_successful_1k.display"', 'data-src="tables.search.6.volume_tier_cost_per_successful_1k.display"', 1),
+            "stray number": sec.replace("Coverage is partial", "Coverage is 99% partial", 1),
+            "wrong run log": sec.replace("/blob/" + self.MAN["run_logs_commit"], "/blob/main", 1),
+            "apify row": sec.replace('<tr data-provider="brightdata">', '<tr data-provider="apify">', 1),
+        }
+        for name, m in mutants.items():
+            self.assertNotEqual(m, sec, name)
+            errs, _, _ = self._trace(self.s.replace(sec, m))
+            self.assertTrue(errs, name)
+
+    def test_coverage_failed_rows_and_holds(self):
+        sec = self.s[self.s.index('<section id="latest-week">'):]
+        sec = sec[:sec.index("</section>")]
+        d = copydoc.load()
+        for k in ("Coverage", "Apify", "Failed", "Skipped"):
+            self.assertIn(norm(d.field("Week 45 results", k)), norm(html.unescape(text_of(sec))), k)
+        self.assertEqual(re.findall(r'<tr data-provider="([a-z]+)"', sec), ["firecrawl", "firecrawl", "brightdata"])
+        fails = re.findall(r'data-src="tables\.[a-z]+\.\d+\.failed\.v" class="mono">(\d+)<', sec)
+        self.assertEqual(fails, ["3", "7", "51"])   # failed rows stay failed (values traced in test_every_cell_traces_to_regrade)
+
+    def test_build_fails_if_regrade_file_edited(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / "site"
+            shutil.copytree(R, root, ignore=shutil.ignore_patterns("dist", ".git", "node_modules"))
+            self.assertEqual(pinmod.check(root), [])
+            f = root / self.MAN["regrade_file"]
+            f.write_text(f.read_text().replace('"v": 18,', '"v": 19,', 1))
+            self.assertTrue(any("regrade_sha256" in x for x in pinmod.check(root)))
 
 
 class BrowserCheckHygiene(unittest.TestCase):

@@ -313,6 +313,72 @@ def section_not_tested(ctx):
             f'{foot}<h3>Not tested</h3><p>{inline(t)}</p><p><a href="/methodology/">Methodology and limits</a></p></details></div></section>')
 
 
+W45 = "w45-results"
+W45_COLS = ("Provider", "Category", "Set", "Run date", "Passed", "Failed", "Pass rate",
+            "Per 1,000 passed checks", "List price per 1,000 calls", "Skipped (terms)", "Flags")
+
+
+def w45_doc(ctx):
+    """(manifest, regrade doc) for week 45. The regrade file is the byte-identical tables.py output (sha256 pinned in the manifest)."""
+    meta = json.loads((ctx.content / f"{W45}.json").read_text())
+    return meta, json.loads((ctx.content.parent / meta["regrade_file"]).read_text())
+
+
+def w45_rows(ctx):
+    """[(category, index in that regrade table, row)] for every week-45 row (run_date == manifest run_date), in regrade order.
+    Failed rows are kept as they are; nothing is filtered on outcome."""
+    meta, doc = w45_doc(ctx)
+    return [(cat, i, r) for cat in P.CATS for i, r in enumerate((doc.get("tables") or {}).get(cat, []))
+            if r.get("run_date") == meta["run_date"]]
+
+
+def w45_cells(ctx, cat, i, r):
+    """[(column, data-src, html)] for one row. data-src names the regrade fields the cell is computed from (tools/trace_w45.py checks it)."""
+    meta, _ = w45_doc(ctx)
+    nm = names(ctx)
+    src = (r.get("passed") or {}).get("src") or []
+    log = f"{DATA_REPO}/blob/{meta['run_logs_commit']}/bench/{src[0]['file']}" if src and src[0].get("file") else ""
+    p = f"tables.{cat}.{i}"
+    flags = ", ".join(r.get("flags") or []) or "none"
+    return [("Provider", f"{p}.provider", e(nm.get(r["provider"], r["provider"]))),
+            ("Category", f"{p}", e(cat)),
+            ("Set", f"{p}.set", e(r["set"])),
+            ("Run date", f"{p}.run_date", e(r["run_date"])),
+            ("Passed", f"{p}.passed.v,{p}.attempted.v", link(log, f"{v(r['passed'])} of {v(r['attempted'])}")),
+            ("Failed", f"{p}.failed.v", e(str(v(r["failed"])))),
+            ("Pass rate", f"{p}.success_rate.v", e(P.fmt_pct(v(r["success_rate"])))),
+            ("Per 1,000 passed checks", f"{p}.entry_tier_cost_per_successful_1k.display", e((r.get("entry_tier_cost_per_successful_1k") or {}).get("display") or "n/a")),
+            ("List price per 1,000 calls", f"{p}.entry_tier_cost_per_1k.display", e((r.get("entry_tier_cost_per_1k") or {}).get("display") or "n/a")),
+            ("Skipped (terms)", f"{p}.skipped_tos.count", e(str((r.get("skipped_tos") or {}).get("count", 0)))),
+            ("Flags", f"{p}.flags", e(flags))]
+
+
+def section_w45(ctx):
+    """Week 45 results (AWI-W45-PUBLISH-001; no latency column: AC19 keeps latency off Results): every number from content/w45-tables-regrade.json; coverage said plainly in copy."""
+    d = ctx.doc
+    rows = w45_rows(ctx)
+    ran = []
+    for _, _, r in rows:
+        n = names(ctx).get(r["provider"], r["provider"])
+        if n not in ran:
+            ran.append(n)
+    day = rows[0][2]["run_date"] if rows else ""
+    body = []
+    for cat, i, r in rows:
+        cells = w45_cells(ctx, cat, i, r)
+        first = cells[0]
+        mono = ' class="mono"'
+        tds = "".join(f'<td data-label="{e(c)}" data-src="{e(s)}"{"" if c in ("Category", "Flags") else mono}>{h}</td>' for c, s, h in cells[1:])
+        body.append(f'<tr data-provider="{e(r["provider"])}"><th scope="row" data-label="{first[0]}" data-src="{e(first[1])}">{first[2]}</th>{tds}</tr>')
+    head = "".join(f'<th scope="col">{e(c)}</th>' for c in W45_COLS)
+    paras = "".join(f'<p class="lcopy" data-copy="{k.lower()}">{inline(d.field("Week 45 results", k))}</p>' for k in ("Coverage", "Apify", "Failed", "Skipped"))
+    return ('<section id="latest-week"><div class="wrap"><div class="col">'
+            f'<h2>{e(d.field("Week 45 results", "Title"))}, <span data-src="run_date">{e(day_label(day)) if day else ""}</span> run</h2>'
+            f'<p class="lcopy" data-copy="ran">{e(d.field("Week 45 results", "Ran"))} <span data-src="provider">{e(", ".join(ran))}</span>.</p>{paras}</div>'
+            f'<div class="tablewrap"><table class="dt" id="w45-table"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
+            '</div></section>')
+
+
 RETEST = "retest-apify-2026-10-26"
 
 
@@ -535,7 +601,7 @@ def page_meta(ctx):
 def slots(ctx):
     d = ctx.doc
     return {
-        "hero_results": hero_results(ctx), "run": section_run(ctx),
+        "hero_results": hero_results(ctx), "w45": section_w45(ctx), "run": section_run(ctx),
         "pass_rate": section_chart(ctx, "pass-rate", "Pass rate", "pass-rate", headline_sentence(ctx)),
         "cost": section_chart(ctx, "cost", "Cost per passed check", "cost-per-success", cost_title(ctx)),
         "not_tested": section_not_tested(ctx), "retest": section_retest(ctx), "details": section_details(ctx), "sponsor": section_sponsor(ctx),

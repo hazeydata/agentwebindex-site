@@ -57,6 +57,15 @@ Weekly news sets, before the frozen sets, plus Apify and Browserless browser run
 Apify suggested a fairer setup, so we reran their tools on this week's 21 news items. Their RAG Web Browser search got a longer timeout (240 seconds per request), and we added their Web Fetch tool for reading pages. In one run, Web Fetch passed 19 of 21 and RAG search passed 16 of 21, with no timeouts. This week's set is short, below our usual minimum of 25 items, so treat these numbers as preliminary. Thanks to Apify for the nudge. My bots and I run this benchmark, and feedback like this makes it better.
 **Caption:** Preliminary: one run per setup on a short 21-item set. No earlier Apify run used these items, so there is no before-and-after comparison.
 
+## Week 45 results
+<!-- Source: AWI-W45-PUBLISH-001 (stage only). No numbers here: every number in this section is computed from content/w45-tables-regrade.json, the tables.py regrade of the Nov 2, 2026 run. -->
+**Title:** Week 45 results
+**Ran:** Ran this week:
+**Coverage:** Coverage is partial this week. Only the providers in this table ran; no other provider has a week 45 result, and their latest results are the older runs further down the page.
+**Apify:** Apify did not run this week. It reached its monthly spending cap, so it has no week 45 results and stays out until its billing cycle resets on Nov 16.
+**Failed:** Failed checks stay failed. We do not rerun or drop them, and every pass rate counts every check we attempted.
+**Skipped:** Skipped (terms) means URLs we never called because the provider's terms are unclear for them. They count as neither passed nor failed.
+
 ## Chart briefs
 ### Chart 1: Pass rate on our test set
 - **Title:** Tavily passed 69% of our 100 evergreen checks, Exa 40%; Browserless passed 66% of 120 scrape checks

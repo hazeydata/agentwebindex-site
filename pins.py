@@ -76,6 +76,11 @@ def check(root, pins=None, vendored_sha=None):
             errs.append(f'data/_upstream/pricing.yaml differs from bench/pricing.yaml at {pins["data"][:12]} in AWI_DATA_REPO; run ./sync_data.sh {pins["data"]}')
     if vendored != pins["data"]:
         errs.append(f'data/_upstream/SOURCE sha {vendored} != pins.json data {pins["data"]}; run ./sync_data.sh {pins["data"]}')
+    w45 = root / "content/w45-results.json"
+    if w45.exists():   # AWI-W45-PUBLISH-001: the week-45 regrade file must be the exact tables.py output recorded in the manifest
+        m = json.loads(w45.read_text())
+        if sha256(root / m["regrade_file"]) != m["regrade_sha256"]:
+            errs.append(f'{m["regrade_file"]} does not match content/w45-results.json regrade_sha256 (never hand-edit the regrade output)')
     if sha256(root / "content/copy.md") != pins["copy_sha256"]:
         errs.append("content/copy.md does not match pins.json copy_sha256")
     if sha256(root / "content/chart-alt.md") != pins["chart_alt_sha256"]:

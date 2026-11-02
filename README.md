@@ -43,6 +43,14 @@ form `ms</`, and the copy cannot change. `render.py` `results_row` therefore put
 element, and the copy test (which collapses whitespace) still matches. A `<wbr>` or empty element would also work but adds markup for no reader benefit, so the
 newline stays; if AC19 is ever reworded to ignore whitespace-separated closings, delete it.
 
+## Week 45 results (AWI-W45-PUBLISH-001, staged)
+- `section#latest-week` on `/` sits right after the hero. It is built only from `content/w45-tables-regrade.json`. That file is a byte-identical copy of the `python -m awibench.tables runs OUT.json` regrade from AWI-W45-BASE-RUN-001. Rerun at agentwebindex `7b40782` it gives the same output except `generated_at`. `content/w45-results.json` records its sha256, the week, the run date (2026-11-02), the regrade commit and the run-log commit (`7651c2d`, the merge of agentwebindex#48). `pins.check()` fails the build if the regrade file's bytes differ from that sha256. Never hand-edit either file.
+- Rows: every regrade row with `run_date` 2026-11-02, in regrade order. Today that is Firecrawl search on news_2026-45 and on search_evergreen, plus Bright Data scrape on scrape_urls. Failed rows and failed counts are shown as they are. Apify has no week-45 row: it hit its cap and is out until Nov 16. Held providers never reach the regrade (tables.py drops them).
+- Columns: Provider, Category, Set, Run date, Passed (`passed.v of attempted.v`, linked to the run log at `7651c2d`), Failed, Pass rate (`fmt_pct`), Per 1,000 passed checks and List price per 1,000 calls (the regrade's own `display` strings), Skipped (terms) and Flags. There is no latency column, because AC19 keeps latency off Results. Each cell's `data-src` names the regrade fields it comes from.
+- Copy comes from the `## Week 45 results` section of `content/copy.md` (Title, Ran, Coverage, Apify, Failed, Skipped). It holds no results numbers.
+- `tools/trace_w45.py [dist/index.html] [--evidence tables-regrade.json] [--json OUT]` uses its own column map and its own formatters. It checks every cell against the regrade file, plus the row set, the run-log links and that Apify has no row. It also fails on any number in the section that is not in a traced cell, the copy or a column header. `run_tests.sh` runs it, and `tests.test_dist.W45Results` adds mutants (a changed number, a hidden fail, a dropped row, a wrong field, a stray number, a wrong log link, an Apify row) plus the build failing on an edited regrade file. `Polish.test_no_number_added_or_changed` skips this section, because the trace covers it.
+- The weekly tables, charts and the `data` pin (303efdf4) are unchanged. `latest.json` is not re-vendored.
+
 ## Run locally
 ```
 python3 build.py

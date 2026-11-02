@@ -1,0 +1,12 @@
+{
+ "_doc": "AgentWebIndex week 45 (news_2026-45, run Nov 2, 2026). content/w45-tables-regrade.json is a byte-identical copy of the tables.py regrade output from AWI-W45-BASE-RUN-001 (python -m awibench.tables runs OUT.json, exit 0, has_results true). Rerun at agentwebindex regrade_commit it reproduces the file exactly except generated_at. Every number in the Results section #w45 comes from that file; tools/trace_w45.py traces each cell back to it. Never hand-edit either file.",
+ "ticket": "AWI-W45-PUBLISH-001",
+ "week": "2026-45",
+ "run_date": "2026-11-02",
+ "regrade_file": "content/w45-tables-regrade.json",
+ "regrade_sha256": "7ed392bd3e5c67082ab83238393da96e8339f235c8f38e4d515ca5034e9de480",
+ "regrade_source": "AWI-W45-BASE-RUN-001 evidence implement/tables-regrade.json",
+ "regrade_commit": "7b40782af09b5fb7d5b79bca0c636b315892382c",
+ "run_logs_commit": "7651c2d02079da76f7204cc963f339e1270991a9",
+ "run_logs_pr": "https://github.com/hazeydata/agentwebindex/pull/48"
+}
