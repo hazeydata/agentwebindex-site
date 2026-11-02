@@ -423,6 +423,24 @@ def w45_apify_mentions(page):
     return [rest[max(0, x.start() - 40):x.end() + 40] for x in re.finditer(r"(?i)apify", rest)]
 
 
+CURRENT_RUN = re.compile(r"(?i)\bthis week\b|\bweek[ -]?45\b|\bnov(?:ember)?\.? 2\b(?!\d)|2026-11-02|2026-45")
+
+
+def outside_w45_claims(page):
+    """Kitty t3 G6. Outside section#latest-week (on any page), no text may say "this week", and no sentence may name Apify
+    together with a current-run marker (week 45, Nov 2, 2026-11-02). The Oct 26 retest's "that week's" wording is prior-run
+    and allowed. Text nodes and alt/title/aria-label values are scanned; scripts and styles are not. Returns the offending snippets."""
+    body = re.sub(r'<section id="latest-week">.*?</section>', " ", page, count=1, flags=re.S)
+    body = re.sub(r"<(script|style)\b.*?</\1>", " ", body, flags=re.S | re.I)
+    attrs = " . ".join(html.unescape(v) for v in re.findall(r'\b(?:alt|title|aria-label)="([^"]*)"', body))
+    text = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", body)).split()) + " . " + attrs
+    out = [m.group(0) for m in re.finditer(r"(?i)\bthis week\b.{0,40}|.{0,40}\bthis week\b", text)]
+    for sent in re.split(r"(?<=[.!?])\s+", text):
+        if re.search(r"(?i)apify", sent) and CURRENT_RUN.search(sent):
+            out.append(sent[:120])
+    return out
+
+
 RETEST = "retest-apify-2026-10-26"
 
 

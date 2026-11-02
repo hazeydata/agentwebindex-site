@@ -107,6 +107,8 @@ for f in sorted(S.glob("*.html")):
     if dups: sys.exit(f"build failed: duplicate id attributes on {path}: {dups[:10]}")   # R9.3
     apify=render.w45_apify_mentions(page)
     if apify: sys.exit(f"build failed: Apify named in the week-45 section outside its 'did not run' line on {path}: {apify[:3]}")   # Kitty t2 K04b
+    claims=render.outside_w45_claims(page)
+    if claims: sys.exit(f"build failed: current-run claim outside the week-45 section on {path}: {claims[:3]}")   # Kitty t3 G6
     out.write_text(page)
 pages.sort(key=lambda p:(p!="/",p))
 (D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")

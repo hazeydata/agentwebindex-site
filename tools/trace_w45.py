@@ -88,6 +88,42 @@ class Section(HTMLParser):
             self.untraced.append(data)
 
 
+class Outside(HTMLParser):
+    """Text of a page outside section#latest-week (scripts/styles skipped), plus alt/title/aria-label values."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.skip = 0; self.w45 = 0; self.out = []
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if self.w45:
+            self.w45 += tag == "section"
+            return
+        if tag == "section" and a.get("id") == "latest-week":
+            self.w45 = 1; return
+        if tag in ("script", "style"):
+            self.skip += 1
+        for k in ("alt", "title", "aria-label"):
+            if a.get(k):
+                self.out.append(" . " + a[k] + " . ")
+
+    def handle_endtag(self, tag):
+        if self.w45:
+            self.w45 -= tag == "section"
+            return
+        if tag in ("script", "style") and self.skip:
+            self.skip -= 1
+
+    def handle_data(self, data):
+        if not self.w45 and not self.skip:
+            self.out.append(data)
+
+
+def _outside_text(page):
+    p = Outside(); p.feed(page)
+    return " ".join(" ".join(p.out).split())
+
+
 def norm(s):
     return " ".join(s.split())
 
@@ -220,6 +256,19 @@ def trace(index_html, evidence=None):
         errs.append("Apify is named in section#latest-week outside its 'did not run' line (it has no week-45 data)")
     else:
         ok.append("apify named only in its 'did not run' line")
+    # Kitty t3 G6: every built page, outside section#latest-week, must not say "this week" or tie Apify to the current run.
+    # Independent of render.outside_w45_claims: an HTMLParser over text nodes and alt/title/aria-label values.
+    marker = re.compile(r"(?i)\bthis week\b|\bweek[ -]?45\b|\bnov(?:ember)?\.? 2\b(?!\d)|2026-11-02|2026-45")
+    nclaims = 0
+    for f in sorted(Path(index_html).parent.rglob("*.html")):
+        txt = _outside_text(f.read_text())
+        bad = [m.group(0) for m in re.finditer(r"(?i)this week", txt)]
+        bad += [x for x in re.split(r"(?<=[.!?])\s+", txt) if re.search(r"(?i)apify", x) and marker.search(x)]
+        if bad:
+            nclaims += 1
+            errs.append(f"{f.relative_to(Path(index_html).parent)}: current-run claim outside section#latest-week: {[b[:80] for b in bad[:3]]}")
+    if not nclaims:
+        ok.append("no 'this week' or current-run Apify claim outside section#latest-week on any page")
     copy = "\n".join(_copy_section())
     allowed = set(NUM.findall(copy + " " + " ".join(COLUMNS)))   # copy text and the fixed column headers
     stray = sorted({t for t in NUM.findall(" ".join(sec.untraced)) if t not in allowed})

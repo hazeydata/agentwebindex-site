@@ -1561,6 +1561,58 @@ class W45Results(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("Apify named in the week-45 section", r.stdout + r.stderr)
 
+    def _trace_dist(self, edits):   # trace a copy of dist/ with {relpath: (old, new)} applied
+        with tempfile.TemporaryDirectory() as d:
+            dd = Path(d) / "dist"; shutil.copytree(D, dd)
+            for rel, (a, b) in edits.items():
+                f = dd / rel; t = f.read_text(); self.assertIn(a, t, rel); f.write_text(t.replace(a, b, 1))
+            return self.tr.trace(dd / "index.html")[0]
+
+    def test_no_current_run_claim_outside_w45_on_any_page(self):   # Kitty t3 G6
+        pages = sorted(D.rglob("*.html"))
+        self.assertGreater(len(pages), 3)
+        for f in pages:
+            self.assertEqual(render.outside_w45_claims(f.read_text()), [], f)
+        self.assertEqual(self._trace_dist({}), [])
+        end = '</div></div></section>'
+        w45_end = self.s.index(end, self.s.index('<section id="latest-week">')) + len(end)
+        g6 = self.s[:w45_end] + '<p class="lcopy">Apify also ran this week.</p>' + self.s[w45_end:]
+        meth = (D / "methodology/index.html").read_text()
+        cases = {
+            "G6 just after #latest-week": ("index.html", g6),
+            "G6 on another page": ("methodology/index.html", meth.replace("</main>", '<p>Apify also ran this week.</p></main>', 1)),
+            "this week, no Apify": ("prices/index.html", (D / "prices/index.html").read_text().replace("</main>", "<p>New prices this week.</p></main>", 1)),
+            "Apify + week 45": ("index.html", self.s.replace('<section id="apify-retest"', '<p>Apify has week 45 results.</p><section id="apify-retest"', 1)),
+            "Apify + Nov 2": ("index.html", self.s.replace('<section id="apify-retest"', '<p>Apify ran on Nov 2.</p><section id="apify-retest"', 1)),
+            "in alt text": ("index.html", self.s.replace('alt="Bar chart, preliminary:', 'alt="This week, Apify ran. Bar chart, preliminary:', 1)),
+        }
+        for name, (rel, page) in cases.items():
+            self.assertNotEqual(page, (D / rel).read_text(), name)
+            self.assertTrue(render.outside_w45_claims(page), name)   # build guard
+            full = (D / rel).read_text()
+            errs = self._trace_dist({rel: (full, page)})
+            self.assertTrue(any("current-run claim" in x for x in errs), (name, errs))   # trace, independently
+
+    def test_prior_run_retest_wording_allowed(self):
+        sec = self.s[self.s.index('<section id="apify-retest"'):]
+        sec = sec[:sec.index("</section>")]
+        self.assertIn("that week's 21 news items", sec)
+        self.assertIn("Prior run: Oct 26, 2026", sec)
+        self.assertEqual(render.outside_w45_claims(self.s), [])
+        # Apify with prior-run dates (Oct 19/20/23/26) is fine; with Nov 20 too (not Nov 2)
+        self.assertEqual(render.outside_w45_claims("<p>Apify ran on Oct 26. Apify returns Nov 20.</p>"), [])
+        self.assertEqual(self.s.count('data-copy="apify"'), 1)   # exactly one 'did not run' line, site-wide
+
+    def test_build_fails_on_claim_in_another_page_source(self):   # end to end: build.py exits non-zero
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / "site"
+            shutil.copytree(R, root, ignore=shutil.ignore_patterns("dist", ".git", "node_modules"))
+            f = root / "src/methodology.html"; t = f.read_text()
+            f.write_text(t + "\n<p>Apify also ran this week.</p>\n")
+            r = subprocess.run([sys.executable, "build.py"], cwd=root, capture_output=True, text=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("current-run claim outside the week-45 section on /methodology/", r.stdout + r.stderr)
+
     def test_build_fails_if_regrade_file_edited(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d) / "site"
