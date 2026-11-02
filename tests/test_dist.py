@@ -1605,6 +1605,8 @@ class W45Results(unittest.TestCase):
             "did-not-run line moved out of #latest-week": ("index.html", self.s.replace('<p class="lcopy" data-copy="apify">', '<p class="x" data-copy="moved">', 1).replace('<section id="apify-retest"', '<p class="lcopy" data-copy="apify">Apify did not run this week.</p><section id="apify-retest"', 1)),
             "another page": ("methodology/index.html", meth.replace("</main>", "<p>Apify results, Nov. 2.</p></main>", 1)),
             "page built outside the loop": ("newsletter/thanks/subscribed/index.html", thanks.replace("</body>", "<p>Apify W45.</p></body>", 1)),
+            "this week in alt, no Apify": ("prices/index.html", (D / "prices/index.html").read_text().replace("</main>", '<img src="/x.svg" alt="New this week"></main>', 1)),
+            "this week in aria-label, another page": ("methodology/index.html", meth.replace("</main>", '<span aria-label="Updated this week"></span></main>', 1)),
             "this week, no Apify": ("prices/index.html", (D / "prices/index.html").read_text().replace("</main>", "<p>New prices this week.</p></main>", 1)),
         }
         for name, (rel, page) in cases.items():
