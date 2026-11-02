@@ -1568,39 +1568,60 @@ class W45Results(unittest.TestCase):
                 f = dd / rel; t = f.read_text(); self.assertIn(a, t, rel); f.write_text(t.replace(a, b, 1))
             return self.tr.trace(dd / "index.html")[0]
 
-    def test_no_current_run_claim_outside_w45_on_any_page(self):   # Kitty t3 G6
+    @staticmethod
+    def _guard(page, path):   # what build.py runs on every built page
+        return render.apify_outside_allowlist(page, path) + render.outside_w45_claims(page)
+
+    def test_every_page_passes_allowlist_and_this_week_check(self):   # Kitty t3 G6, t4
         pages = sorted(D.rglob("*.html"))
-        self.assertGreater(len(pages), 3)
+        self.assertGreaterEqual(len(pages), 14)   # includes newsletter/thanks/*
         for f in pages:
-            self.assertEqual(render.outside_w45_claims(f.read_text()), [], f)
+            rel = f.parent.relative_to(D).as_posix()
+            self.assertEqual(self._guard(f.read_text(), "/" if rel == "." else f"/{rel}/"), [], f)
         self.assertEqual(self._trace_dist({}), [])
+        # the two allowlists (build and trace) name the same containers and counts
+        self.assertEqual([(r[0], r[1], r[4]) for r in render.APIFY_ALLOW], [(r[0], r[1], r[4]) for r in self.tr.APIFY_ALLOW])
+        self.assertFalse(hasattr(render, "CURRENT_RUN"))   # the date/sentence matcher is gone
+
+    def test_apify_outside_allowlist_fails_build_guard_and_trace(self):   # Kitty t4 L05*, t3 G6
         end = '</div></div></section>'
         w45_end = self.s.index(end, self.s.index('<section id="latest-week">')) + len(end)
-        g6 = self.s[:w45_end] + '<p class="lcopy">Apify also ran this week.</p>' + self.s[w45_end:]
+        before_retest = lambda t: ("index.html", self.s.replace('<section id="apify-retest"', t + '<section id="apify-retest"', 1))
         meth = (D / "methodology/index.html").read_text()
+        thanks = (D / "newsletter/thanks/subscribed/index.html").read_text()
         cases = {
-            "G6 just after #latest-week": ("index.html", g6),
-            "G6 on another page": ("methodology/index.html", meth.replace("</main>", '<p>Apify also ran this week.</p></main>', 1)),
+            "G6 just after #latest-week": ("index.html", self.s[:w45_end] + '<p class="lcopy">Apify also ran this week.</p>' + self.s[w45_end:]),
+            "L05a Nov. 2.": before_retest("<p>Apify results, Nov. 2.</p>"),
+            "L05b 2 Nov 2026": before_retest("<p>Apify results, 2 Nov 2026.</p>"),
+            "L05d Nov 2nd": before_retest("<p>Apify ran on Nov 2nd.</p>"),
+            "no date at all": before_retest("<p>Apify is in the current results.</p>"),
+            "entity-encoded": before_retest("<p>&#65;pify&nbsp;ran.</p>"),
+            "soft hyphen": before_retest("<p>A&shy;pify ran.</p>"),
+            "HTML comment": before_retest("<!-- Apify W45 results -->"),
+            "noscript": before_retest("<noscript>Apify ran.</noscript>"),
+            "attribute": before_retest('<span title="Apify ran"></span>'),
+            "meta content": ("index.html", self.s.replace("</head>", '<meta name="twitter:description" content="Apify W45 results"></head>', 1)),
+            "inside allowed container, over its pin": ("index.html", self.s.replace("<p>Apify suggested", "<p>Apify ran Nov 2nd. Apify suggested", 1)),
+            "did-not-run line moved out of #latest-week": ("index.html", self.s.replace('<p class="lcopy" data-copy="apify">', '<p class="x" data-copy="moved">', 1).replace('<section id="apify-retest"', '<p class="lcopy" data-copy="apify">Apify did not run this week.</p><section id="apify-retest"', 1)),
+            "another page": ("methodology/index.html", meth.replace("</main>", "<p>Apify results, Nov. 2.</p></main>", 1)),
+            "page built outside the loop": ("newsletter/thanks/subscribed/index.html", thanks.replace("</body>", "<p>Apify W45.</p></body>", 1)),
             "this week, no Apify": ("prices/index.html", (D / "prices/index.html").read_text().replace("</main>", "<p>New prices this week.</p></main>", 1)),
-            "Apify + week 45": ("index.html", self.s.replace('<section id="apify-retest"', '<p>Apify has week 45 results.</p><section id="apify-retest"', 1)),
-            "Apify + Nov 2": ("index.html", self.s.replace('<section id="apify-retest"', '<p>Apify ran on Nov 2.</p><section id="apify-retest"', 1)),
-            "in alt text": ("index.html", self.s.replace('alt="Bar chart, preliminary:', 'alt="This week, Apify ran. Bar chart, preliminary:', 1)),
         }
         for name, (rel, page) in cases.items():
-            self.assertNotEqual(page, (D / rel).read_text(), name)
-            self.assertTrue(render.outside_w45_claims(page), name)   # build guard
             full = (D / rel).read_text()
+            self.assertNotEqual(page, full, name)
+            d = Path(rel).parent.as_posix()
+            self.assertTrue(self._guard(page, "/" if d == "." else f"/{d}/"), name)   # build guard
             errs = self._trace_dist({rel: (full, page)})
-            self.assertTrue(any("current-run claim" in x for x in errs), (name, errs))   # trace, independently
+            self.assertTrue(errs, name)   # trace, independently
+            self.assertTrue(all(("allowlist" in x or "allowed container" in x or "this week" in x) for x in errs if x.startswith("/")), (name, errs))
 
     def test_prior_run_retest_wording_allowed(self):
         sec = self.s[self.s.index('<section id="apify-retest"'):]
         sec = sec[:sec.index("</section>")]
         self.assertIn("that week's 21 news items", sec)
         self.assertIn("Prior run: Oct 26, 2026", sec)
-        self.assertEqual(render.outside_w45_claims(self.s), [])
-        # Apify with prior-run dates (Oct 19/20/23/26) is fine; with Nov 20 too (not Nov 2)
-        self.assertEqual(render.outside_w45_claims("<p>Apify ran on Oct 26. Apify returns Nov 20.</p>"), [])
+        self.assertEqual(self._guard(self.s, "/"), [])
         self.assertEqual(self.s.count('data-copy="apify"'), 1)   # exactly one 'did not run' line, site-wide
 
     def test_build_fails_on_claim_in_another_page_source(self):   # end to end: build.py exits non-zero
@@ -1608,10 +1629,10 @@ class W45Results(unittest.TestCase):
             root = Path(d) / "site"
             shutil.copytree(R, root, ignore=shutil.ignore_patterns("dist", ".git", "node_modules"))
             f = root / "src/methodology.html"; t = f.read_text()
-            f.write_text(t + "\n<p>Apify also ran this week.</p>\n")
+            f.write_text(t + "\n<p>Apify results, 2 Nov 2026.</p>\n")
             r = subprocess.run([sys.executable, "build.py"], cwd=root, capture_output=True, text=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
             self.assertNotEqual(r.returncode, 0)
-            self.assertIn("current-run claim outside the week-45 section on /methodology/", r.stdout + r.stderr)
+            self.assertIn("Apify allowlist on /methodology/", r.stdout + r.stderr)
 
     def test_build_fails_if_regrade_file_edited(self):
         with tempfile.TemporaryDirectory() as d:

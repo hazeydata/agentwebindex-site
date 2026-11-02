@@ -119,6 +119,98 @@ class Outside(HTMLParser):
             self.out.append(data)
 
 
+# Kitty t4: the trace's own copy of the Apify allowlist (render.APIFY_ALLOW is the build's). Each entry is
+# (page, tag, required attributes, inside (tag, id) or None, pinned "apify" count inside the container).
+APIFY_ALLOW = (
+    ("/", "p", {"class": "lcopy", "data-copy": "apify"}, ("section", "latest-week"), 2),
+    ("/", "section", {"id": "apify-retest"}, None, 9),
+    ("/", "figure", {"id": "chart-pass-rate"}, None, 8),
+    ("/", "figure", {"id": "chart-cost"}, None, 4),
+    ("/", "details", {"id": "notes"}, None, 1),
+    ("/", "details", {"id": "earlier-runs"}, None, 3),
+    ("/", "details", {"id": "every-row"}, None, 4),
+    ("/methodology/", "div", {"id": "limits"}, None, 1),
+    ("/prices/", "div", {"class": "price-row", "data-provider": "apify"}, ("div", "price-rows"), 4),
+)
+VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+
+
+def _clean(s):
+    s = html.unescape(s).replace("\xa0", " ")
+    return re.sub("[\u00ad\u200b-\u200d\u2060\ufeff]", "", s)
+
+
+class ApifyScan(HTMLParser):
+    """Counts "apify" in text, attribute values, comments, <noscript>, <meta> and scripts, per allowed container."""
+    def __init__(self, path):
+        super().__init__(convert_charrefs=True)
+        self.rules = [r for r in APIFY_ALLOW if r[0] == path]
+        self.stack = []                       # (tag, id, index of allow rule or None)
+        self.seen = [0] * len(self.rules); self.count = [0] * len(self.rules); self.misplaced = []; self.stray = []
+
+    def _rule(self, tag, a):
+        for i, (_, t, need, inside, _) in enumerate(self.rules):
+            if t == tag and all((v in (a.get(k) or "").split()) if k == "class" else a.get(k) == v for k, v in need.items()):
+                if inside and not any(x[0] == inside[0] and x[1] == inside[1] for x in self.stack):
+                    self.misplaced.append(i)
+                return i
+        return None
+
+    def _hit(self, text):
+        n = len(re.findall("(?i)apify", _clean(text)))
+        if not n:
+            return
+        owner = next((x[2] for x in reversed(self.stack) if x[2] is not None), None)
+        if owner is None:
+            self.stray.append(" ".join(_clean(text).split())[:100])
+        else:
+            self.count[owner] += n
+
+    def handle_starttag(self, tag, attrs):
+        a = {k: v or "" for k, v in attrs}
+        i = self._rule(tag, a)
+        if i is not None:
+            self.seen[i] += 1
+        if tag not in VOID:
+            self.stack.append((tag, a.get("id"), i))
+        for _, v in attrs:
+            self._hit(v or "")
+
+    def handle_startendtag(self, tag, attrs):
+        for _, v in attrs:
+            self._hit(v or "")
+
+    def handle_endtag(self, tag):
+        for j in range(len(self.stack) - 1, -1, -1):
+            if self.stack[j][0] == tag:
+                del self.stack[j:]; break
+
+    def handle_data(self, data):
+        self._hit(data)
+
+    def handle_comment(self, data):
+        self._hit(data)
+
+    def handle_decl(self, data):
+        self._hit(data)
+
+    def handle_pi(self, data):
+        self._hit(data)
+
+
+def apify_errors(page, path):
+    p = ApifyScan(path); p.feed(page); p.close()
+    errs = [f"Apify outside the allowlist: {x!r}" for x in p.stray]
+    for i, r in enumerate(p.rules):
+        if p.seen[i] != 1:
+            errs.append(f"allowed container {r[1]}{r[2]} seen {p.seen[i]} times, expected 1")
+        if i in p.misplaced:
+            errs.append(f"allowed container {r[1]}{r[2]} not inside {r[3][0]}#{r[3][1]}")
+        if p.count[i] != r[4]:
+            errs.append(f"allowed container {r[1]}{r[2]} has {p.count[i]} Apify mentions, pinned {r[4]}")
+    return errs
+
+
 def _outside_text(page):
     p = Outside(); p.feed(page)
     return " ".join(" ".join(p.out).split())
@@ -257,18 +349,20 @@ def trace(index_html, evidence=None):
     else:
         ok.append("apify named only in its 'did not run' line")
     # Kitty t3 G6: every built page, outside section#latest-week, must not say "this week" or tie Apify to the current run.
-    # Independent of render.outside_w45_claims: an HTMLParser over text nodes and alt/title/aria-label values.
-    marker = re.compile(r"(?i)\bthis week\b|\bweek[ -]?45\b|\bnov(?:ember)?\.? 2\b(?!\d)|2026-11-02|2026-45")
-    nclaims = 0
-    for f in sorted(Path(index_html).parent.rglob("*.html")):
-        txt = _outside_text(f.read_text())
-        bad = [m.group(0) for m in re.finditer(r"(?i)this week", txt)]
-        bad += [x for x in re.split(r"(?<=[.!?])\s+", txt) if re.search(r"(?i)apify", x) and marker.search(x)]
+    # Independent of render: an HTMLParser over every built page. "this week" may not appear outside section#latest-week
+    # (text, alt/title/aria-label), and "Apify" may appear only in the allowlisted containers above (Kitty t3 G6, t4).
+    root = Path(index_html).parent
+    nbad = 0
+    for f in sorted(root.rglob("*.html")):
+        rel = f.parent.relative_to(root).as_posix(); path = "/" if rel == "." else f"/{rel}/"
+        page = f.read_text()
+        bad = [f"'this week' outside section#latest-week: {m.group(0)!r}" for m in re.finditer(r"(?i).{0,30}this week.{0,30}", _clean(_outside_text(page)))]
+        bad += apify_errors(page, path)
         if bad:
-            nclaims += 1
-            errs.append(f"{f.relative_to(Path(index_html).parent)}: current-run claim outside section#latest-week: {[b[:80] for b in bad[:3]]}")
-    if not nclaims:
-        ok.append("no 'this week' or current-run Apify claim outside section#latest-week on any page")
+            nbad += 1
+            errs.append(f"{path}: {bad[:3]}")
+    if not nbad:
+        ok.append("no 'this week' outside section#latest-week, and Apify only in its allowlisted containers, on every page")
     copy = "\n".join(_copy_section())
     allowed = set(NUM.findall(copy + " " + " ".join(COLUMNS)))   # copy text and the fixed column headers
     stray = sorted({t for t in NUM.findall(" ".join(sec.untraced)) if t not in allowed})

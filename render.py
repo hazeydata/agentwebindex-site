@@ -423,22 +423,80 @@ def w45_apify_mentions(page):
     return [rest[max(0, x.start() - 40):x.end() + 40] for x in re.finditer(r"(?i)apify", rest)]
 
 
-CURRENT_RUN = re.compile(r"(?i)\bthis week\b|\bweek[ -]?45\b|\bnov(?:ember)?\.? 2\b(?!\d)|2026-11-02|2026-45")
-
-
 def outside_w45_claims(page):
-    """Kitty t3 G6. Outside section#latest-week (on any page), no text may say "this week", and no sentence may name Apify
-    together with a current-run marker (week 45, Nov 2, 2026-11-02). The Oct 26 retest's "that week's" wording is prior-run
-    and allowed. Text nodes and alt/title/aria-label values are scanned; scripts and styles are not. Returns the offending snippets."""
+    """Kitty t3 G6. Outside section#latest-week (on any page), no text or alt/title/aria-label may say "this week".
+    Returns the offending snippets. (Apify mentions are handled by the allowlist in apify_outside_allowlist.)"""
     body = re.sub(r'<section id="latest-week">.*?</section>', " ", page, count=1, flags=re.S)
     body = re.sub(r"<(script|style)\b.*?</\1>", " ", body, flags=re.S | re.I)
     attrs = " . ".join(html.unescape(v) for v in re.findall(r'\b(?:alt|title|aria-label)="([^"]*)"', body))
-    text = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", body)).split()) + " . " + attrs
-    out = [m.group(0) for m in re.finditer(r"(?i)\bthis week\b.{0,40}|.{0,40}\bthis week\b", text)]
-    for sent in re.split(r"(?<=[.!?])\s+", text):
-        if re.search(r"(?i)apify", sent) and CURRENT_RUN.search(sent):
-            out.append(sent[:120])
+    text = norm_text(re.sub(r"<[^>]+>", " ", body)) + " . " + attrs
+    return [m.group(0) for m in re.finditer(r"(?i)\bthis week\b.{0,40}|.{0,40}\bthis week\b", text)]
+
+
+# Kitty t4: where "Apify" may appear in the built site. Apify has no week-45 rows (out until Nov 16), so every mention
+# must sit in one of these containers, which hold the "did not run" line or prior-run (Oct 19-26) data. Each entry is
+# (page, tag, opening-tag regex, inside, mentions): `inside` is the (tag, id) of the container it must sit in (or None) and
+# `mentions` pins how many times "apify" occurs in it, so new text inside an allowed container also fails.
+# Anything else, in text, attributes, <meta>, comments, <noscript> or scripts, fails the build. trace_w45.py keeps its own copy.
+APIFY_ALLOW = (
+    ("/", "p", r'<p class="lcopy" data-copy="apify">', ("section", "latest-week"), 2),   # "Apify did not run this week."
+    ("/", "section", r'<section id="apify-retest"[^>]*>', None, 9),         # Oct 26 prior-run retest
+    ("/", "figure", r'<figure[^>]* id="chart-pass-rate"[^>]*>', None, 8),   # legacy chart, old data pin 303efdf4
+    ("/", "figure", r'<figure[^>]* id="chart-cost"[^>]*>', None, 4),        # legacy chart, old data pin 303efdf4
+    ("/", "details", r'<details id="notes"[^>]*>', None, 1),                 # "Apify skipped Oct 23"
+    ("/", "details", r'<details id="earlier-runs"[^>]*>', None, 3),       # Oct 19/20 runs
+    ("/", "details", r'<details id="every-row"[^>]*>', None, 4),          # Oct 19/20 rows
+    ("/methodology/", "div", r'<div[^>]* id="limits"[^>]*>', None, 1),         # "Four providers have rows"
+    ("/prices/", "div", r'<div class="row price-row"[^>]*data-provider="apify"[^>]*>', ("div", "price-rows"), 4),
+)
+
+
+def norm_text(s):
+    """Entities decoded, nbsp/soft hyphen/zero-width removed, whitespace collapsed."""
+    s = html.unescape(s).replace("\xa0", " ")
+    s = re.sub("[\u00ad\u200b-\u200d\u2060\ufeff]", "", s)
+    return " ".join(s.split())
+
+
+def _span(page, tag, opener):
+    """(start, end) of every element whose opening tag matches `opener`, closed by depth-counting `tag`."""
+    out = []
+    for m in re.finditer(opener, page):
+        depth, i = 0, m.start()
+        for t in re.finditer(rf"<(/?){tag}\b[^>]*>", page[i:]):
+            depth += -1 if t.group(1) else 1
+            if depth == 0:
+                out.append((i, i + t.end())); break
+        else:
+            out.append((i, len(page)))
     return out
+
+
+def apify_outside_allowlist(page, path):
+    """Every problem with Apify mentions on one built page: a mention outside the allowed containers, an allowed
+    container missing, duplicated, misplaced or holding a different number of mentions than pinned."""
+    errs, cut = [], []
+    for pg, tag, opener, inside, want in APIFY_ALLOW:
+        if pg != path:
+            continue
+        spans = _span(page, tag, opener)
+        if len(spans) != 1:
+            errs.append(f"allowed container {opener!r} found {len(spans)} times, expected 1"); continue
+        a, b = spans[0]
+        if inside:
+            outer = _span(page, inside[0], rf'<{inside[0]}\b[^>]*\bid="{inside[1]}"')
+            if not any(x <= a and b <= y for x, y in outer):
+                errs.append(f"allowed container {opener!r} is not inside #{inside[1]}")
+        n = len(re.findall("(?i)apify", norm_text(page[a:b])))
+        if n != want:
+            errs.append(f"allowed container {opener!r} has {n} Apify mentions, pinned {want}")
+        cut.append((a, b))
+    rest, last = [], 0
+    for a, b in sorted(cut):
+        rest.append(page[last:a]); last = max(last, b)
+    rest = norm_text(" ".join(rest + [page[last:]]))
+    errs += [f"Apify outside the allowlist: {rest[max(0, m.start() - 50):m.end() + 50]!r}" for m in re.finditer("(?i)apify", rest)]
+    return errs
 
 
 RETEST = "retest-apify-2026-10-26"
