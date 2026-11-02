@@ -1529,6 +1529,38 @@ class W45Results(unittest.TestCase):
             errs, _, _ = self.tr.trace(D / "index.html")
         self.assertTrue(any("Keenable-only" in x for x in errs), errs)   # trace fails too, independently
 
+    def test_apify_only_in_its_did_not_run_line(self):  # Kitty t2 K04b: a re-pinned copy edit must not make Apify look like it ran
+        sec = self._sec()
+        self.assertEqual(render.w45_apify_mentions(self.s), [])
+        self.assertEqual(len(re.findall(r"(?i)apify", sec)), 2)   # data-copy="apify" and its "Apify did not run this week." text
+        mutants = {
+            "ran list claims apify": sec.replace("Ran this week: ", "Ran this week: Apify, ", 1),
+            "coverage names apify": sec.replace("Coverage is partial this week.", "Coverage is partial this week, Apify included.", 1),
+            "apify attribute": sec.replace('<tr data-provider="brightdata">', '<tr data-provider="brightdata" data-note="apify">', 1),
+            "second apify line": sec.replace('<p class="lcopy" data-copy="failed">', '<p class="lcopy" data-copy="failed">APIFY ', 1),
+        }
+        for name, m in mutants.items():
+            self.assertNotEqual(m, sec, name)
+            page = self.s.replace(sec, m)
+            self.assertTrue(render.w45_apify_mentions(page), name)   # build guard
+            errs, _, _ = self._trace(page)
+            self.assertTrue(any("Apify" in x for x in errs), (name, errs))   # trace, independently
+        errs, _, _ = self._trace(self.s.replace(re.search(r'<p class="lcopy" data-copy="apify">[^<]*</p>', sec).group(0), ""))
+        self.assertTrue(errs)   # the 'did not run' line itself must stay
+
+    def test_build_fails_when_repinned_copy_claims_apify_ran(self):   # K04b end to end: copy edited and its checksum re-pinned
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / "site"
+            shutil.copytree(R, root, ignore=shutil.ignore_patterns("dist", ".git", "node_modules"))
+            c = root / "content/copy.md"
+            c.write_text(c.read_text().replace("**Ran:** Ran this week:", "**Ran:** Ran this week: Apify,", 1))
+            pj = root / "pins.json"; pins = json.loads(pj.read_text())
+            pins["copy_sha256"] = hashlib.sha256(c.read_bytes()).hexdigest(); pj.write_text(json.dumps(pins, indent=1) + "\n")
+            self.assertEqual(pinmod.check(root), [])   # the pin is satisfied, so only the new guard can stop it
+            r = subprocess.run([sys.executable, "build.py"], cwd=root, capture_output=True, text=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("Apify named in the week-45 section", r.stdout + r.stderr)
+
     def test_build_fails_if_regrade_file_edited(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d) / "site"

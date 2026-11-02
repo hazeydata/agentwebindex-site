@@ -209,6 +209,17 @@ def trace(index_html, evidence=None):
         errs.append("source line not worded as copy")
     else:
         ok.append(f"source = agentwebindex {sha[:7]}, {heads['source_date']}")
+    # Apify did not run in week 45: outside its own "did not run" copy paragraph, the section must not name it (text, attributes, links)
+    page = Path(index_html).read_text()
+    i = page.find('<section id="latest-week">'); j = page.find("</section>", i)
+    blk = page[i:j]
+    own = re.findall(r'<p class="lcopy" data-copy="apify">[^<]*</p>', blk)
+    if len(own) != 1 or not re.match(r"Apify did not run this week\.", html.unescape(re.sub(r"<[^>]+>", "", own[0]))):
+        errs.append(f"Apify 'did not run' line: expected exactly one, found {len(own)}")
+    elif re.search(r"(?i)apify", blk.replace(own[0], "", 1)):
+        errs.append("Apify is named in section#latest-week outside its 'did not run' line (it has no week-45 data)")
+    else:
+        ok.append("apify named only in its 'did not run' line")
     copy = "\n".join(_copy_section())
     allowed = set(NUM.findall(copy + " " + " ".join(COLUMNS)))   # copy text and the fixed column headers
     stray = sorted({t for t in NUM.findall(" ".join(sec.untraced)) if t not in allowed})

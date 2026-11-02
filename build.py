@@ -105,6 +105,8 @@ for f in sorted(S.glob("*.html")):
     page=layout.replace("{{title}}",html.escape(title)).replace("{{head}}",page_head(title,desc,path)).replace("{{nav}}",render.nav_html(path)).replace("{{footer}}",FOOTER).replace("{{body}}",body)
     dups=render.duplicate_ids(page)
     if dups: sys.exit(f"build failed: duplicate id attributes on {path}: {dups[:10]}")   # R9.3
+    apify=render.w45_apify_mentions(page)
+    if apify: sys.exit(f"build failed: Apify named in the week-45 section outside its 'did not run' line on {path}: {apify[:3]}")   # Kitty t2 K04b
     out.write_text(page)
 pages.sort(key=lambda p:(p!="/",p))
 (D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")

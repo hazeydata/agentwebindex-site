@@ -413,6 +413,16 @@ def section_w45(ctx):
             f'<div class="col">{source}</div></div></section>')
 
 
+def w45_apify_mentions(page):
+    """Apify is out for week 45 (cap reached, back Nov 16), so the #latest-week section may name it only in its own
+    "did not run" copy paragraph (data-copy="apify"). Returns every other mention (in text, attributes or links), so the build can fail."""
+    m = re.search(r'<section id="latest-week">.*?</section>', page, re.S)
+    if not m:
+        return []
+    rest = re.sub(r'<p class="lcopy" data-copy="apify">[^<]*</p>', "", m.group(0), count=1)
+    return [rest[max(0, x.start() - 40):x.end() + 40] for x in re.finditer(r"(?i)apify", rest)]
+
+
 RETEST = "retest-apify-2026-10-26"
 
 
