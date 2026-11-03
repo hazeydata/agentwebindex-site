@@ -43,7 +43,7 @@ def check(path: str, status: int, ctype: str, body: bytes, fallback_body: bytes)
         ok = status == 401 and t != "text/html" and not fb and body.strip() == b"Unauthorized"
         return ok, f"export GET (no token) expects 401 'Unauthorized', got {status} {t}{' (SPA fallback)' if fb else ''}"
     if path.startswith("/_worker.js") or path == "/_routes.json":
-        js = ("javascript" in t) or (status == 200 and t in ("application/json", "text/plain"))
+        js = ("javascript" in t) or ("json" in t) or (status == 200 and t == "text/plain")  # any status
         leaked = any(m in body for m in WORKER_MARKERS)
         ok = not js and not leaked and (fb or status == 404)
         how = "SPA fallback" if fb else f"{status} {t}"

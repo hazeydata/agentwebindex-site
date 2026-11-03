@@ -13,6 +13,23 @@ INDEX_OTHER_TOKEN = INDEX.replace(b"0c6a7e", b"f39581").replace(b"5630", b"afc9"
 WORKER_JS = b"export default { async fetch(r, env) { return handleSubscribe(r, env) } }"
 
 
+class ScriptedTypeAnyStatusTest(unittest.TestCase):
+    """r1 mutant b: JS/JSON content type on worker/routes paths must fail at ANY status, incl. 404."""
+    def test_worker_404_javascript_fails(self):
+        for p in ("/_worker.js", "/_worker.js/", "/_worker.js/index.js"):
+            for ct in ("application/javascript", "text/javascript; charset=utf-8"):
+                self.assertFalse(smoke.check(p, 404, ct, b"x", INDEX)[0], (p, ct))
+
+    def test_routes_404_json_fails(self):
+        self.assertFalse(smoke.check("/_routes.json", 404, "application/json", b"{}", INDEX)[0])
+        self.assertFalse(smoke.check("/_routes.json", 404, "application/json", b"x", INDEX)[0])
+
+    def test_js_json_fail_at_every_status(self):
+        for st in (200, 301, 403, 404, 500):
+            self.assertFalse(smoke.check("/_worker.js", st, "application/javascript", b"x", INDEX)[0], st)
+            self.assertFalse(smoke.check("/_routes.json", st, "application/json", b"x", INDEX)[0], st)
+
+
 class SmokeTest(unittest.TestCase):
     def test_spa_fallback_200_is_not_a_served_worker(self):
         # The W45 false positive: 200 for /_worker.js/index.js was only the index.html fallback.

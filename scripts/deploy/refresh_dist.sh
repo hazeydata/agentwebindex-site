@@ -33,6 +33,16 @@
 # be a directory strictly inside a mktemp -d dir directly under $AWI_TMP_ROOT (e.g. $AWI_TMP_ROOT/awi4.AbCd/wr); the
 # real $AWI_DEPLOY_ROOT/wr (and anything under $AWI_DEPLOY_ROOT) is refused. With AWI_TEST=1,
 # --quarantine-legacy looks in that sandbox dir (<sandbox>/awibuild.<name>) instead of $AWI_TMP_ROOT.
+# Required box roots: checked FIRST, before `set -u` or anything else, so a missing root fails on this guard's message.
+for _r in AWI_DEPLOY_ROOT AWI_TMP_ROOT; do
+  if [ -z "${!_r:-}" ]; then
+    case "$_r" in
+      AWI_DEPLOY_ROOT) echo "refresh_dist: STOP: set AWI_DEPLOY_ROOT to the box deploy root (the dir that holds wr/)" >&2 ;;
+      *) echo "refresh_dist: STOP: set AWI_TMP_ROOT to the box tmp root (sandboxes and legacy build dirs live here)" >&2 ;;
+    esac
+    exit 2
+  fi
+done; unset _r
 set -euo pipefail
 
 # fd 9 (the lock) must not leak into children: every external command used below runs through these wrappers, which
@@ -45,8 +55,6 @@ die() { echo "refresh_dist: STOP: $*" >&2; exit 1; }
 loud() { echo "refresh_dist: !!! RESTORE FAILED: $* !!! (wr left with journal; run refresh_dist.sh --recover)" >&2; RESTORE_FAIL=1; }
 
 # Box roots come from the environment (no machine paths in the repo). Both are required.
-: "${AWI_DEPLOY_ROOT:?set AWI_DEPLOY_ROOT to the box deploy root (the dir that holds wr/)}"
-: "${AWI_TMP_ROOT:?set AWI_TMP_ROOT to the box tmp root (sandboxes and legacy build dirs live here)}"
 AWI_DEPLOY_ROOT="${AWI_DEPLOY_ROOT%/}"; AWI_TMP_ROOT="${AWI_TMP_ROOT%/}"
 case "$AWI_DEPLOY_ROOT$AWI_TMP_ROOT" in *[!A-Za-z0-9_./-]*) die "AWI_DEPLOY_ROOT/AWI_TMP_ROOT must be plain paths";; esac
 DEFAULT_WR="$AWI_DEPLOY_ROOT/wr"
