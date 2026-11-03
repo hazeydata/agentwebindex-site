@@ -158,14 +158,22 @@ Store-first, same-origin signup. Copied and adapted from hazeydata/hazeydata.ai 
 ## Deploy (Cloudflare Pages)
 Build command `python3 build.py`, output directory `dist`, env `PYTHON_VERSION=3.12`.
 
-Why `/api/subscribe` returns 405 today: the site is a Pages direct upload, and wrangler compiles Functions only from a `functions/` folder in the
-directory it runs in. The deploy directory has none, so the upload is static-only and every POST gets 405 from the static asset server.
+Deploy script: `scripts/deploy/refresh_dist.sh` (rev8; moved here from the box deploy dir per chief's ruling, Nov 2 2026). Chief runs it on the box after Fred approves.
+Both roots come from the environment and are required: `AWI_DEPLOY_ROOT` (the dir that holds `wr/`, where `wrangler pages deploy dist` runs) and `AWI_TMP_ROOT` (sandboxes).
+`refresh_dist.sh <site sha>` clones this repo at that sha, runs `build.py` and `run_tests.sh`, then, if `functions/` exists, runs
+`wrangler pages functions build functions --outdir dist/_worker.js --output-routes-path dist/_routes.json --compatibility-date 2026-10-01`.
+It checks that `dist/_worker.js/index.js` exists and that `dist/_routes.json` includes exactly `/api/subscribe` and `/api/signups/export.csv`
+(everything else stays static), then swaps the new `dist/` in atomically. `--rollback` restores the previous `dist/` and its worker.
+Sandbox tests (no network, no account): `AWI_DEPLOY_ROOT=... AWI_TMP_ROOT=... scripts/deploy/test_refresh_dist_functions.sh <site worktree>`.
+Pages runs `dist/_worker.js/` as the advanced-mode worker and does not publish it as static files (checked on production, Nov 2 2026).
 
-Deploy route (chief's deploy script, `refresh_dist`): after the tests pass and `dist/` is built, if `functions/` exists it runs
-`wrangler pages functions build functions --outdir dist/_worker.js --output-routes-path dist/_routes.json --compatibility-date 2026-10-01`
-and checks that `dist/_worker.js/index.js` exists and that `dist/_routes.json` includes exactly `/api/subscribe` and `/api/signups/export.csv`
-(everything else stays static). The run fails if the Functions don't compile, and `--rollback` restores the previous `dist/` with its worker.
-`wrangler pages deploy` uploads `_worker.js` as the advanced-mode worker; that it is not published as a static file is still to check on the preview (as listed in the meta backend plan).
+Post-deploy smoke: `python3 scripts/deploy/smoke.py https://agentwebindex.com https://<deployment>.agentwebindex.pages.dev`.
+Pages answers every unknown path with 200 plus index.html, so a bare 200 proves nothing. A check passes only on the right status, content type and body:
+- `/` returns 200 HTML.
+- `GET /api/subscribe` returns 405 and is not HTML.
+- `GET /api/signups/export.csv` without a token returns 401 `Unauthorized` and is not HTML.
+- `/_worker.js*` and `/_routes.json` must be the SPA fallback or 404, never JavaScript or JSON, and never contain worker code.
+Unit tests: `tests/test_deploy_smoke.py`, which `run_tests.sh` runs.
 
 Backend setup (names only; every step is gated on Fred's approval via chief, and none of it is done by this repo's code):
 1. D1 database `awi-signups`; apply `migrations/0001_signups.sql` (`wrangler d1 migrations apply awi-signups --remote`).
