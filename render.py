@@ -329,8 +329,9 @@ def w45_rows(ctx):
     """[(category, index in that regrade table, row)] for every week-45 row (run_date == manifest run_date), in regrade order.
     Failed rows are kept as they are; nothing is filtered on outcome."""
     meta, doc = w45_doc(ctx)
+    extra = meta.get("extra_rows") or {}   # AWI-TINYFISH-001: {provider: run_date} rows shown with their own Run date
     return [(cat, i, r) for cat in P.CATS for i, r in enumerate((doc.get("tables") or {}).get(cat, []))
-            if r.get("run_date") == meta["run_date"]]
+            if r.get("run_date") == meta["run_date"] or extra.get(r.get("provider")) == r.get("run_date")]
 
 
 W45_NUM = ("Passed / checks", "Failed / checks", "Pass rate", "Per 1,000 passed checks", "List price per 1,000 calls", "Skipped (terms)")
@@ -357,7 +358,7 @@ def w45_samples(ctx):
 def w45_cells(ctx, cat, i, r):
     """[(column, data-src, html)] for one row. data-src names the regrade fields the cell is computed from (tools/trace_w45.py checks it)."""
     meta, _ = w45_doc(ctx)
-    nm = names(ctx)
+    nm = names(ctx) | (meta.get("extra_names") or {})
     src = (r.get("passed") or {}).get("src") or []
     log = f"{DATA_REPO}/blob/{meta['run_logs_commit']}/bench/{src[0]['file']}" if src and src[0].get("file") else ""
     p = f"tables.{cat}.{i}"
@@ -381,10 +382,11 @@ def section_w45(ctx):
     rows = w45_rows(ctx)
     ran = []
     for _, _, r in rows:
-        n = names(ctx).get(r["provider"], r["provider"])
+        n = (names(ctx) | (w45_doc(ctx)[0].get("extra_names") or {})).get(r["provider"], r["provider"])
         if n not in ran:
             ran.append(n)
-    day = rows[0][2]["run_date"] if rows else ""
+    meta, _ = w45_doc(ctx)
+    day = next((r["run_date"] for _, _, r in rows if r["run_date"] == meta["run_date"]), "")
     body = []
     for cat, i, r in rows:
         cells = w45_cells(ctx, cat, i, r)
@@ -392,6 +394,8 @@ def section_w45(ctx):
         mono = ' class="mono"'
         tds = "".join(f'<td data-label="{e(c)}" data-src="{e(s)}"{' class="mono num"' if c in W45_NUM else "" if c in ("Category", "Flags") else mono}>{h}</td>' for c, s, h in cells[1:])
         body.append(f'<tr data-provider="{e(r["provider"])}"><th scope="row" data-label="{first[0]}" data-src="{e(first[1])}">{first[2]}</th>{tds}</tr>')
+        if r["provider"] == "tinyfish" and cat == "browser":   # AWI-TINYFISH-001: misses note next to the TinyFish fetch row (copy.md)
+            body.append(f'<tr class="row-note"><td colspan="{len(W45_COLS)}"><p class="lcopy" data-copy="tinyfish-fetch-note">{e(d.field("Week 45 results", "TinyFish fetch note"))}</p></td></tr>')
     head = "".join(f'<th scope="col"{' class="num"' if c in W45_COLS and c in W45_NUM else ""}>{e(c)}</th>' for c in W45_COLS)
     meta, _ = w45_doc(ctx)
     ran_ids = {r["provider"] for _, _, r in rows}

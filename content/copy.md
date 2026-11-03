@@ -70,6 +70,7 @@ Apify suggested a fairer setup, so on Oct 26 we reran their tools on that week's
 **Source:** Source: tables.py regrade of the {date} run logs (agentwebindex {sha})
 **Failed:** Failed checks stay failed. We do not rerun or drop them, and every pass rate counts every check we attempted.
 **Skipped:** Skipped (terms) means URLs we never called because the provider's terms are unclear for them. They count as neither passed nor failed.
+**TinyFish fetch note:** 7 misses come from errors in our test set (Hacker News titles that don't appear on the article page); 4 BBC pages likely lost their headline in TinyFish's output (unconfirmed); 1 returned a server error.
 
 ## Chart briefs
 ### Chart 1: Pass rate on our test set
