@@ -5,9 +5,9 @@
  "run_date": "2026-11-02",
  "regrade_file": "content/w45-tables-regrade.json",
  "regrade_sha256": "0b28186db83758954256ff64e2410707718a9e0477611057953ddefb4e47fb76",
- "regrade_source": "AWI-TINYFISH-001 publish: python -m awibench.tables runs OUT.json at agentwebindex c4556c2944d161e4bf8cbba1f4982b34815bac38 (agentwebindex#52). Against the AWI-W45-BASE-RUN-001 file, only the 2 tinyfish rows and 1 tinyfish freshness_notes entry are new (and generated_at).",
- "regrade_commit": "c4556c2944d161e4bf8cbba1f4982b34815bac38",
- "run_logs_commit": "c4556c2944d161e4bf8cbba1f4982b34815bac38",
+ "regrade_source": "AWI-TINYFISH-001 publish: python -m awibench.tables runs OUT.json at agentwebindex 8f007a4fd140cb3d4bacf387de120896e17892cc (agentwebindex#52). Against the AWI-W45-BASE-RUN-001 file, only the 2 tinyfish rows and 1 tinyfish freshness_notes entry are new (and generated_at).",
+ "regrade_commit": "8f007a4fd140cb3d4bacf387de120896e17892cc",
+ "run_logs_commit": "8f007a4fd140cb3d4bacf387de120896e17892cc",
  "run_logs_pr": "https://github.com/hazeydata/agentwebindex/pull/52",
  "live_not_held": {
   "keenable": "Keenable"
@@ -16,7 +16,7 @@
  "extra_rows": {
   "tinyfish": "2026-11-03"
  },
- "extra_rows_note": "AWI-TINYFISH-001: TinyFish ran news_2026-45 one day after the Nov 2 run. Its rows (provider tinyfish, run_date 2026-11-03) are shown in the week-45 table with their own Run date. The heading and source dates stay the manifest run_date. Publish hold lifted per Fred, Nov 3 2026 1:59 PM ET (relayed by chief; confirmation pending).",
+ "extra_rows_note": "AWI-TINYFISH-001: TinyFish ran news_2026-45 one day after the Nov 2 run. Its rows (provider tinyfish, run_date 2026-11-03) are shown in the week-45 table with their own Run date. The heading and source dates stay the manifest run_date. Publish hold lifted per Fred, Nov 3 2026 1:59 PM ET (confirmed: chief confirmed Fred's own words, Nov 3 2026, 1:59 PM ET: \"Publish the TinyFish results now\").",
  "extra_names": {
   "tinyfish": "TinyFish"
  },

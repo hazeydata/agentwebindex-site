@@ -1468,7 +1468,7 @@ class W45Results(unittest.TestCase):
                      "Apify did not run this week. It hit its monthly spending cap and stays out until its billing resets on Nov 16.",
                      "Week 45 and the " + render.day_label(LATEST["run_date"]).rsplit(",", 1)[0] + " run below tested different providers, so compare rows only within a run.",
                      "Firecrawl's evergreen run used 40 of the 100 evergreen questions.",
-                     "Source: tables.py regrade of the Nov 2, 2026 run logs (agentwebindex c4556c2)"):
+                     "Source: tables.py regrade of the Nov 2, 2026 run logs (agentwebindex 8f007a4)"):
             self.assertIn(want, t)
         heads = re.findall(r'<th scope="col"[^>]*>([^<]*)</th>', self._sec())
         self.assertEqual(heads[4:6], ["Passed / checks", "Failed / checks"])
