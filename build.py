@@ -105,6 +105,12 @@ for f in sorted(S.glob("*.html")):
     page=layout.replace("{{title}}",html.escape(title)).replace("{{head}}",page_head(title,desc,path)).replace("{{nav}}",render.nav_html(path)).replace("{{footer}}",FOOTER).replace("{{body}}",body)
     dups=render.duplicate_ids(page)
     if dups: sys.exit(f"build failed: duplicate id attributes on {path}: {dups[:10]}")   # R9.3
+    apify=render.w45_apify_mentions(page)
+    if apify: sys.exit(f"build failed: Apify named in the week-45 section outside its 'did not run' line on {path}: {apify[:3]}")   # Kitty t2 K04b
+    allow=render.apify_outside_allowlist(page,path)
+    if allow: sys.exit(f"build failed: Apify allowlist on {path}: {allow[:3]}")   # Kitty t4
+    claims=render.outside_w45_claims(page)
+    if claims: sys.exit(f"build failed: 'this week' outside the week-45 section on {path}: {claims[:3]}")   # Kitty t3 G6
     out.write_text(page)
 pages.sort(key=lambda p:(p!="/",p))
 (D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")
@@ -134,4 +140,8 @@ def public_bench():
 public_bench()
 n=price_exports(); nb=bench_csv()
 (D/"llms.txt").write_text("# AgentWebIndex\nMachine-readable data: /data/benchmarks/latest.json, /data/benchmarks/latest.csv (CC BY 4.0), /data/prices.json, /data/prices.csv, /data/prices/<provider>.json\nPages: /, /prices/, /methodology/, /data/, /sponsors/, /disclosures/, /newsletter/, /tell-us/\n")
+for f in sorted(D.rglob("*.html")):   # Kitty t4: every built page, including ones made outside the page loop
+    rel=f.parent.relative_to(D).as_posix(); path="/" if rel=="." else f"/{rel}/"; page=f.read_text()
+    bad=render.apify_outside_allowlist(page,path)+render.outside_w45_claims(page)
+    if bad: sys.exit(f"build failed: Apify allowlist / 'this week' on {path}: {bad[:3]}")
 print("built",D,"price rows:",n,"benchmark csv rows:",nb)

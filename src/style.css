@@ -149,12 +149,14 @@ details > p, details > ul, details > h4 { max-width: 68ch; }
 .dt { width: 100%; border-collapse: collapse; font-size: var(--fs-1); }
 .dt th, .dt td { text-align: left; padding: 12px var(--s1) 12px 0; border-top: 1px solid var(--line); vertical-align: top; }
 .dt thead th { color: var(--muted); font-weight: 600; border-top: 0; }
+#w45-table td.num, #w45-table th.num { text-align: right; font-variant-numeric: tabular-nums; }   /* Ann: numeric columns right-aligned */
 @media (max-width: 767.98px) {
   .dt thead { display: none; }
   .dt, .dt tbody, .dt tr, .dt th, .dt td { display: block; width: 100%; }
   .dt tr { border-top: 1px solid var(--line); padding: var(--s0) 0; }
   .dt th, .dt td { border: 0; padding: 10px var(--s0) 10px 0; }
   .dt td::before, .dt th[data-label]::before { content: attr(data-label) ": "; color: var(--muted); }
+  #w45-table td.num, #w45-table th.num { text-align: left; }
 }
 
 /* methodology steps */
@@ -271,3 +273,6 @@ h1 { font-size: 2.25rem; line-height: 44px; } h2 { font-size: 1.75rem; line-heig
   .rows .row { display: grid; grid-template-columns: 1fr; gap: var(--s-1); }
   .rows .row .val-pass, .rows .row .val-cost { font: 400 13px/20px var(--font-mono); font-variant-numeric: tabular-nums; }
 }
+
+/* AWI-W45-PUBLISH-001: label on the older weekly tables (Lucille 2 ruling) */
+.prior-run { font-weight: 600; margin: 0 0 8px; }

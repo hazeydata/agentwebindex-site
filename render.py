@@ -224,6 +224,7 @@ def section_run(ctx):
     rows = "".join(results_row(ctx, r) for r in run_rows(ctx))
     bullets = "".join(f"<li><b>{e(a)}</b>{' ' + e(b) if b else ''}</li>" for a, b in findings(ctx))
     return ('<section id="run"><div class="wrap"><div class="col">'
+            f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 45 results", "Prior run"))} {e(day_label(ctx.latest["run_date"]))}</p>'
             f'<h2>Results, {e(day_label(ctx.latest["run_date"]))} run</h2>'
             f'<p class="lcopy">{e(intro_sentence(ctx))}</p><p class="lcopy strong">{e(headline_sentence(ctx))}.</p></div>'
             f'<div class="rows" role="list">{rows}</div>'
@@ -313,6 +314,191 @@ def section_not_tested(ctx):
             f'{foot}<h3>Not tested</h3><p>{inline(t)}</p><p><a href="/methodology/">Methodology and limits</a></p></details></div></section>')
 
 
+W45 = "w45-results"
+W45_COLS = ("Provider", "Category", "Set", "Run date", "Passed / checks", "Failed / checks", "Pass rate",
+            "Per 1,000 passed checks", "List price per 1,000 calls", "Skipped (terms)", "Flags")
+
+
+def w45_doc(ctx):
+    """(manifest, regrade doc) for week 45. The regrade file is the byte-identical tables.py output (sha256 pinned in the manifest)."""
+    meta = json.loads((ctx.content / f"{W45}.json").read_text())
+    return meta, json.loads((ctx.content.parent / meta["regrade_file"]).read_text())
+
+
+def w45_rows(ctx):
+    """[(category, index in that regrade table, row)] for every week-45 row (run_date == manifest run_date), in regrade order.
+    Failed rows are kept as they are; nothing is filtered on outcome."""
+    meta, doc = w45_doc(ctx)
+    return [(cat, i, r) for cat in P.CATS for i, r in enumerate((doc.get("tables") or {}).get(cat, []))
+            if r.get("run_date") == meta["run_date"]]
+
+
+W45_NUM = ("Passed / checks", "Failed / checks", "Pass rate", "Per 1,000 passed checks", "List price per 1,000 calls", "Skipped (terms)")
+SAMPLE = re.compile(r"first (\d+) of (\d+) items")
+
+
+def w45_skipped(r):
+    """Skipped (terms) cell: the regrade's skipped_tos.count, or 'n/a' when the regrade has no skipped_tos (never a made-up 0)."""
+    c = (r.get("skipped_tos") or {}).get("count")
+    return "n/a" if c is None else str(c)
+
+
+def w45_samples(ctx):
+    """[(row index key, provider name, n, total)] for week-45 search_evergreen rows on a reduced sample. n and total come from the
+    regrade row's sample_note (tables.py writes it from the run log's set_rows and sample_of); n must equal the row's set_rows."""
+    out = []
+    for cat, i, r in w45_rows(ctx):
+        m = SAMPLE.search(r.get("sample_note") or "")
+        if r.get("set") == "search_evergreen" and m and int(m.group(1)) == r.get("set_rows"):
+            out.append((f"tables.{cat}.{i}", names(ctx).get(r["provider"], r["provider"]), m.group(1), m.group(2)))
+    return out
+
+
+def w45_cells(ctx, cat, i, r):
+    """[(column, data-src, html)] for one row. data-src names the regrade fields the cell is computed from (tools/trace_w45.py checks it)."""
+    meta, _ = w45_doc(ctx)
+    nm = names(ctx)
+    src = (r.get("passed") or {}).get("src") or []
+    log = f"{DATA_REPO}/blob/{meta['run_logs_commit']}/bench/{src[0]['file']}" if src and src[0].get("file") else ""
+    p = f"tables.{cat}.{i}"
+    flags = ", ".join(r.get("flags") or []) or "none"
+    return [("Provider", f"{p}.provider", e(nm.get(r["provider"], r["provider"]))),
+            ("Category", f"{p}", e(cat)),
+            ("Set", f"{p}.set", e(r["set"])),
+            ("Run date", f"{p}.run_date", e(r["run_date"])),
+            ("Passed / checks", f"{p}.passed.v,{p}.attempted.v", link(log, f"{v(r['passed'])} of {v(r['attempted'])}")),
+            ("Failed / checks", f"{p}.failed.v", e(str(v(r["failed"])))),
+            ("Pass rate", f"{p}.success_rate.v", e(P.fmt_pct(v(r["success_rate"])))),
+            ("Per 1,000 passed checks", f"{p}.entry_tier_cost_per_successful_1k.display", e((r.get("entry_tier_cost_per_successful_1k") or {}).get("display") or "n/a")),
+            ("List price per 1,000 calls", f"{p}.entry_tier_cost_per_1k.display", e((r.get("entry_tier_cost_per_1k") or {}).get("display") or "n/a")),
+            ("Skipped (terms)", f"{p}.skipped_tos.count", e(w45_skipped(r))),
+            ("Flags", f"{p}.flags", e(flags))]
+
+
+def section_w45(ctx):
+    """Week 45 results (AWI-W45-PUBLISH-001; no latency column: AC19 keeps latency off Results): every number from content/w45-tables-regrade.json; coverage said plainly in copy."""
+    d = ctx.doc
+    rows = w45_rows(ctx)
+    ran = []
+    for _, _, r in rows:
+        n = names(ctx).get(r["provider"], r["provider"])
+        if n not in ran:
+            ran.append(n)
+    day = rows[0][2]["run_date"] if rows else ""
+    body = []
+    for cat, i, r in rows:
+        cells = w45_cells(ctx, cat, i, r)
+        first = cells[0]
+        mono = ' class="mono"'
+        tds = "".join(f'<td data-label="{e(c)}" data-src="{e(s)}"{' class="mono num"' if c in W45_NUM else "" if c in ("Category", "Flags") else mono}>{h}</td>' for c, s, h in cells[1:])
+        body.append(f'<tr data-provider="{e(r["provider"])}"><th scope="row" data-label="{first[0]}" data-src="{e(first[1])}">{first[2]}</th>{tds}</tr>')
+    head = "".join(f'<th scope="col"{' class="num"' if c in W45_COLS and c in W45_NUM else ""}>{e(c)}</th>' for c in W45_COLS)
+    meta, _ = w45_doc(ctx)
+    ran_ids = {r["provider"] for _, _, r in rows}
+    not_run = "".join(f'<p class="lcopy" data-copy="not-run"><span data-src="not_run">{e(nm)}</span>: {e(d.field("Week 45 results", "Not run"))}</p>'
+                      for pid, nm in (meta.get("live_not_held") or {}).items() if pid not in ran_ids)   # derived from the regrade rows, never typed
+    paras = not_run + "".join(f'<p class="lcopy" data-copy="{k.lower()}">{inline(d.field("Week 45 results", k))}</p>' for k in ("Coverage", "Apify", "Failed", "Skipped"))
+    f = lambda k: d.field("Week 45 results", k)
+    samples = "".join(" " + e(f("Sample")).replace("{provider}", f'<span data-src="sample_provider:{k}">{e(nm)}</span>')
+                      .replace("{n}", f'<span data-src="sample_n:{k}">{n}</span>').replace("{total}", f'<span data-src="sample_total:{k}">{t}</span>') + "."
+                      for k, nm, n, t in w45_samples(ctx))
+    paras += f'<p class="lcopy" data-copy="comparison">{e(f("Comparison"))}{samples}</p>'
+    sha = meta["run_logs_commit"]
+    source = (f'<p class="lcopy" data-copy="source">' + e(f("Source")).replace("{date}", f'<span data-src="source_date">{e(day_label(day)) if day else ""}</span>')
+              .replace("{sha}", f'<a data-src="run_logs_commit" href="{DATA_REPO}/commit/{e(sha)}">{e(sha[:7])}</a>') + '</p>')
+    return ('<section id="latest-week"><div class="wrap"><div class="col">'
+            f'<h2>{e(d.field("Week 45 results", "Title"))}, <span data-src="run_date">{e(day_label(day)) if day else ""}</span> run</h2>'
+            f'<p class="lcopy" data-copy="ran">{e(d.field("Week 45 results", "Ran"))} <span data-src="provider">{e(", ".join(ran))}</span>.</p>{paras}</div>'
+            f'<div class="tablewrap"><table class="dt" id="w45-table"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
+            f'<div class="col">{source}</div></div></section>')
+
+
+def w45_apify_mentions(page):
+    """Apify is out for week 45 (cap reached, back Nov 16), so the #latest-week section may name it only in its own
+    "did not run" copy paragraph (data-copy="apify"). Returns every other mention (in text, attributes or links), so the build can fail."""
+    m = re.search(r'<section id="latest-week">.*?</section>', page, re.S)
+    if not m:
+        return []
+    rest = re.sub(r'<p class="lcopy" data-copy="apify">[^<]*</p>', "", m.group(0), count=1)
+    return [rest[max(0, x.start() - 40):x.end() + 40] for x in re.finditer(r"(?i)apify", rest)]
+
+
+def outside_w45_claims(page):
+    """Kitty t3 G6. Outside section#latest-week (on any page), no text or alt/title/aria-label may say "this week".
+    Returns the offending snippets. (Apify mentions are handled by the allowlist in apify_outside_allowlist.)"""
+    body = re.sub(r'<section id="latest-week">.*?</section>', " ", page, count=1, flags=re.S)
+    body = re.sub(r"<(script|style)\b.*?</\1>", " ", body, flags=re.S | re.I)
+    attrs = " . ".join(html.unescape(v) for v in re.findall(r'\b(?:alt|title|aria-label)="([^"]*)"', body))
+    text = norm_text(re.sub(r"<[^>]+>", " ", body)) + " . " + attrs
+    return [m.group(0) for m in re.finditer(r"(?i)\bthis week\b.{0,40}|.{0,40}\bthis week\b", text)]
+
+
+# Kitty t4: where "Apify" may appear in the built site. Apify has no week-45 rows (out until Nov 16), so every mention
+# must sit in one of these containers, which hold the "did not run" line or prior-run (Oct 19-26) data. Each entry is
+# (page, tag, opening-tag regex, inside, mentions): `inside` is the (tag, id) of the container it must sit in (or None) and
+# `mentions` pins how many times "apify" occurs in it, so new text inside an allowed container also fails.
+# Anything else, in text, attributes, <meta>, comments, <noscript> or scripts, fails the build. trace_w45.py keeps its own copy.
+APIFY_ALLOW = (
+    ("/", "p", r'<p class="lcopy" data-copy="apify">', ("section", "latest-week"), 2),   # "Apify did not run this week."
+    ("/", "section", r'<section id="apify-retest"[^>]*>', None, 9),         # Oct 26 prior-run retest
+    ("/", "figure", r'<figure[^>]* id="chart-pass-rate"[^>]*>', None, 8),   # legacy chart, old data pin 303efdf4
+    ("/", "figure", r'<figure[^>]* id="chart-cost"[^>]*>', None, 4),        # legacy chart, old data pin 303efdf4
+    ("/", "details", r'<details id="notes"[^>]*>', None, 1),                 # "Apify skipped Oct 23"
+    ("/", "details", r'<details id="earlier-runs"[^>]*>', None, 3),       # Oct 19/20 runs
+    ("/", "details", r'<details id="every-row"[^>]*>', None, 4),          # Oct 19/20 rows
+    ("/methodology/", "div", r'<div[^>]* id="limits"[^>]*>', None, 1),         # "Four providers have rows"
+    ("/prices/", "div", r'<div class="row price-row"[^>]*data-provider="apify"[^>]*>', ("div", "price-rows"), 4),
+)
+
+
+def norm_text(s):
+    """Entities decoded, nbsp/soft hyphen/zero-width removed, whitespace collapsed."""
+    s = html.unescape(s).replace("\xa0", " ")
+    s = re.sub("[\u00ad\u200b-\u200d\u2060\ufeff]", "", s)
+    return " ".join(s.split())
+
+
+def _span(page, tag, opener):
+    """(start, end) of every element whose opening tag matches `opener`, closed by depth-counting `tag`."""
+    out = []
+    for m in re.finditer(opener, page):
+        depth, i = 0, m.start()
+        for t in re.finditer(rf"<(/?){tag}\b[^>]*>", page[i:]):
+            depth += -1 if t.group(1) else 1
+            if depth == 0:
+                out.append((i, i + t.end())); break
+        else:
+            out.append((i, len(page)))
+    return out
+
+
+def apify_outside_allowlist(page, path):
+    """Every problem with Apify mentions on one built page: a mention outside the allowed containers, an allowed
+    container missing, duplicated, misplaced or holding a different number of mentions than pinned."""
+    errs, cut = [], []
+    for pg, tag, opener, inside, want in APIFY_ALLOW:
+        if pg != path:
+            continue
+        spans = _span(page, tag, opener)
+        if len(spans) != 1:
+            errs.append(f"allowed container {opener!r} found {len(spans)} times, expected 1"); continue
+        a, b = spans[0]
+        if inside:
+            outer = _span(page, inside[0], rf'<{inside[0]}\b[^>]*\bid="{inside[1]}"')
+            if not any(x <= a and b <= y for x, y in outer):
+                errs.append(f"allowed container {opener!r} is not inside #{inside[1]}")
+        n = len(re.findall("(?i)apify", norm_text(page[a:b])))
+        if n != want:
+            errs.append(f"allowed container {opener!r} has {n} Apify mentions, pinned {want}")
+        cut.append((a, b))
+    rest, last = [], 0
+    for a, b in sorted(cut):
+        rest.append(page[last:a]); last = max(last, b)
+    rest = norm_text(" ".join(rest + [page[last:]]))
+    errs += [f"Apify outside the allowlist: {rest[max(0, m.start() - 50):m.end() + 50]!r}" for m in re.finditer("(?i)apify", rest)]
+    return errs
+
+
 RETEST = "retest-apify-2026-10-26"
 
 
@@ -325,7 +511,9 @@ def section_retest(ctx):
     cap = ctx.doc.field(title, "Caption")
     src = "/assets/retest/" + Path(meta["chart"]).name
     src350 = "/assets/retest/" + Path(meta["chart_350"]).name   # 350px variant like the weekly charts (252-unit viewBox shown at 350px)
-    return (f'<section id="apify-retest" class="retest"><div class="wrap"><div class="col"><h3>{e(title)} <span class="pill">Preliminary</span></h3>'
+    y, mo, dd = (int(t) for t in RETEST.rsplit("-", 3)[1:])   # the retest's run date is in its pinned content name
+    prior = f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 45 results", "Prior run"))} {MONTHS[mo - 1]} {dd}, {y}</p>'
+    return (f'<section id="apify-retest" class="retest"><div class="wrap"><div class="col">{prior}<h3>{e(title)} <span class="pill">Preliminary</span></h3>'
             f'<p>{inline(para)}</p></div><figure class="retest-fig"><picture><source media="(max-width: 959.98px)" srcset="{src350}">'
             f'<img src="{src}" alt="{e(meta["alt"], quote=True)}" width="768" height="432" loading="lazy"></picture>'
             f'<p class="retest-caption">{e(cap)}</p></figure></div></section>')
@@ -377,7 +565,8 @@ def every_row(ctx):
 
 
 def section_details(ctx):
-    return f'<section id="details"><div class="wrap"><div class="col"><h2>Details</h2></div>{earlier_runs(ctx)}{every_row(ctx)}</div></section>'
+    prior = f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 45 results", "Prior run"))} {e(day_label(ctx.latest["run_date"]))}</p>'
+    return f'<section id="details"><div class="wrap"><div class="col">{prior}<h2>Details</h2></div>{earlier_runs(ctx)}{every_row(ctx)}</div></section>'
 
 
 def section_sponsor(ctx):
@@ -535,7 +724,7 @@ def page_meta(ctx):
 def slots(ctx):
     d = ctx.doc
     return {
-        "hero_results": hero_results(ctx), "run": section_run(ctx),
+        "hero_results": hero_results(ctx), "w45": section_w45(ctx), "run": section_run(ctx),
         "pass_rate": section_chart(ctx, "pass-rate", "Pass rate", "pass-rate", headline_sentence(ctx)),
         "cost": section_chart(ctx, "cost", "Cost per passed check", "cost-per-success", cost_title(ctx)),
         "not_tested": section_not_tested(ctx), "retest": section_retest(ctx), "details": section_details(ctx), "sponsor": section_sponsor(ctx),

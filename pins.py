@@ -45,6 +45,9 @@ def tavily_dates(pricing_path):
     return out
 
 
+W45_LIVE_NOT_HELD = {"keenable": "Keenable"}   # exact; see the Keenable-only ruling in check()
+
+
 def check(root, pins=None, vendored_sha=None):
     """Errors for: stale data pin, Tavily input dated before phase0_date, vendored data not at the pinned sha, copy, chart alt text or chart bytes not at the pin."""
     root = Path(root)
@@ -76,6 +79,14 @@ def check(root, pins=None, vendored_sha=None):
             errs.append(f'data/_upstream/pricing.yaml differs from bench/pricing.yaml at {pins["data"][:12]} in AWI_DATA_REPO; run ./sync_data.sh {pins["data"]}')
     if vendored != pins["data"]:
         errs.append(f'data/_upstream/SOURCE sha {vendored} != pins.json data {pins["data"]}; run ./sync_data.sh {pins["data"]}')
+    w45 = root / "content/w45-results.json"
+    if w45.exists():   # AWI-W45-PUBLISH-001: the week-45 regrade file must be the exact tables.py output recorded in the manifest
+        m = json.loads(w45.read_text())
+        if sha256(root / m["regrade_file"]) != m["regrade_sha256"]:
+            errs.append(f'{m["regrade_file"]} does not match content/w45-results.json regrade_sha256 (never hand-edit the regrade output)')
+        # Lucille 2 ruling, Nov 2 2026: AC-4 lifted for Keenable only, so Keenable is the only provider that may get a "not run this week" line
+        if m.get("live_not_held") != W45_LIVE_NOT_HELD:
+            errs.append(f'content/w45-results.json live_not_held {m.get("live_not_held")} != {W45_LIVE_NOT_HELD} (the Keenable-only ruling)')
     if sha256(root / "content/copy.md") != pins["copy_sha256"]:
         errs.append("content/copy.md does not match pins.json copy_sha256")
     if sha256(root / "content/chart-alt.md") != pins["chart_alt_sha256"]:
