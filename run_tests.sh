@@ -5,6 +5,8 @@ nice -n 19 python3 build.py
 nice -n 19 node tests/app_smoke.js
 nice -n 19 python3 -m tests.run_dist
 nice -n 19 python3 -m tests.test_dist
+# deploy smoke logic (scripts/deploy/smoke.py): SPA-fallback false positive, worker never served as JS, API routes not HTML
+nice -n 19 python3 -m unittest -q tests.test_deploy_smoke tests.test_refresh_dist_guards
 # AWI-W45-PUBLISH-001: every week-45 cell on / traced back to content/w45-tables-regrade.json (exit 1 on any untraced or wrong cell)
 nice -n 19 python3 tools/trace_w45.py
 # signup (AWI-SIGNUP-FORM-001): endpoint/retry/export on mocks, SQL vs SQLite, secret scan, mutants on save-order + fallback
