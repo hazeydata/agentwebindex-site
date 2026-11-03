@@ -1397,7 +1397,8 @@ class W45Results(unittest.TestCase):
         errs, ok, n = self.tr.trace(D / "index.html")
         self.assertEqual(errs, [])
         doc = json.loads((R / self.MAN["regrade_file"]).read_text())
-        rows = [r for t in doc["tables"].values() for r in t if r["run_date"] == self.MAN["run_date"]]
+        extra = self.MAN.get("extra_rows") or {}
+        rows = [r for t in doc["tables"].values() for r in t if r["run_date"] == self.MAN["run_date"] or extra.get(r["provider"]) == r["run_date"]]
         self.assertEqual(n, len(rows) * len(self.tr.COLUMNS))
         self.assertEqual(hashlib.sha256((R / self.MAN["regrade_file"]).read_bytes()).hexdigest(), self.MAN["regrade_sha256"])
 
@@ -1424,9 +1425,20 @@ class W45Results(unittest.TestCase):
         d = copydoc.load()
         for k in ("Coverage", "Apify", "Comparison", "Failed", "Skipped"):
             self.assertIn(norm(d.field("Week 45 results", k)), norm(html.unescape(text_of(sec))), k)
-        self.assertEqual(re.findall(r'<tr data-provider="([a-z]+)"', sec), ["firecrawl", "firecrawl", "brightdata"])
+        self.assertEqual(re.findall(r'<tr data-provider="([a-z]+)"', sec), ["firecrawl", "firecrawl", "tinyfish", "brightdata", "tinyfish"])
         fails = re.findall(r'data-src="tables\.[a-z]+\.\d+\.failed\.v" class="mono num">(\d+)<', sec)
-        self.assertEqual(fails, ["3", "7", "51"])   # failed rows stay failed (values traced in test_every_cell_traces_to_regrade)
+        self.assertEqual(fails, ["3", "7", "4", "51", "12"])   # failed rows stay failed (values traced in test_every_cell_traces_to_regrade)
+
+    def test_tinyfish_rows_and_fetch_note(self):   # AWI-TINYFISH-001 publish: hold lifted, both TinyFish rows shown, misses note right after the fetch row
+        sec = self.s[self.s.index('<section id="latest-week">'):]
+        sec = sec[:sec.index("</section>")]
+        rows = re.findall(r'<tr data-provider="tinyfish">.*?</tr>', sec, flags=re.S)
+        self.assertEqual(len(rows), 2)
+        self.assertIn(">17 of 21<", rows[0]); self.assertIn(">9 of 21<", rows[1]); self.assertIn("2026-11-03", rows[1])
+        after = sec[sec.index(rows[1]) + len(rows[1]):]
+        self.assertTrue(after.startswith('<tr class="row-note">'), after[:80])
+        self.assertIn(html.escape(copydoc.load().field("Week 45 results", "TinyFish fetch note")), after[:600])
+        self.assertIn("Firecrawl, TinyFish, Bright Data Web Unlocker", norm(html.unescape(text_of(sec))))
 
     def test_keenable_not_run_line_derived_from_regrade(self):
         sec = self.s[self.s.index('<section id="latest-week">'):]
@@ -1456,7 +1468,7 @@ class W45Results(unittest.TestCase):
                      "Apify did not run this week. It hit its monthly spending cap and stays out until its billing resets on Nov 16.",
                      "Week 45 and the " + render.day_label(LATEST["run_date"]).rsplit(",", 1)[0] + " run below tested different providers, so compare rows only within a run.",
                      "Firecrawl's evergreen run used 40 of the 100 evergreen questions.",
-                     "Source: tables.py regrade of the Nov 2, 2026 run logs (agentwebindex 7651c2d)"):
+                     "Source: tables.py regrade of the Nov 2, 2026 run logs (agentwebindex c4556c2)"):
             self.assertIn(want, t)
         heads = re.findall(r'<th scope="col"[^>]*>([^<]*)</th>', self._sec())
         self.assertEqual(heads[4:6], ["Passed / checks", "Failed / checks"])

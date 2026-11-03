@@ -233,8 +233,10 @@ def trace(index_html, evidence=None):
         else:
             ok.append(f"regrade file byte-identical to {evidence}")
     doc = json.loads(raw)
-    names = {p["id"]: p["name"] for p in json.loads((R / "data/_upstream/providers.json").read_text())["providers"]}
-    want = {f"tables.{c}.{i}": (c, r) for c, rows in doc["tables"].items() for i, r in enumerate(rows) if r.get("run_date") == man["run_date"]}
+    names = {p["id"]: p["name"] for p in json.loads((R / "data/_upstream/providers.json").read_text())["providers"]} | (man.get("extra_names") or {})
+    extra = man.get("extra_rows") or {}   # {provider: run_date}: rows shown with their own Run date (AWI-TINYFISH-001)
+    want = {f"tables.{c}.{i}": (c, r) for c, rows in doc["tables"].items() for i, r in enumerate(rows)
+            if r.get("run_date") == man["run_date"] or extra.get(r.get("provider")) == r.get("run_date")}
     if any(r["provider"] == "apify" for _, r in want.values()):
         errs.append("regrade has an Apify week-45 row; Apify should be out until its Nov 16 cycle")
     sec = Section(); sec.feed(Path(index_html).read_text())
@@ -275,7 +277,7 @@ def trace(index_html, evidence=None):
     # header cells: run date and the ran-this-week list are derived from the same rows
     heads = {c["src"]: norm(c["text"]) for c in sec.cells if c["label"] is None and c["src"] != "not_run"}
     href = {c["src"]: c["hrefs"] for c in sec.cells if c["label"] is None}
-    dates = sorted({r["run_date"] for _, r in want.values()})
+    dates = sorted({r["run_date"] for _, r in want.values() if extra.get(r["provider"]) != r["run_date"]})   # heading/source date: manifest-date rows
     if heads.get("run_date") != (day(dates[0]) if len(dates) == 1 else None):
         errs.append(f"heading run date {heads.get('run_date')!r} != {dates}")
     else:
