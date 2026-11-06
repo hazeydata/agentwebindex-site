@@ -24,7 +24,7 @@ MUTANTS = {
     "retry_includes_queued": (C, "WHERE beehiiv_status IN ('failed', 'pending') AND attempts", "WHERE beehiiv_status IN ('failed', 'pending', 'queued') AND attempts"),
     "sent_downgradable": (C, "last_error = ? WHERE id = ? AND beehiiv_status != 'sent'\",\n  markQueued", "last_error = ? WHERE id = ?\",\n  markQueued"),
     "retry_keeps_calling_after_403": (C, "    if (out.kind === 'queued') break;", ""),
-    "retry_batch_100": (CFG, "export const RETRY_BATCH = 40;", "export const RETRY_BATCH = 100;"),
+    "retry_batch_100": (CFG, "export const RETRY_BATCH = 20;", "export const RETRY_BATCH = 100;"),
     "retry_batch_ignored": (C, "ORDER BY id LIMIT ${RETRY_BATCH}`", "ORDER BY id LIMIT 100`"),
     "worker_public_url": ("workers/wrangler.signup-retry.toml", "workers_dev = false", "workers_dev = true"),
     "worker_cron_hourly": ("workers/wrangler.signup-retry.toml", 'crons = ["*/15 * * * *"]', 'crons = ["0 * * * *"]'),

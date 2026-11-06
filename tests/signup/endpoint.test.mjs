@@ -9,7 +9,7 @@ import { handleSubscribe, retryPending, purgeSent, normalizeEmail, beehiivBody, 
 import { runScheduled } from '../../workers/signup-retry.js';
 import { handleExport, tokenMatches } from '../../functions/api/signups/export.csv.js';
 import * as CFG from '../../signup/config.js';
-import { mockD1, mockFetch, env, post, capture, SECRET_KEY, SALT, ORIGIN } from './helpers.mjs';
+import { mockD1, mockFetch, createOk, env, post, capture, SECRET_KEY, SALT, ORIGIN, SUB_ID } from './helpers.mjs';
 
 const T0 = Date.UTC(2026, 9, 26, 13, 0, 0);
 let clock = T0;
@@ -25,12 +25,12 @@ test.beforeEach(() => { _resetMemoryLimiter(); clock += 3600_000; });
 // ---------------- S1
 test('AC1 one awi row is written before the Beehiiv call', async () => {
   const e = env(); let rowsAtCall = -1;
-  const f = mockFetch(() => { rowsAtCall = e.SIGNUPS.rows.length; return new Response('{"data":{"id":"sub_1"}}', { status: 201 }); });
+  const f = mockFetch(() => { rowsAtCall = e.SIGNUPS.rows.length; return createOk(); });
   const r = await sub(e, OK, { fetch: f });
   assert.equal(rowsAtCall, 1);
   assert.equal(e.SIGNUPS.rows.length, 1);
   assert.equal(e.SIGNUPS.rows[0].source, 'awi');
-  assert.equal(f.calls.length, 1);
+  assert.equal(f.calls.length, 2); // create + tag
   assert.equal(r.status, CFG.SUCCESS_STATUS);
 });
 test('AC1 D1 write failure -> error and no Beehiiv call', async () => {
@@ -85,7 +85,7 @@ test('AC3 repeat after success: no second row, no second call, same text', async
   const e = env(); const f = mockFetch();
   const a = await sub(e, OK, { fetch: f });
   const b = await sub(e, { email: ' Kitty@EXAMPLE.com ', page: '/newsletter/' }, { fetch: f });
-  assert.equal(e.SIGNUPS.rows.length, 1); assert.equal(f.calls.length, 1);
+  assert.equal(e.SIGNUPS.rows.length, 1); assert.equal(f.calls.length, 2); // create + tag once, none for the repeat
   assert.equal(a.status, b.status); assert.equal(a.res.status, b.res.status);
 });
 test('AC3 repeat while queued answers queued, like a first signup in that state', async () => {
@@ -96,7 +96,7 @@ test('AC3 repeat while queued answers queued, like a first signup in that state'
 test('edge: two tabs at once -> one row (unique email_norm, source)', async () => {
   const e = env(); const f = mockFetch();
   await Promise.all([sub(e, OK, { fetch: f }), sub(e, OK, { fetch: f })]);
-  assert.equal(e.SIGNUPS.rows.length, 1); assert.equal(f.calls.length, 1);
+  assert.equal(e.SIGNUPS.rows.length, 1); assert.equal(f.calls.length, 2);
 });
 test('AC4 honeypot filled -> fake success, nothing stored, no call', async () => {
   const e = env();
@@ -164,7 +164,7 @@ test('AC15 (mock part) no-JS form post -> 303 to the static thank-you page', asy
 test('AC7 2xx -> sent + sub id; DOI on -> pending_confirmation "Check your inbox to confirm your subscription."', async () => {
   const e = env(); const r = await sub(e, OK);
   const row = e.SIGNUPS.rows[0];
-  assert.equal(row.beehiiv_status, 'sent'); assert.equal(row.beehiiv_sub_id, 'sub_123'); assert.equal(row.attempts, 1);
+  assert.equal(row.beehiiv_status, 'sent'); assert.equal(row.beehiiv_sub_id, SUB_ID); assert.equal(row.attempts, 1);
   assert.equal(CFG.DOUBLE_OPT_IN, true);
   assert.equal(r.status, 'pending_confirmation');
   assert.equal(CFG.MESSAGES[r.status], 'Check your inbox to confirm your subscription.');
@@ -172,7 +172,7 @@ test('AC7 2xx -> sent + sub id; DOI on -> pending_confirmation "Check your inbox
 });
 test('AC7 edge: Beehiiv returns an existing/unsubscribed subscriber (2xx) -> sent, same text', async () => {
   const e = env();
-  const r = await sub(e, OK, { fetch: mockFetch(() => new Response('{"data":{"id":"sub_old","status":"inactive"}}', { status: 200 })) });
+  const r = await sub(e, OK, { fetch: mockFetch(() => new Response(JSON.stringify({ data: { id: SUB_ID, status: 'inactive' } }), { status: 200 })) });
   assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'sent'); assert.equal(r.status, CFG.SUCCESS_STATUS);
   assert.equal(r.fetch.calls[0].body.reactivate_existing, false);
 });
@@ -218,12 +218,12 @@ test('AC9 retry: failed/pending rows retried, max 5 attempts, sent never re-sent
   const byEmail = Object.fromEntries(db.rows.map((r) => [r.email_norm, r]));
   assert.equal(byEmail['f@example.com'].attempts, 5); assert.equal(byEmail['p@example.com'].attempts, 5);
   assert.ok(down.calls.every((c) => c.body.email !== 's@example.com'));
-  assert.equal(down.calls.length, 4 + 5);
+  assert.equal(down.calls.length, 4 + 5); // create fails first: no tag call
   byEmail['p@example.com'].attempts = 2;
   const up = mockFetch();
   await capture(() => retryPending(e, { fetch: up }));
   await capture(() => retryPending(e, { fetch: up }));
-  assert.equal(up.calls.length, 1); assert.equal(byEmail['p@example.com'].beehiiv_status, 'sent');
+  assert.equal(up.calls.length, 2); assert.equal(byEmail['p@example.com'].beehiiv_status, 'sent');
 });
 test('AC9 retry stops calling Beehiiv in a run once it answers 401/403 (plan lapsed)', async () => {
   const e = env(); const f0 = mockFetch(() => new Response('', { status: 500 }));
@@ -233,17 +233,33 @@ test('AC9 retry stops calling Beehiiv in a run once it answers 401/403 (plan lap
   assert.equal(f.calls.length, 1);
   assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'queued');
 });
-test('AC9 retry batch: at most RETRY_BATCH (40) Beehiiv calls per run, under the Workers Free 50-subrequest limit; the rest wait', async () => {
-  assert.equal(CFG.RETRY_BATCH, 40); assert.ok(CFG.RETRY_BATCH < 50);
+test('AC9 retry batch: RETRY_BATCH (20) rows = at most 40 Beehiiv calls per run (create + tag), under the Workers Free 50-subrequest limit; the rest wait', async () => {
+  assert.equal(CFG.RETRY_BATCH, 20); assert.ok(2 * CFG.RETRY_BATCH < 50); // 2 upstream calls per successful row
   const e = env(); const db = e.SIGNUPS;
   for (let i = 1; i <= 45; i++) db.rows.push({ id: i, email_norm: `b${i}@example.com`, email_raw: `b${i}@example.com`, source: 'awi', page: '/',
     created_at: '2026-10-26T13:00:00.000Z', beehiiv_status: 'failed', beehiiv_sub_id: null, attempts: 0, last_error: 'http_500', ip_hash: 'h', sent_at: null, deleted_at: null });
+  const emails = (f) => f.createCalls().map((c) => c.body.email);
   const f = mockFetch(); const { out } = await capture(() => retryPending(e, { fetch: f }));
-  assert.equal(f.calls.length, 40); assert.equal(out.tried, 40); assert.equal(out.sent, 40);
-  assert.deepEqual(f.calls.map((c) => c.body.email), Array.from({ length: 40 }, (_, i) => `b${i + 1}@example.com`));
+  assert.equal(f.createCalls().length, 20); assert.equal(f.tagCalls().length, 20); assert.equal(f.calls.length, 40);
+  assert.ok(f.calls.length <= 2 * CFG.RETRY_BATCH && f.calls.length < 50);
+  assert.equal(out.tried, 20); assert.equal(out.sent, 20);
+  assert.deepEqual(emails(f), Array.from({ length: 20 }, (_, i) => `b${i + 1}@example.com`));
   const f2 = mockFetch(); await capture(() => retryPending(e, { fetch: f2 }));
-  assert.deepEqual(f2.calls.map((c) => c.body.email), ['b41@example.com', 'b42@example.com', 'b43@example.com', 'b44@example.com', 'b45@example.com']);
+  assert.deepEqual(emails(f2), Array.from({ length: 20 }, (_, i) => `b${i + 21}@example.com`)); assert.equal(f2.calls.length, 40);
+  const f3 = mockFetch(); await capture(() => retryPending(e, { fetch: f3 }));
+  assert.deepEqual(emails(f3), Array.from({ length: 5 }, (_, i) => `b${i + 41}@example.com`)); assert.equal(f3.calls.length, 10);
   assert.ok(db.rows.every((r) => r.beehiiv_status === 'sent'));
+});
+test('AC9 retry: each successful row is exactly 2 calls (create then tag, tag url uses that create\'s id); a failed create makes 1', async () => {
+  const e = env(); const db = e.SIGNUPS;
+  for (let i = 1; i <= 3; i++) db.rows.push({ id: i, email_norm: `r${i}@example.com`, email_raw: `r${i}@example.com`, source: 'awi', page: '/',
+    created_at: '2026-10-26T13:00:00.000Z', beehiiv_status: 'failed', beehiiv_sub_id: null, attempts: 0, last_error: 'http_500', ip_hash: 'h', sent_at: null, deleted_at: null });
+  const id = (n) => `sub_0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4${n}`;
+  const f = mockFetch((i) => (i === 1 ? new Response('', { status: 500 }) : createOk(id(i))));
+  const { out } = await capture(() => retryPending(e, { fetch: f }));
+  assert.equal(out.sent, 2); assert.equal(out.failed, 1); assert.equal(f.calls.length, 5);
+  assert.deepEqual(f.calls.map((c) => c.isTag), [false, true, false, false, true]);
+  assert.ok(f.tagCalls()[0].url.includes(id(0))); assert.ok(f.tagCalls()[1].url.includes(id(2)));
 });
 test('AC10 export: 401 without or with a wrong X-Export-Token', async () => {
   const e = env();
@@ -363,7 +379,7 @@ test('rate limit: per-IP window is 10 minutes (6th post in window blocked, next 
 test('Beehiiv accepted but the status update fails -> 500, not success', async () => {
   const e = env({ SIGNUPS: mockD1({ failMark: true }) });
   const r = await sub(e, OK);
-  assert.equal(r.res.status, 500); assert.equal(r.status, 'error'); assert.equal(r.fetch.calls.length, 1);
+  assert.equal(r.res.status, 500); assert.equal(r.status, 'error'); assert.equal(r.fetch.calls.length, 2);
 });
 
 test('accepted, first status write fails, second persists it: success, row sent with sub id, retry does not call Beehiiv again', async () => {
@@ -390,7 +406,7 @@ const markCalls = (db) => db.calls.filter((q) => [Q.markSent, Q.markFailed, Q.ma
 test('accepted, both status writes fail: 500 after exactly two writes (no third), row still pending', async () => {
   const e = env({ SIGNUPS: mockD1({ failMarkTimes: 2 }) });
   const r = await sub(e, OK);
-  assert.equal(r.res.status, 500); assert.equal(r.status, 'error'); assert.equal(r.fetch.calls.length, 1);
+  assert.equal(r.res.status, 500); assert.equal(r.status, 'error'); assert.equal(r.fetch.calls.length, 2);
   assert.equal(markCalls(e.SIGNUPS), 2); assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'pending');
 });
 
@@ -431,4 +447,113 @@ for (const [p, want] of [['/newsletter/', '/newsletter/'], ['javascript:alert(1)
 for (const hp of [' ', '\t', ' x ']) test(`honeypot with whitespace ${JSON.stringify(hp)} counts as a bot`, async () => {
   const e = env(); const r = await sub(e, { email: 'hp@example.com', website: hp });
   assert.equal(r.status, CFG.SUCCESS_STATUS); assert.equal(e.SIGNUPS.rows.length, 0); assert.equal(r.fetch.calls.length, 0);
+});
+
+// ---------------------------------------------------------------- BEEHIIV-104 Phase 3: tag after create
+const TAGS_URL = `https://api.beehiiv.com/v2/publications/pub_test/subscriptions/${SUB_ID}/tags`;
+
+test('P3 create then tag: exact tag request, same bearer auth, shared signal; sent only after both', async () => {
+  const e = env(); const r = await sub(e, OK);
+  const [c, t] = r.fetch.calls;
+  assert.equal(r.fetch.calls.length, 2); assert.equal(c.isTag, false);
+  assert.equal(t.url, TAGS_URL); assert.equal(t.init.method, 'POST');
+  assert.deepEqual(t.body, { tags: ['agentwebindex'] });
+  assert.equal(t.init.headers.Authorization, `Bearer ${SECRET_KEY}`); assert.equal(t.init.headers['Content-Type'], 'application/json');
+  assert.ok(t.init.signal && t.init.signal === c.init.signal);
+  assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'sent'); assert.equal(e.SIGNUPS.rows[0].beehiiv_sub_id, SUB_ID);
+  assert.equal(r.status, CFG.SUCCESS_STATUS);
+});
+
+test('P3 custom_fields, double_opt and reactivate_existing are unchanged on the create body', async () => {
+  const r = await sub(env(), OK);
+  const b = r.fetch.createCalls()[0].body;
+  assert.deepEqual(b.custom_fields, [{ name: 'source', value: 'AWI' }]);
+  assert.equal(b.double_opt_override, 'on'); assert.equal(b.reactivate_existing, false);
+  assert.deepEqual(b, beehiivBody('Kitty@example.com', '/', ORIGIN));
+});
+
+for (const [name, tagResp, code] of [['500', () => new Response('x', { status: 500 }), 'tag_http_500'], ['404', () => new Response('x', { status: 404 }), 'tag_http_404'],
+  ['429', () => new Response('x', { status: 429 }), 'tag_http_429'], ['401 (not the CSV path)', () => new Response('x', { status: 401 }), 'tag_http_401'],
+  ['network', () => 'network', 'network'], ['timeout', () => 'timeout', 'timeout']]) {
+  test(`P3 tag ${name} -> failed ${code}, queued answer, no sub id stored, key not leaked`, async () => {
+    const e = env(); const f = mockFetch(undefined, tagResp);
+    const r = await sub(e, OK, { fetch: f, timeoutMs: 20 });
+    const row = e.SIGNUPS.rows[0];
+    assert.equal(row.beehiiv_status, 'failed'); assert.equal(row.last_error, code); assert.equal(row.beehiiv_sub_id, null);
+    assert.equal(r.status, 'queued'); assert.equal(r.res.status, 200);
+    assert.equal(f.createCalls().length, 1); assert.equal(f.tagCalls().length, 1); // no internal retry
+    assert.ok(r.lines.some((l) => l.includes(`"reason":"${code}"`)));
+    assert.ok(!(r.lines.join('\n') + r.text).includes(SECRET_KEY));
+  });
+}
+
+for (const [name, resp] of [
+  ['malformed JSON', () => new Response('not json', { status: 201 })], ['empty body', () => new Response('', { status: 201 })],
+  ['no data', () => new Response('{}', { status: 201 })], ['null id', () => new Response('{"data":{"id":null}}', { status: 201 })],
+  ['numeric id', () => new Response('{"data":{"id":123}}', { status: 201 })], ['old-style sub_123', () => createOk('sub_123')],
+  ['no sub_ prefix', () => createOk('0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d')], ['path-injecting id', () => createOk(`${SUB_ID}/../x`)],
+  ['wrong prefix', () => createOk('post_0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d')]]) {
+  test(`P3 create 2xx with ${name} -> failed bad_response, no tag call, queued answer`, async () => {
+    const e = env(); const f = mockFetch(resp);
+    const r = await sub(e, OK, { fetch: f });
+    const row = e.SIGNUPS.rows[0];
+    assert.equal(row.beehiiv_status, 'failed'); assert.equal(row.last_error, 'bad_response'); assert.equal(row.beehiiv_sub_id, null);
+    assert.equal(f.tagCalls().length, 0); assert.equal(r.status, 'queued');
+    assert.ok(r.lines.some((l) => l.includes('"reason":"bad_response"')));
+  });
+}
+
+test('P3 duplicate after success makes no upstream calls', async () => {
+  const e = env(); await sub(e, OK);
+  const f = mockFetch(); const r = await sub(e, OK, { fetch: f });
+  assert.equal(f.calls.length, 0); assert.equal(r.status, CFG.SUCCESS_STATUS); assert.equal(e.SIGNUPS.rows.length, 1);
+});
+
+test('P3 failed (tag) row is retried by the worker with create+tag; success marks sent; sent rows are not resent', async () => {
+  const e = env();
+  await sub(e, OK, { fetch: mockFetch(undefined, () => new Response('', { status: 503 })) });
+  await sub(e, { email: 'done@example.com' });
+  assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'failed');
+  const f = mockFetch(); const { out } = await capture(() => retryPending(e, { fetch: f, now: clock }));
+  assert.equal(out.tried, 1); assert.equal(out.sent, 1);
+  assert.equal(f.createCalls().length, 1); assert.equal(f.tagCalls().length, 1);
+  assert.equal(f.createCalls()[0].body.email, 'Kitty@example.com'); assert.equal(f.createCalls()[0].body.reactivate_existing, false);
+  assert.deepEqual(f.createCalls()[0].body.custom_fields, [{ name: 'source', value: 'AWI' }]);
+  assert.equal(f.tagCalls()[0].url, TAGS_URL);
+  const row = e.SIGNUPS.rows[0];
+  assert.equal(row.beehiiv_status, 'sent'); assert.equal(row.beehiiv_sub_id, SUB_ID); assert.equal(row.last_error, null); assert.equal(row.attempts, 2);
+  const f2 = mockFetch(); await capture(() => retryPending(e, { fetch: f2 }));
+  assert.equal(f2.calls.length, 0);
+});
+
+test('P3 retry: tag failure keeps the row failed; bad create id on retry is bad_response', async () => {
+  const e = env(); await sub(e, OK, { fetch: mockFetch(() => new Response('', { status: 500 })) });
+  await capture(() => retryPending(e, { fetch: mockFetch(undefined, () => new Response('', { status: 500 })) }));
+  assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'failed'); assert.equal(e.SIGNUPS.rows[0].last_error, 'tag_http_500'); assert.equal(e.SIGNUPS.rows[0].beehiiv_sub_id, null);
+  await capture(() => retryPending(e, { fetch: mockFetch(() => createOk('sub_bad')) }));
+  assert.equal(e.SIGNUPS.rows[0].last_error, 'bad_response'); assert.equal(e.SIGNUPS.rows[0].attempts, 3);
+});
+
+test('P3 one shared deadline covers create+tag: a slow create leaves the tag only the remainder', async () => {
+  const e = env(); let signal;
+  const f = mockFetch(() => new Promise((res) => setTimeout(() => res(createOk()), 30)), (i, init) => { signal = init.signal; return 'timeout'; });
+  const r = await sub(e, OK, { fetch: f, timeoutMs: 60 });
+  assert.equal(f.tagCalls().length, 1); assert.equal(f.tagCalls()[0].init.signal, f.createCalls()[0].init.signal);
+  assert.equal(signal.aborted, true);
+  assert.equal(e.SIGNUPS.rows[0].last_error, 'timeout'); assert.equal(r.status, 'queued');
+});
+
+test('P3 create consumes the whole deadline -> tag call is aborted at once, not given a fresh timeout', async () => {
+  const e = env(); const t0 = Date.now();
+  const f = mockFetch(() => new Promise((res) => setTimeout(() => res(createOk()), 50)), () => 'timeout');
+  await sub(e, OK, { fetch: f, timeoutMs: 40 });
+  // the create promise itself ignores abort here, so it resolves; the tag call must then see an already-aborted signal
+  assert.ok(Date.now() - t0 < 500);
+  assert.equal(f.tagCalls().length, 1); assert.equal(f.tagCalls()[0].init.signal.aborted, true);
+  assert.equal(e.SIGNUPS.rows[0].beehiiv_status, 'failed'); assert.equal(e.SIGNUPS.rows[0].last_error, 'timeout');
+});
+
+test('P3 log reason enum accepts bad_response and tag_http_NNN only in that shape', async () => {
+  const { lines } = await capture(async () => { for (const x of ['bad_response', 'tag_http_500', 'tag_http_5', 'tag_http_500x']) log('signup', 'failed', x); });
+  assert.deepEqual(lines.map((l) => JSON.parse(l).reason), ['bad_response', 'tag_http_500', null, null]);
 });
