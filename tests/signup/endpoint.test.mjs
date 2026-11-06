@@ -491,7 +491,7 @@ for (const [name, resp] of [
   ['malformed JSON', () => new Response('not json', { status: 201 })], ['empty body', () => new Response('', { status: 201 })],
   ['no data', () => new Response('{}', { status: 201 })], ['null id', () => new Response('{"data":{"id":null}}', { status: 201 })],
   ['numeric id', () => new Response('{"data":{"id":123}}', { status: 201 })], ['old-style sub_123', () => createOk('sub_123')],
-  ['no sub_ prefix', () => createOk('0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d')], ['path-injecting id', () => createOk(`${SUB_ID}/../x`)],
+  ['no sub_ prefix', () => createOk('12345678-1234-1234-1234-123456789abc')], ['path-injecting id', () => createOk(`${SUB_ID}/../x`)],
   ['wrong prefix', () => createOk('post_0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d')]]) {
   test(`P3 create 2xx with ${name} -> failed bad_response, no tag call, queued answer`, async () => {
     const e = env(); const f = mockFetch(resp);
