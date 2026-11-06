@@ -139,8 +139,8 @@ Store-first, same-origin signup. Copied and adapted from hazeydata/hazeydata.ai 
 - `functions/api/subscribe.js`: the Pages Function. `functions/api/signups/export.csv.js`: `GET` with header `X-Export-Token: <EXPORT_TOKEN>` -> CSV
   `email,source,created_at` of every row not `sent` and not deleted (`deleted_at` set) (formula-guarded); missing or wrong token -> 401. Exporting deletes nothing.
 - `workers/signup-retry.js`: scheduled Worker (`*/15 * * * *`, config `workers/wrangler.signup-retry.toml`) running `retryPending`:
-  `failed`/`pending` rows with attempts < 5, at most `RETRY_BATCH` (40) per run, oldest id first (Workers Free allows 50 external
-  subrequests per invocation; the rest wait for the next run); `sent` rows are never touched (every UPDATE is guarded by `beehiiv_status != 'sent'`); no key -> skips Beehiiv;
+  `failed`/`pending` rows with attempts < 5, at most `RETRY_BATCH` (20) per run, oldest id first (a successful row is two Beehiiv calls, create + tag, so at most 40 of the
+  50 external subrequests Workers Free allows per invocation; the rest wait for the next run); `sent` rows are never touched (every UPDATE is guarded by `beehiiv_status != 'sent'`); no key -> skips Beehiiv;
   a 401/403 marks the row `queued` and stops the run. The same run then calls `purgeSent` (AC 18, R2): it deletes rows whose
   `beehiiv_status` is `sent` and whose `sent_at` is 30 days (`RETENTION_DAYS`) or more ago. `queued`, `pending` and `failed` rows are never deleted,
   however old; a second run deletes nothing more (idempotent). Purge runs even when retry is skipped for lack of a key.

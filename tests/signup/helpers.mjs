@@ -53,19 +53,29 @@ export function mockKV() {
   return { m, async get(k) { return m.get(k) ?? null; }, async put(k, v) { m.set(k, v); } };
 }
 
-// responder: (callIndex, init) => Response | 'timeout' | 'network'
-export function mockFetch(responder = () => new Response(JSON.stringify({ data: { id: 'sub_123' } }), { status: 201 })) {
+// Documented subscription id shape: sub_ + UUID.
+export const SUB_ID = 'sub_0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
+export const createOk = (id = SUB_ID, status = 201) => new Response(JSON.stringify({ data: { id } }), { status });
+// responder(createIndex, init) answers the create call; tagResponder(tagIndex, init) answers POST .../subscriptions/{id}/tags
+// (default 200). Either returns a Response | 'timeout' | 'network'. Calls are told apart by URL, not by body.
+export function mockFetch(responder = () => createOk(), tagResponder = () => new Response('{}', { status: 200 })) {
   const calls = [];
   const f = async (url, init) => {
-    calls.push({ url, init, body: JSON.parse(init.body) });
-    const r = responder(calls.length - 1, init);
+    const isTag = /\/subscriptions\/[^/]+\/tags$/.test(url);
+    calls.push({ url, init, body: JSON.parse(init.body), isTag });
+    const r = isTag ? tagResponder(f.tagCalls().length - 1, init) : responder(f.createCalls().length - 1, init);
     if (r === 'network') throw new TypeError('fetch failed');
     if (r === 'timeout') {
-      return new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError'))));
+      return new Promise((_, rej) => {
+        const abort = () => rej(new DOMException('aborted', 'AbortError'));
+        if (init.signal.aborted) abort(); else init.signal.addEventListener('abort', abort); // like real fetch
+      });
     }
     return r;
   };
   f.calls = calls;
+  f.createCalls = () => calls.filter((c) => !c.isTag);
+  f.tagCalls = () => calls.filter((c) => c.isTag);
   return f;
 }
 

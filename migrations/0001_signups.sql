@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS signups (
   beehiiv_status TEXT NOT NULL DEFAULT 'pending' CHECK (beehiiv_status IN ('pending', 'sent', 'failed', 'queued')),
   beehiiv_sub_id TEXT,
   attempts INTEGER NOT NULL DEFAULT 0,
-  last_error TEXT,                       -- fixed codes only: timeout, network, no_key, http_<nnn>  (queued = CSV path, AC 8a)
+  last_error TEXT,                       -- fixed codes only: timeout, network, no_key, bad_response, http_<nnn>, tag_http_<nnn>  (queued = CSV path, AC 8a)
   ip_hash TEXT,                          -- salted SHA-256 (IP_SALT); the raw IP is never stored
   sent_at TEXT,
   deleted_at TEXT

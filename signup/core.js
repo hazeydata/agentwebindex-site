@@ -41,7 +41,7 @@ export function normalizeEmail(raw) {
 }
 
 // ---------------------------------------------------------------- logging: fixed enums only, never email, IP or key (AC 12)
-const REASONS = /^(timeout|network|no_key|d1_write|d1_missing|no_salt|forbidden_origin|honeypot|unicode|http_[0-9]{3})$/;
+const REASONS = /^(timeout|network|no_key|d1_write|d1_missing|no_salt|forbidden_origin|honeypot|unicode|bad_response|http_[0-9]{3}|tag_http_[0-9]{3})$/;
 export function log(evt, status, reason) {
   if (reason != null && !REASONS.test(reason)) reason = null;
   console.log(JSON.stringify({ evt, status, reason: reason ?? null }));
@@ -102,26 +102,36 @@ export function beehiivBody(email, page, origin) {
   };
 }
 
-// -> {kind:'sent', subId} | {kind:'queued', code} (no key, 401, 403: CSV path, AC 8a) | {kind:'failed', code}
+// Documented Beehiiv subscription id: "sub_" + UUID. Anything else from a 2xx create is treated as a bad response.
+const SUB_ID = /^sub_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const SOURCE_SEGMENT_TAG = 'agentwebindex';
+
+// create subscription, then add the source tag; one AbortController deadline covers both calls, no internal retries
+// (retryPending drives later attempts; create is idempotent with reactivate_existing:false and so is tag add).
+// -> {kind:'sent', subId} (only after create AND tag accepted) | {kind:'queued', code} (no key, 401, 403 on create: CSV path, AC 8a)
+//  | {kind:'failed', code} (create error as before; bad_response; tag_http_NNN; timeout; network)
 export async function sendToBeehiiv(env, body, fetchImpl, timeoutMs = BEEHIIV_TIMEOUT_MS) {
   if (!env.BEEHIIV_API_KEY || !env.BEEHIIV_PUB_ID) return { kind: 'queued', code: 'no_key' };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const base = `https://api.beehiiv.com/v2/publications/${encodeURIComponent(env.BEEHIIV_PUB_ID)}/subscriptions`;
+  const headers = { Authorization: `Bearer ${env.BEEHIIV_API_KEY}`, 'Content-Type': 'application/json' };
   try {
-    const res = await fetchImpl(`https://api.beehiiv.com/v2/publications/${encodeURIComponent(env.BEEHIIV_PUB_ID)}/subscriptions`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${env.BEEHIIV_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: ctrl.signal,
-    });
-    if (res.status >= 200 && res.status < 300) {
-      let subId = null;
-      try { subId = (await res.json())?.data?.id ?? null; } catch { /* body optional */ }
-      return { kind: 'sent', subId };
+    const res = await fetchImpl(base, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal });
+    if (!(res.status >= 200 && res.status < 300)) {
+      try { await res.body?.cancel?.(); } catch { /* ignore */ }
+      const code = `http_${res.status}`;
+      return (res.status === 401 || res.status === 403) ? { kind: 'queued', code } : { kind: 'failed', code };
     }
-    try { await res.body?.cancel?.(); } catch { /* ignore */ }
-    const code = `http_${res.status}`;
-    return (res.status === 401 || res.status === 403) ? { kind: 'queued', code } : { kind: 'failed', code };
+    let subId = null;
+    try { subId = (await res.json())?.data?.id; } catch { return { kind: 'failed', code: 'bad_response' }; }
+    if (typeof subId !== 'string' || !SUB_ID.test(subId)) return { kind: 'failed', code: 'bad_response' };
+    const tagRes = await fetchImpl(`${base}/${encodeURIComponent(subId)}/tags`, {
+      method: 'POST', headers, body: JSON.stringify({ tags: [SOURCE_SEGMENT_TAG] }), signal: ctrl.signal,
+    });
+    try { await tagRes.body?.cancel?.(); } catch { /* ignore */ }
+    if (!(tagRes.status >= 200 && tagRes.status < 300)) return { kind: 'failed', code: `tag_http_${tagRes.status}` };
+    return { kind: 'sent', subId };
   } catch {
     return { kind: 'failed', code: ctrl.signal.aborted ? 'timeout' : 'network' };
   } finally {
