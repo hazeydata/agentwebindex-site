@@ -274,11 +274,16 @@ class Helpers(unittest.TestCase):
         for got, want in cases:
             self.assertEqual(got, want)
 
-    def test_untested_providers_are_the_other_eleven(self):  # AC21
+    def test_untested_providers_are_the_other_eleven(self):  # AC21; Lucille 2 ruling: 5/11/16, held provider excluded
         u = P.untested_providers(PRICING, LATEST, PROVIDERS)
         self.assertEqual(len(u), 11)
         self.assertEqual(u, sorted(u))
-        priced = {r["name"] for r in P.price_rows(PRICING, LATEST, PROVIDERS)}
+        self.assertEqual(u, ["Brave Search API", "Bright Data Web Unlocker", "Browserbase", "Firecrawl",
+                             "Hyperbrowser", "Jina Reader", "Linkup", "Parallel", "ScrapingBee", "Serper", "Steel"])
+        self.assertIsNone(re.compile(("context" + r"\.?" + "dev"), re.I).search(" ".join(u)))
+        priced_rows = P.price_rows(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(len(priced_rows), 5)
+        priced = {r["name"] for r in priced_rows}
         self.assertFalse(priced & set(u))
         self.assertEqual(len(priced | set(u)), 16)
 
@@ -841,13 +846,22 @@ class OtherPages(unittest.TestCase):
         for f in ("render.py", "build.py", "src/style.css", "src/app.js"):
             self.assertNotRegex((R / f).read_text(), r"(?i)daily")
 
-    def test_also_priced_line_names_all_eleven_none_has_a_row(self):  # AC21
+    def test_also_priced_line_names_all_eleven_none_has_a_row(self):  # AC21; Lucille 2: 5 priced / 11 also-priced / 16 total; held provider excluded (AC-4)
         s = page("/prices/")
         line = text_of(re.search(r'<p class="lcopy" id="also-priced">(.*?)</p>', s, re.S).group(1))
         self.assertEqual(s.count('id="also-priced"'), 1)
-        self.assertTrue(line.startswith("Priced, no published results yet: "))
-        listed = {n.strip() for n in line.split(": ", 1)[1].rstrip(".").split(", ")}
+        want = ("Priced, no published results yet: Brave Search API, Bright Data Web Unlocker, Browserbase, "
+                "Firecrawl, Hyperbrowser, Jina Reader, Linkup, Parallel, ScrapingBee, Serper, Steel.")
+        self.assertEqual(line, want)   # exact 11-name rendered line; held name absent
+        self.assertIsNone(re.compile(("context" + r"\.?" + "dev"), re.I).search(line))
         un = P.untested_providers(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(un, ["Brave Search API", "Bright Data Web Unlocker", "Browserbase", "Firecrawl",
+                              "Hyperbrowser", "Jina Reader", "Linkup", "Parallel", "ScrapingBee", "Serper", "Steel"])
+        self.assertEqual(len(un), 11)
+        priced = P.price_rows(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(len(priced), 5)
+        self.assertEqual(len(priced) + len(un), 16)
+        listed = {n.strip() for n in line.split(": ", 1)[1].rstrip(".").split(", ")}
         self.assertEqual(listed, set(un))
         rows = text_of("".join(re.findall(r'<div class="row price-row".*?</div></div>', s, re.S)))
         for n in un:
