@@ -1,6 +1,6 @@
 {
- "_doc": "Results rows as built by main 385a6e3 at data pin 303efdf4 (AC-2 per spec R-9: rows = what the pinned data produces, in main's order). `rows`: run summary (#run); `table`: the full Every row table [provider name, category, set, run date]. Regenerate only when the data pin moves, by building main's code on the new pin.",
- "data": "303efdf4fa955e81697a92906d32d6ac125e3882",
+ "_doc": "Results rows as built at data pin c352ff12 (AC-2 per spec R-9). Regenerate only when the data pin moves.",
+ "data": "c352ff12d4dbc691b4ff0fd10d7c52550752768d",
  "rows": [
   "exa",
   "tavily",
@@ -34,6 +34,12 @@
   [
    "Exa",
    "search",
+   "news_2026-46",
+   "2026-11-09"
+  ],
+  [
+   "Exa",
+   "search",
    "search_evergreen",
    "2026-10-23"
   ],
@@ -52,8 +58,26 @@
   [
    "Tavily",
    "search",
+   "news_2026-46",
+   "2026-11-09"
+  ],
+  [
+   "Tavily",
+   "search",
    "search_evergreen",
    "2026-10-23"
+  ],
+  [
+   "TinyFish Search + Fetch",
+   "search",
+   "news_2026-45",
+   "2026-11-03"
+  ],
+  [
+   "TinyFish Search + Fetch",
+   "search",
+   "news_2026-46",
+   "2026-11-09"
   ],
   [
    "Browserless",
@@ -72,6 +96,24 @@
    "browser",
    "newsfetch_2026-43",
    "2026-10-20"
+  ],
+  [
+   "Browserless",
+   "browser",
+   "newsfetch_2026-46",
+   "2026-11-09"
+  ],
+  [
+   "TinyFish Search + Fetch",
+   "browser",
+   "newsfetch_2026-45",
+   "2026-11-03"
+  ],
+  [
+   "TinyFish Search + Fetch",
+   "browser",
+   "newsfetch_2026-46",
+   "2026-11-09"
   ]
  ]
 }

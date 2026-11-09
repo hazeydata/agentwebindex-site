@@ -8,7 +8,7 @@ Checks (exit 1 on any failure):
   3. every cell carries data-src naming the regrade fields of ITS column (fixed map below, not read from render.py),
      and its text equals that field formatted here (own half-up formatters, independent of prices.py);
   4. the Passed link points to the row's own run log at the manifest run_logs_commit;
-  5. no number appears in the section outside a traced cell unless it is in the copy.md "Week 45 results" text;
+  5. no number appears in the section outside a traced cell unless it is in the copy.md "Week 46 results" text;
   6. Apify has no week-45 row (cap reached, out until its Nov 16 cycle);
   7. each live provider in the manifest's live_not_held with no week-45 regrade row has exactly one '<Name>: not run this week' line, and no other.
 """
@@ -377,7 +377,7 @@ def _copy_section():
     out, on = [], False
     for line in (R / "content/copy.md").read_text().splitlines():
         if line.startswith("## "):
-            on = line[3:].strip() == "Week 45 results"
+            on = line[3:].strip() == "Week 46 results"
         elif on and not line.startswith("<!--"):
             out.append(line)
     return out

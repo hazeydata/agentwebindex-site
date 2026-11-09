@@ -126,7 +126,7 @@ def provider_names(providers):
 
 
 def price_rows(pricing, latest, providers=()):
-    """One PricedTier dict per provider that has published results in latest.json (exactly the 4 priced providers),
+    """One PricedTier dict per provider that has published results in latest.json (the priced providers with published results),
     sorted by provider id. `providers` (providers.json list) only supplies display names."""
     names = provider_names(providers)
     pids = sorted({r["provider"] for _, r in _rows(latest)})
@@ -145,7 +145,9 @@ def price_rows(pricing, latest, providers=()):
 
 
 def untested_providers(pricing, latest, providers):
-    """Display names (sorted) of providers in pricing.yaml that have no published results: the other 11."""
+    """Display names (sorted) of providers in pricing.yaml that have no published results: the other 11.
+    Providers with exclude_from_also_priced true in providers.json (and not tested) are left out."""
     names = provider_names(providers)
     tested = {r["provider"] for _, r in _rows(latest)}
-    return sorted(names.get(pid, pid) for pid in (pricing.get("providers") or {}) if pid not in tested)
+    excluded = {p["id"] for p in providers if p.get("exclude_from_also_priced")}
+    return sorted(names.get(pid, pid) for pid in (pricing.get("providers") or {}) if pid not in tested and pid not in excluded)

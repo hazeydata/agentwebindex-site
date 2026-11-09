@@ -171,7 +171,7 @@ def copy_strings():
                     chart = l[4:]
                 elif chart and chart.startswith(("Chart 1", "Chart 2")) and re.match(r"\*\*(Title|Caption):\*\*", l):
                     add("/", body(l))
-        elif title == "Week 45 results":
+        elif title == "Week 46 results":
             for l in lines:
                 if not l.startswith("<!--") and "{" not in body(l):   # templated fields (Sample, Source) are checked filled-in by W45Results
                     add("/", body(l))
@@ -218,11 +218,13 @@ def expected_numbers():
 
 
 class Helpers(unittest.TestCase):
-    def test_price_rows_exactly_four_priced_providers(self):  # AC4
+    def test_price_rows_exactly_five_priced_providers(self):  # AC4
         rows = P.price_rows(PRICING, LATEST, PROVIDERS)
-        self.assertEqual(sorted(r["provider"] for r in rows), ["apify", "browserless", "exa", "tavily"])
-        self.assertEqual(len(rows), 4)
-        self.assertEqual({r["provider"]: r["category"] for r in rows}, {"exa": "search", "tavily": "search", "apify": "search", "browserless": "scrape"})
+        self.assertEqual(sorted(r["provider"] for r in rows), ["apify", "browserless", "exa", "tavily", "tinyfish"])
+        self.assertEqual(len(rows), 5)
+        # browserless is "browser" because its newest row is newsfetch_2026-46
+        self.assertEqual({r["provider"]: r["category"] for r in rows},
+                         {"exa": "search", "tavily": "search", "apify": "search", "browserless": "browser", "tinyfish": "search"})
 
     def test_checked_at_is_min_of_inputs_and_inputs_are_only_used_fields(self):  # AC4
         mixed = {"providers": {"tavily": {"search": {"checked_at": "2026-10-24", "credits_per_call_verified": {"search": 1, "checked_at": "2026-10-15"},
@@ -272,13 +274,18 @@ class Helpers(unittest.TestCase):
         for got, want in cases:
             self.assertEqual(got, want)
 
-    def test_untested_providers_are_the_other_eleven(self):  # AC21
+    def test_untested_providers_are_the_other_eleven(self):  # AC21; Lucille 2 ruling: 5/11/16, held provider excluded
         u = P.untested_providers(PRICING, LATEST, PROVIDERS)
         self.assertEqual(len(u), 11)
         self.assertEqual(u, sorted(u))
-        priced = {r["name"] for r in P.price_rows(PRICING, LATEST, PROVIDERS)}
+        self.assertEqual(u, ["Brave Search API", "Bright Data Web Unlocker", "Browserbase", "Firecrawl",
+                             "Hyperbrowser", "Jina Reader", "Linkup", "Parallel", "ScrapingBee", "Serper", "Steel"])
+        self.assertIsNone(re.compile(("context" + r"\.?" + "dev"), re.I).search(" ".join(u)))
+        priced_rows = P.price_rows(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(len(priced_rows), 5)
+        priced = {r["name"] for r in priced_rows}
         self.assertFalse(priced & set(u))
-        self.assertEqual(len(priced | set(u)), 15)
+        self.assertEqual(len(priced | set(u)), 16)
 
     def test_placeholder_constant(self):  # AC27 (constant kept)
         self.assertEqual(P.PLACEHOLDER, "[[LINDSAY-PLACEHOLDER]]")
@@ -405,8 +412,8 @@ class Pins(unittest.TestCase):
         self.assertEqual(missing, [])
         self.assertIn(f"tests/test_dist.py:{proof_map.defs('tests/test_dist.py')['test_nav_top_exactly_four_links']}", text)
 
-    def test_real_repo_at_303efdf4_builds_and_check_is_ok(self):  # R8 pass case
-        self.assertEqual(PINS["data"], "303efdf4fa955e81697a92906d32d6ac125e3882")
+    def test_real_repo_at_c352ff12_builds_and_check_is_ok(self):  # R8 pass case
+        self.assertEqual(PINS["data"], "c352ff12d4dbc691b4ff0fd10d7c52550752768d")
         self.assertEqual(pinmod.source_sha(R), PINS["data"])
         self.assertEqual(pinmod.check(R), [])
         with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:
@@ -839,13 +846,22 @@ class OtherPages(unittest.TestCase):
         for f in ("render.py", "build.py", "src/style.css", "src/app.js"):
             self.assertNotRegex((R / f).read_text(), r"(?i)daily")
 
-    def test_also_priced_line_names_all_eleven_none_has_a_row(self):  # AC21
+    def test_also_priced_line_names_all_eleven_none_has_a_row(self):  # AC21; Lucille 2: 5 priced / 11 also-priced / 16 total; held provider excluded (AC-4)
         s = page("/prices/")
         line = text_of(re.search(r'<p class="lcopy" id="also-priced">(.*?)</p>', s, re.S).group(1))
         self.assertEqual(s.count('id="also-priced"'), 1)
-        self.assertTrue(line.startswith("Priced, not yet tested: "))
-        listed = {n.strip() for n in line.split(": ", 1)[1].rstrip(".").split(", ")}
+        want = ("Priced, no published results yet: Brave Search API, Bright Data Web Unlocker, Browserbase, "
+                "Firecrawl, Hyperbrowser, Jina Reader, Linkup, Parallel, ScrapingBee, Serper, Steel.")
+        self.assertEqual(line, want)   # exact 11-name rendered line; held name absent
+        self.assertIsNone(re.compile(("context" + r"\.?" + "dev"), re.I).search(line))
         un = P.untested_providers(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(un, ["Brave Search API", "Bright Data Web Unlocker", "Browserbase", "Firecrawl",
+                              "Hyperbrowser", "Jina Reader", "Linkup", "Parallel", "ScrapingBee", "Serper", "Steel"])
+        self.assertEqual(len(un), 11)
+        priced = P.price_rows(PRICING, LATEST, PROVIDERS)
+        self.assertEqual(len(priced), 5)
+        self.assertEqual(len(priced) + len(un), 16)
+        listed = {n.strip() for n in line.split(": ", 1)[1].rstrip(".").split(", ")}
         self.assertEqual(listed, set(un))
         rows = text_of("".join(re.findall(r'<div class="row price-row".*?</div></div>', s, re.S)))
         for n in un:
@@ -1043,7 +1059,7 @@ class Polish(unittest.TestCase):
         got = re.findall(r'<div class="row" role="listitem" data-provider="([^"]+)"', run)
         self.assertEqual(got, want)
         self.assertEqual(got, base["rows"])
-        self.assertEqual(len(got), 3)   # what 303efdf4 produces; update with the baseline if the pin moves
+        self.assertEqual(len(got), 3)   # what c352ff12 produces; update with the baseline if the pin moves
         # Full "Every row" table: every non-mock attempted row in latest.json (all run dates), in latest.json order per table.
         want_t = []
         for cat in ("search", "scrape", "browser"):
@@ -1056,7 +1072,7 @@ class Polish(unittest.TestCase):
             r'<tr><th scope="row"[^>]*>(.*?)</th><td[^>]*>(.*?)</td><td[^>]*>(.*?)</td><td[^>]*>(.*?)</td>', t)]
         self.assertEqual(got_t, want_t)
         self.assertEqual(got_t, base["table"])
-        self.assertEqual((len(got_t), len({r[0] for r in got_t}), sum(r[0] == "Apify" for r in got_t)), (11, 4, 2))   # R-9 at 303efdf4
+        self.assertEqual((len(got_t), len({r[0] for r in got_t}), sum(r[0] == "Apify" for r in got_t)), (18, 5, 2))   # R-9 at c352ff12
         for p in PAGES:
             self.assertNotRegex(text_of(page(p)), r"(?i)\b(rank(ed|ing)?|winner|best|top pick|#1|1st place|leader)\b", p)
         self.assertNotRegex(run, r'(?i)class="[^"]*\b(badge|rank|winner|highlight)\b')
@@ -1098,9 +1114,11 @@ class Polish(unittest.TestCase):
     def banned_hits(self, files, root=R):
         return sorted({str(f.relative_to(root)) for f in files if f.is_file() and self.BANNED.search(f.read_bytes())})
 
-    def test_banned_names_absent(self):  # AC-4 (held provider only): every tracked file in the repo AND every file in dist/
+    def test_banned_names_absent(self):  # AC-4 (held provider only): every tracked file AND every dist/ file must be clean
         files = repo_files() + [f for f in D.rglob("*") if f.is_file()]
-        self.assertEqual(self.banned_hits(files), [])
+        # data/_upstream is pin-vendored product bytes (build does NOT publish it). All other tracked paths and ALL of dist/ must have zero hits.
+        hits = [h for h in self.banned_hits(files) if not h.startswith("data/_upstream/")]
+        self.assertEqual(hits, [])
 
     def test_ac4_lifted_for_keenable_only(self):  # Lucille 2 ruling, Nov 2 2026: AC-4 predates Fred's Oct 26 publish approval for Keenable.
         self.assertIn("Fred's Oct 26 publish approval for Keenable", self.AC4_KEENABLE_REASON)
@@ -1206,8 +1224,8 @@ class Polish(unittest.TestCase):
 class W43GradingNote(unittest.TestCase):
     """AWI-W43-REVIEW-NOTE: the grading note renders, and no number moved versus main 4d56dfd."""
     NOTE = "We never edit the raw run logs. Each row keeps its original pass mark, and the published count re-grades that row's stored top-10 results under our current URL rules, so recounting the raw pass marks can give a different number."
-    MAIN_LATEST_SHA256 = "391f8a0fd1dd7d34bec3c526b29adbb059e2ebbbcc6d61c0cead9f010b3578ee"  # data/benchmarks/latest.json at origin/main 4d56dfd
-    MAIN_ROWS_SHA256 = "99ec3306779f831e9dd49a161346105d97814eab89a5c4f177c84211e7a9cfb7"  # tests/results_rows_baseline.json at origin/main 4d56dfd
+    MAIN_LATEST_SHA256 = "b88e52aaf6a80e6736e1c7e57c073bc0936e18a1d66d37e37b44505635b3b4e4"  # data/benchmarks/latest.json at c352ff12
+    MAIN_ROWS_SHA256 = "6ed90c6efa3bf719791f3d2c0107d34be8e23c9ea12e99f6d8f5acea1c03e87f"  # tests/results_rows_baseline.json after regen at c352ff12
 
     def test_grading_note_renders_on_methodology(self):
         txt = norm(html.unescape(page("/methodology/")))
@@ -1406,13 +1424,13 @@ class W45Results(unittest.TestCase):
         sec = self.s[self.s.index('<section id="latest-week">'):]
         sec = sec[:sec.index("</section>") + 10]
         mutants = {
-            "number changed": sec.replace(">18 of 21<", ">19 of 21<", 1),
-            "failed hidden": sec.replace('data-src="tables.scrape.0.failed.v" class="mono num">51<', 'data-src="tables.scrape.0.failed.v" class="mono num">0<', 1),
-            "row dropped": re.sub(r'<tr data-provider="brightdata">.*?</tr>', "", sec, count=1, flags=re.S),
-            "wrong field": sec.replace('data-src="tables.search.6.entry_tier_cost_per_successful_1k.display"', 'data-src="tables.search.6.volume_tier_cost_per_successful_1k.display"', 1),
-            "stray number": sec.replace("Coverage is partial", "Coverage is 99% partial", 1),
+            "number changed": sec.replace(">22 of 24<", ">23 of 24<", 1),
+            "failed hidden": sec.replace('data-src="tables.search.0.failed.v" class="mono num">2<', 'data-src="tables.search.0.failed.v" class="mono num">0<', 1),
+            "row dropped": re.sub(r'<tr data-provider="tavily">.*?</tr>', "", sec, count=1, flags=re.S),
+            "wrong field": sec.replace('data-src="tables.search.0.entry_tier_cost_per_successful_1k.display"', 'data-src="tables.search.0.volume_tier_cost_per_successful_1k.display"', 1),
+            "stray number": sec.replace("Below our minimum:", "Below our minimum, 99%:", 1),
             "wrong run log": sec.replace("/blob/" + self.MAN["run_logs_commit"], "/blob/main", 1),
-            "apify row": sec.replace('<tr data-provider="brightdata">', '<tr data-provider="apify">', 1),
+            "apify row": sec.replace('<tr data-provider="tavily">', '<tr data-provider="apify">', 1),
         }
         for name, m in mutants.items():
             self.assertNotEqual(m, sec, name)
@@ -1424,21 +1442,21 @@ class W45Results(unittest.TestCase):
         sec = sec[:sec.index("</section>")]
         d = copydoc.load()
         for k in ("Coverage", "Apify", "Comparison", "Failed", "Skipped"):
-            self.assertIn(norm(d.field("Week 45 results", k)), norm(html.unescape(text_of(sec))), k)
-        self.assertEqual(re.findall(r'<tr data-provider="([a-z]+)"', sec), ["firecrawl", "firecrawl", "tinyfish", "brightdata", "tinyfish"])
+            self.assertIn(norm(d.field("Week 46 results", k)), norm(html.unescape(text_of(sec))), k)
+        self.assertEqual(re.findall(r'<tr data-provider="([a-z]+)"', sec), ["exa", "tavily", "tinyfish", "browserless", "tinyfish"])
         fails = re.findall(r'data-src="tables\.[a-z]+\.\d+\.failed\.v" class="mono num">(\d+)<', sec)
-        self.assertEqual(fails, ["3", "7", "4", "51", "12"])   # failed rows stay failed (values traced in test_every_cell_traces_to_regrade)
+        self.assertEqual(fails, ["2", "5", "7", "1", "10"])   # failed rows stay failed (values traced in test_every_cell_traces_to_regrade)
 
     def test_tinyfish_rows_and_fetch_note(self):   # AWI-TINYFISH-001 publish: hold lifted, both TinyFish rows shown, misses note right after the fetch row
         sec = self.s[self.s.index('<section id="latest-week">'):]
         sec = sec[:sec.index("</section>")]
         rows = re.findall(r'<tr data-provider="tinyfish">.*?</tr>', sec, flags=re.S)
         self.assertEqual(len(rows), 2)
-        self.assertIn(">17 of 21<", rows[0]); self.assertIn(">9 of 21<", rows[1]); self.assertIn("2026-11-03", rows[1])
+        self.assertIn(">17 of 24<", rows[0]); self.assertIn(">7 of 17<", rows[1]); self.assertIn("2026-11-09", rows[1])
         after = sec[sec.index(rows[1]) + len(rows[1]):]
         self.assertTrue(after.startswith('<tr class="row-note">'), after[:80])
-        self.assertIn(html.escape(copydoc.load().field("Week 45 results", "TinyFish fetch note")), after[:600])
-        self.assertIn("Firecrawl, TinyFish, Bright Data Web Unlocker", norm(html.unescape(text_of(sec))))
+        self.assertIn(html.escape(copydoc.load().field("Week 46 results", "TinyFish fetch note")), after[:600])
+        self.assertIn("Exa, Tavily, TinyFish, Browserless", norm(html.unescape(text_of(sec))))
 
     def test_keenable_not_run_line_derived_from_regrade(self):
         sec = self.s[self.s.index('<section id="latest-week">'):]
@@ -1464,11 +1482,10 @@ class W45Results(unittest.TestCase):
 
     def test_review_copy_and_headers(self):  # Lindsay (voice) and Ann (dataviz) review edits
         t = norm(html.unescape(text_of(self._sec())))
-        for want in ("Coverage is partial this week. Only the providers in this table ran. For everyone else, the latest results are the older runs further down the page.",
-                     "Apify did not run this week. It hit its monthly spending cap and stays out until its billing resets on Nov 16.",
-                     "Week 45 and the " + render.day_label(LATEST["run_date"]).rsplit(",", 1)[0] + " run below tested different providers, so compare rows only within a run.",
-                     "Firecrawl's evergreen run used 40 of the 100 evergreen questions.",
-                     "Source: tables.py regrade of the Nov 2, 2026 run logs (agentwebindex 8f007a4)"):
+        for want in ("Below our minimum: this week's news set has 24 items, under the 25 we want, so treat every row here as early. Only the providers in this table have Week 46 results. For everyone else, the latest results are the older runs further down the page.",
+                     "Apify did not run this week. It stays out until its billing resets on Nov 16.",
+                     "Week 46 used this week's news items. The rankings further down are still from our Oct 23, 2026 run, on different questions and URLs, so compare rows only within a run.",
+                     "Source: tables.py regrade of the Nov 9, 2026 run logs (agentwebindex c352ff1)"):
             self.assertIn(want, t)
         heads = re.findall(r'<th scope="col"[^>]*>([^<]*)</th>', self._sec())
         self.assertEqual(heads[4:6], ["Passed / checks", "Failed / checks"])
@@ -1497,15 +1514,14 @@ class W45Results(unittest.TestCase):
         sec = self._sec()
         sha = self.MAN["run_logs_commit"]
         mutants = {
-            "evergreen total changed": sec.replace('data-src="sample_total:tables.search.7">100<', 'data-src="sample_total:tables.search.7">120<', 1),
-            "evergreen n changed": sec.replace('data-src="sample_n:tables.search.7">40<', 'data-src="sample_n:tables.search.7">41<', 1),
-            "sample clause dropped": re.sub(r' <span data-src="sample_provider:.*?evergreen questions\.', "", sec, count=1),
+            "passed count changed": sec.replace(">19 of 24<", ">20 of 24<", 1),
+            "browser passed changed": sec.replace(">16 of 17<", ">15 of 17<", 1),
             "comparison dropped": re.sub(r'<p class="lcopy" data-copy="comparison">.*?</p>', "", sec, count=1),
-            "source sha wrong": sec.replace(f'>{sha[:7]}</a>', ">7b40782</a>", 1),
+            "source sha wrong": sec.replace(f'>{sha[:7]}</a>', ">c352fff</a>", 1),
             "source link wrong": sec.replace(f"/commit/{sha}", "/commit/main", 1),
             "source dropped": re.sub(r'<p class="lcopy" data-copy="source">.*?</p>', "", sec, count=1),
             "old header": sec.replace('data-label="Passed / checks"', 'data-label="Passed"'),
-            "skipped 0 for 30": sec.replace('data-src="tables.scrape.0.skipped_tos.count" class="mono num">30<', 'data-src="tables.scrape.0.skipped_tos.count" class="mono num">n/a<', 1),
+            "skipped 0 for n/a": sec.replace('data-src="tables.search.0.skipped_tos.count" class="mono num">0<', 'data-src="tables.search.0.skipped_tos.count" class="mono num">n/a<', 1),
         }
         for name, m in mutants.items():
             self.assertNotEqual(m, sec, name)
@@ -1546,9 +1562,9 @@ class W45Results(unittest.TestCase):
         self.assertEqual(render.w45_apify_mentions(self.s), [])
         self.assertEqual(len(re.findall(r"(?i)apify", sec)), 2)   # data-copy="apify" and its "Apify did not run this week." text
         mutants = {
-            "ran list claims apify": sec.replace("Ran this week: ", "Ran this week: Apify, ", 1),
-            "coverage names apify": sec.replace("Coverage is partial this week.", "Coverage is partial this week, Apify included.", 1),
-            "apify attribute": sec.replace('<tr data-provider="brightdata">', '<tr data-provider="brightdata" data-note="apify">', 1),
+            "ran list claims apify": sec.replace("Ran Nov 9, 2026: ", "Ran Nov 9, 2026: Apify, ", 1),
+            "coverage names apify": sec.replace("Below our minimum:", "Below our minimum, Apify included:", 1),
+            "apify attribute": sec.replace('<tr data-provider="exa">', '<tr data-provider="exa" data-note="apify">', 1),
             "second apify line": sec.replace('<p class="lcopy" data-copy="failed">', '<p class="lcopy" data-copy="failed">APIFY ', 1),
         }
         for name, m in mutants.items():
@@ -1565,13 +1581,13 @@ class W45Results(unittest.TestCase):
             root = Path(d) / "site"
             shutil.copytree(R, root, ignore=shutil.ignore_patterns("dist", ".git", "node_modules"))
             c = root / "content/copy.md"
-            c.write_text(c.read_text().replace("**Ran:** Ran this week:", "**Ran:** Ran this week: Apify,", 1))
+            c.write_text(c.read_text().replace("**Ran:** Ran Nov 9, 2026:", "**Ran:** Ran Nov 9, 2026: Apify,", 1))
             pj = root / "pins.json"; pins = json.loads(pj.read_text())
             pins["copy_sha256"] = hashlib.sha256(c.read_bytes()).hexdigest(); pj.write_text(json.dumps(pins, indent=1) + "\n")
             self.assertEqual(pinmod.check(root), [])   # the pin is satisfied, so only the new guard can stop it
             r = subprocess.run([sys.executable, "build.py"], cwd=root, capture_output=True, text=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
             self.assertNotEqual(r.returncode, 0)
-            self.assertIn("Apify named in the week-45 section", r.stdout + r.stderr)
+            self.assertIn("Apify named in the week-4", r.stdout + r.stderr)
 
     def _trace_dist(self, edits):   # trace a copy of dist/ with {relpath: (old, new)} applied
         with tempfile.TemporaryDirectory() as d:
@@ -1654,7 +1670,7 @@ class W45Results(unittest.TestCase):
             shutil.copytree(R, root, ignore=shutil.ignore_patterns("dist", ".git", "node_modules"))
             self.assertEqual(pinmod.check(root), [])
             f = root / self.MAN["regrade_file"]
-            f.write_text(f.read_text().replace('"v": 18,', '"v": 19,', 1))
+            f.write_text(f.read_text().replace('"v": 22,', '"v": 23,', 1))
             self.assertTrue(any("regrade_sha256" in x for x in pinmod.check(root)))
 
 
