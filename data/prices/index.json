@@ -122,14 +122,6 @@
    "changed": false
   },
   {
-   "provider": "contextdev",
-   "status": "ok",
-   "http": 200,
-   "n_prices": 16,
-   "error": null,
-   "changed": false
-  },
-  {
    "provider": "tinyfish",
    "status": "ok",
    "http": 200,

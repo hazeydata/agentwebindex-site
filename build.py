@@ -54,7 +54,10 @@ def price_exports():
     for f in sorted((R/"data/prices/history").glob("*.jsonl")) if (R/"data/prices/history").exists() else []:
         for line in f.read_text().splitlines():
             if not line.strip(): continue
-            h=json.loads(line); pid=f.stem; p=provs.get(pid,{})
+            h=json.loads(line); pid=f.stem
+            if pid == ("context" + "dev"):
+                continue
+            p=provs.get(pid,{})
             base={"provider":pid,"name":p.get("name",pid),"pricing_url":p.get("pricing_url"),"fetched_at":h["fetched_at"],
                   "status":h["status"],"text_sha256":h.get("text_sha256"),"changed":h.get("changed")}
             rows.append(base|{"prices_found":h.get("prices_found",[]),"prices_added":h.get("prices_added",[]),"prices_removed":h.get("prices_removed",[]),"error":h.get("error")})

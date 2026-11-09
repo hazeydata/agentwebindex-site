@@ -116,7 +116,7 @@ Apify suggested a fairer setup, so on Oct 26 we reran their tools on that week's
 
 **Limits, plainly.**
 - The rankings are one run, Oct 23, 2026. Weekly news runs since then sit in their own sections. The plan is three runs a week, averaged. We're not there yet.
-- Five providers have published rows: Exa, Tavily, Browserless, Apify and TinyFish. Twelve more are priced with no published results yet. Brave's terms forbid benchmarking, and Bright Data's collector hasn't run.
+- Five providers have published rows: Exa, Tavily, Browserless, Apify and TinyFish. Eleven more are priced with no published results yet. Brave's terms forbid benchmarking, and Bright Data's collector hasn't run.
 - A pass means the result passed our check. It says nothing about the quality of the rest of the results.
 
 Results trace to our run logs; prices to providers' published pricing pages. If one is wrong, that's on us, and we'll say so here.

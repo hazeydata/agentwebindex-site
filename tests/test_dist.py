@@ -1114,10 +1114,10 @@ class Polish(unittest.TestCase):
     def banned_hits(self, files, root=R):
         return sorted({str(f.relative_to(root)) for f in files if f.is_file() and self.BANNED.search(f.read_bytes())})
 
-    def test_banned_names_absent(self):  # AC-4 (held provider only): every tracked file in the repo AND every file in dist/
+    def test_banned_names_absent(self):  # AC-4 (held provider only): every tracked file AND every dist/ file must be clean
         files = repo_files() + [f for f in D.rglob("*") if f.is_file()]
-        # vendored pin files (data/_upstream/, data/prices/, dist/data/) may carry the name; nothing else may
-        hits = [h for h in self.banned_hits(files) if not h.startswith(("data/_upstream/", "data/prices/", "dist/data/"))]
+        # data/_upstream is pin-vendored product bytes (build does NOT publish it). All other tracked paths and ALL of dist/ must have zero hits.
+        hits = [h for h in self.banned_hits(files) if not h.startswith("data/_upstream/")]
         self.assertEqual(hits, [])
 
     def test_ac4_lifted_for_keenable_only(self):  # Lucille 2 ruling, Nov 2 2026: AC-4 predates Fred's Oct 26 publish approval for Keenable.

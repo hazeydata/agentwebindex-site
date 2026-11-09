@@ -7,7 +7,7 @@
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
     <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
-    <dc:date>2026-11-09T11:21:24.776216</dc:date>
+    <dc:date>2026-11-09T12:58:56.388435</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -72,16 +72,16 @@ z
    <g id="wilson-ci">
     <path d="M 284.144016 131.528864 
 L 341.504661 131.528864 
-" clip-path="url(#pdba6e505ed)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+" clip-path="url(#p2577cbed50)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
    </g>
    <g id="wilson-ci">
     <path d="M 192.755554 149.856136 
 L 253.372932 149.856136 
-" clip-path="url(#pdba6e505ed)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+" clip-path="url(#p2577cbed50)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
    </g>
    <g id="line2d_8">
     <defs>
-     <path id="m805a301ea6" d="M 0 3 
+     <path id="m9ed224bda4" d="M 0 3 
 C 0.795609 3 1.55874 2.683901 2.12132 2.12132 
 C 2.683901 1.55874 3 0.795609 3 0 
 C 3 -0.795609 2.683901 -1.55874 2.12132 -2.12132 
@@ -93,16 +93,16 @@ C -1.55874 2.683901 -0.795609 3 0 3
 z
 " style="stroke: #5fc4d6"/>
     </defs>
-    <g clip-path="url(#pdba6e505ed)">
-     <use xlink:href="#m805a301ea6" x="315.08352" y="131.528864" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    <g clip-path="url(#p2577cbed50)">
+     <use xlink:href="#m9ed224bda4" x="315.08352" y="131.528864" style="fill: #5fc4d6; stroke: #5fc4d6"/>
     </g>
    </g>
    <g id="text_3">
     <text style="font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="424.36224" y="134.984674" transform="rotate(-0 424.36224 134.984674)">69/100 (69%)</text>
    </g>
    <g id="line2d_9">
-    <g clip-path="url(#pdba6e505ed)">
-     <use xlink:href="#m805a301ea6" x="221.8752" y="149.856136" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    <g clip-path="url(#p2577cbed50)">
+     <use xlink:href="#m9ed224bda4" x="221.8752" y="149.856136" style="fill: #5fc4d6; stroke: #5fc4d6"/>
     </g>
    </g>
    <g id="text_4">
@@ -122,12 +122,12 @@ z
     <g id="xtick_6">
      <g id="line2d_10">
       <defs>
-       <path id="m504e65202b" d="M 0 0 
+       <path id="m170215edcb" d="M 0 0 
 L 0 2 
 " style="stroke: #8796a8; stroke-width: 0.6"/>
       </defs>
       <g>
-       <use xlink:href="#m504e65202b" x="93.312" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+       <use xlink:href="#m170215edcb" x="93.312" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_5">
@@ -137,7 +137,7 @@ L 0 2
     <g id="xtick_7">
      <g id="line2d_11">
       <g>
-       <use xlink:href="#m504e65202b" x="173.664" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+       <use xlink:href="#m170215edcb" x="173.664" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_6">
@@ -147,7 +147,7 @@ L 0 2
     <g id="xtick_8">
      <g id="line2d_12">
       <g>
-       <use xlink:href="#m504e65202b" x="254.016" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+       <use xlink:href="#m170215edcb" x="254.016" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_7">
@@ -157,7 +157,7 @@ L 0 2
     <g id="xtick_9">
      <g id="line2d_13">
       <g>
-       <use xlink:href="#m504e65202b" x="334.368" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+       <use xlink:href="#m170215edcb" x="334.368" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_8">
@@ -167,7 +167,7 @@ L 0 2
     <g id="xtick_10">
      <g id="line2d_14">
       <g>
-       <use xlink:href="#m504e65202b" x="414.72" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+       <use xlink:href="#m170215edcb" x="414.72" y="247.455" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
       </g>
      </g>
      <g id="text_9">
@@ -186,7 +186,7 @@ L 0 2
    <g id="wilson-ci">
     <path d="M 276.433129 237.375 
 L 330.220852 237.375 
-" clip-path="url(#p7c1cec6409)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+" clip-path="url(#p5f905f3876)" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
    </g>
    <g id="patch_4">
     <path d="M 93.312 247.455 
@@ -194,8 +194,8 @@ L 414.72 247.455
 " style="fill: none; stroke: #8796a8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="line2d_16">
-    <g clip-path="url(#p7c1cec6409)">
-     <use xlink:href="#m805a301ea6" x="304.9056" y="237.375" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    <g clip-path="url(#p5f905f3876)">
+     <use xlink:href="#m9ed224bda4" x="304.9056" y="237.375" style="fill: #5fc4d6; stroke: #5fc4d6"/>
     </g>
    </g>
    <g id="text_11">
@@ -212,41 +212,41 @@ L 414.72 247.455
    <text style="font-weight: 600; font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="20.736" y="111.028311" transform="rotate(-0 20.736 111.028311)">Search APIs · 100 evergreen questions</text>
   </g>
   <g id="text_15">
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 176.782598)">Not tested: Brave (terms forbid benchmarking), Linkup (not in month 1), Parallel (not in month 1), Serper (not</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 189.657441)">in month 1)</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 177.039365)">Not tested: Brave (terms forbid benchmarking), Linkup (not in month 1), Parallel (not in month 1), Serper (not</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 190.292881)">in month 1)</text>
   </g>
   <g id="text_16">
    <text style="font-weight: 600; font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="20.736" y="217.790811" transform="rotate(-0 20.736 217.790811)">Scrape APIs · URL set</text>
   </g>
   <g id="text_17">
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 288.439668)">30 skipped under Browserless's terms (anti-bot URLs; skips, not failures). Not tested: Exa (not built),</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 300.959902)">Parallel (not in month 1), Firecrawl (no key), Jina (not in month 1), Apify (not built), Hyperbrowser (not in</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 313.268301)">month 1), ScrapingBee (not in month 1), Bright Data (not run yet)</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 288.640889)">30 ToS skips on anti-bot URLs (skips, not failures; not graded). Not tested: Exa (not built), Parallel (not in</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 301.580635)">month 1), Firecrawl (no key), Jina (not in month 1), Apify (not built), Hyperbrowser (not in month 1),</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 314.251045)">ScrapingBee (not in month 1), Bright Data (not run yet)</text>
   </g>
   <g id="text_18">
    <text style="font-weight: 600; font-size: 9.5px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #e6edf5" x="20.736" y="340.494561" transform="rotate(-0 20.736 340.494561)">Browser APIs</text>
   </g>
   <g id="text_19">
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 365.689785)">No browser run on Oct 23, 2026: the browser-task set file was missing at run time. Not tested: Hyperbrowser</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 378.442441)">(not in month 1), Browserbase (not in month 1), Steel (not in month 1)</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 365.939521)">No browser run on Oct 23, 2026: the browser-task set file was missing at run time. Not tested: Hyperbrowser</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 379.067256)">(not in month 1), Browserbase (not in month 1), Steel (not in month 1)</text>
   </g>
   <g id="text_20">
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 399.54207)">Denominator = queries or URLs we graded: excludes ToS skips and HTTP 429 rate-limit replies (none logged on</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 411.82543)">{RUNL}). Search graded with canon-2026-10-20; scrape pass/fail from the run log (grader 'run-log'). Scrape</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 423.746914)">set: 150 URLs; Browserless's terms forbid the 30 anti-bot ones, so 120 were tested. No row is mock or partial.</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 435.840898)">Rankings are the Oct 23, 2026 run. Left out on purpose: the short news weeks 42/43/46 (n=16, 40, 24; week 46</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 448.155508)">is a short week, below the minimum at n=24), TinyFish's week 45/46 news and newsfetch rows, Apify (news weeks</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 460.071367)">only; paid-tier price not captured) and Browserless browser (no Oct 23, 2026 browser-task run). TinyFish is a</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 472.419102)">priced provider (TinySearch/TinyFetch free, $0.00 per request) with no Oct 23, 2026 rows, so it is not</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 484.108086)">plotted.</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 496.297695)">Source: hazeydata/agentwebindex data/benchmarks/latest.json @ c352ff1</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 390.108788)">Denominator = queries or URLs we graded: excludes ToS skips and HTTP 429 rate-limit replies (none logged on</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 403.543712)">Oct 23, 2026). Search graded with canon-2026-10-20; scrape pass/fail from the run log (grader 'run-log').</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 416.582836)">Scrape set: 150 URLs; Browserless's terms forbid the 30 anti-bot ones, so 120 were tested. No row is mock or</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 429.810631)">partial. Rankings are the Oct 23, 2026 run. Left out on purpose: the short news weeks 42/43/46 (n=16, 40, 24;</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 443.279735)">week 46 is a short week, below the minimum at n=24), TinyFish's week 45/46 news and newsfetch rows, Apify</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 456.312706)">(news weeks only; paid-tier price not captured) and Browserless browser (no Oct 23, 2026 browser-task run).</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 469.818041)">TinyFish is a priced provider (TinySearch/TinyFetch free, $0.00 per request) with no Oct 23, 2026 rows, so it</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 482.707457)">is not plotted.</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 495.935253)">Source: hazeydata/agentwebindex data/benchmarks/latest.json @ c352ff1</text>
   </g>
  </g>
  <defs>
-  <clipPath id="pdba6e505ed">
+  <clipPath id="p2577cbed50">
    <rect x="93.312" y="120.5325" width="321.408" height="40.32"/>
   </clipPath>
-  <clipPath id="p7c1cec6409">
+  <clipPath id="p5f905f3876">
    <rect x="93.312" y="227.295" width="321.408" height="20.16"/>
   </clipPath>
  </defs>
