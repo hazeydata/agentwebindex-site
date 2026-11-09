@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-24T09:25:04+00:00",
+ "generated_at": "2026-11-09T09:23:20+00:00",
  "providers": [
   {
    "provider": "exa",
@@ -15,7 +15,7 @@
    "http": 200,
    "n_prices": 3,
    "error": null,
-   "changed": true
+   "changed": false
   },
   {
    "provider": "brave",
@@ -37,7 +37,7 @@
    "provider": "parallel",
    "status": "ok",
    "http": 200,
-   "n_prices": 28,
+   "n_prices": 18,
    "error": null,
    "changed": false
   },
@@ -77,7 +77,7 @@
    "provider": "apify",
    "status": "ok",
    "http": 200,
-   "n_prices": 56,
+   "n_prices": 60,
    "error": null,
    "changed": true
   },
@@ -101,7 +101,7 @@
    "provider": "browserbase",
    "status": "ok",
    "http": 200,
-   "n_prices": 20,
+   "n_prices": 21,
    "error": null,
    "changed": false
   },
@@ -111,13 +111,29 @@
    "http": 200,
    "n_prices": 14,
    "error": null,
-   "changed": true
+   "changed": false
   },
   {
    "provider": "browserless",
    "status": "ok",
    "http": 200,
    "n_prices": 7,
+   "error": null,
+   "changed": false
+  },
+  {
+   "provider": "contextdev",
+   "status": "ok",
+   "http": 200,
+   "n_prices": 16,
+   "error": null,
+   "changed": false
+  },
+  {
+   "provider": "tinyfish",
+   "status": "ok",
+   "http": 200,
+   "n_prices": 8,
    "error": null,
    "changed": false
   }

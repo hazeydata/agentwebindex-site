@@ -8,7 +8,7 @@ from pathlib import Path
 R = Path(__file__).resolve().parent.parent
 FILES = {"d": "tests/test_dist.py", "s": "tests/test_ship.py", "b": "tests/browser_check.py"}
 ROWS = [
-    ("AC4", [("d", "test_price_rows_exactly_four_priced_providers"), ("d", "test_tavily_named_case_dates")]),
+    ("AC4", [("d", "test_price_rows_exactly_five_priced_providers"), ("d", "test_tavily_named_case_dates")]),
     ("AC5", [("d", "test_sentinel_fetched_at_never_reaches_prices_page")]),
     ("AC6", [("d", "test_rounding_cases_half_up")]),
     ("AC7", [("d", "test_data_pin_matches_upstream_bytes")]),
@@ -37,7 +37,7 @@ ROWS = [
     ("AC30", [("d", "test_no_draft_or_pending_case_sensitive")]),
     ("R3", [("s", "test_tavily_date_is_phase0")]),
     ("R4", [("d", "test_build_fails_if_pin_is_pre_phase0_sha"), ("d", "test_build_fails_if_tavily_input_dated_before_phase0"),
-            ("d", "test_real_repo_at_303efdf4_builds_and_check_is_ok"), ("d", "test_build_fails_if_vendored_data_sha_differs_from_pin"),
+            ("d", "test_real_repo_at_c352ff12_builds_and_check_is_ok"), ("d", "test_build_fails_if_vendored_data_sha_differs_from_pin"),
             ("d", "test_pin_check_function_cases"), ("s", "test_data_pin_moved")]),
     ("R7 (no 'cheapest tier covering 100k' claim)", [("d", "test_no_cheapest_tier_100k_claim_anywhere"), ("d", "test_prices_shows_only_tavily_entry_tier")]),
     ("AC2", [("s", "test_tavily_price_matches_pricing_yaml")]),

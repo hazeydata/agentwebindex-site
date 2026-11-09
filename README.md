@@ -25,7 +25,7 @@ SVG bytes differ from their sha256; (R8) `data` is the pre-Phase-0 sha `6b8bd87d
 Re-pin data: `./sync_data.sh <full 40-hex agentwebindex sha> [repo-url-or-path] [recorded-url]` (re-vendors `data/`, writes `data/_upstream/SOURCE`, and regenerates
 `tests/data_pin_manifest.json` through `tools/data_manifest.py`), then edit `pins.json` `data` to the same sha. `data/_upstream/SOURCE` always records a URL, never a local path: with a local clone as the second
 argument it records the third argument, else `$AWI_RECORD_URL`, else `https://github.com/hazeydata/agentwebindex.git`. A sha that is on no branch
-(a PR head) is fetched by sha. Current pin: data `303efdf4` (agentwebindex main, merge commit of #25 whose head 8ab7ccc re-verified Tavily 2026-10-24).
+(a PR head) is fetched by sha. Current pin: data `c352ff12` (agentwebindex; replaces `303efdf4`).
 Charts pin: agentwebindex-meta `b748147` (350 variants re-rendered so chart text is >=12px at 390; `cycles/2026-10-24-page-redo/her/her-*.svg`, re-rendered at data 303efdf4; source line checked by `test_chart_source_line_names_data_pin`; titles removed from the SVGs, root `role=img` + `aria-label`; no hard-coded heights). Copy pin: `AWI-PAGE-POLISH-001 copy-cuts.md`.
 Re-pin copy/charts: replace `content/copy.md`, `content/chart-alt.md` or `src/charts/*` and update the sha256 values in `pins.json`.
 Never hand-edit `data/`.
@@ -55,14 +55,14 @@ newline stays; if AC19 is ever reworded to ignore whitespace-separated closings,
 - On every built page (`dist/**/*.html`, including the newsletter thanks pages), "this week" may not appear outside `section#latest-week`, and "Apify" (case-insensitive, after entity, nbsp, soft-hyphen and zero-width normalisation) may appear only in an allowlisted container. Text, attributes, `<meta>` content, comments, `<noscript>` and scripts are all scanned. Each container must appear exactly once, sit where listed, and hold exactly its pinned number of mentions (Kitty t4). The build enforces this with `render.APIFY_ALLOW` and `apify_outside_allowlist`, and `trace_w45.py` checks it independently with its own HTMLParser and its own copy of the list:
   - `/`: `section#latest-week p.lcopy[data-copy="apify"]` (2: the attribute and "Apify did not run this week.")
   - `/`: `section#apify-retest` (9, the Oct 26 prior run)
-  - `/`: `figure#chart-pass-rate` (8) and `figure#chart-cost` (4), the legacy charts from data pin 303efdf4
+  - `/`: `figure#chart-pass-rate` (8) and `figure#chart-cost` (4), the legacy charts, still embedding data pin 303efdf (not re-rendered at c352ff12; dataviz delivers later)
   - `/`: `details#notes` (1), `details#earlier-runs` (3), `details#every-row` (4)
   - `/methodology/`: `div#limits` (1)
   - `/prices/`: `div#price-rows div.price-row[data-provider="apify"]` (4)
 - `live_not_held` is pinned to exactly `{"keenable": "Keenable"}` (the Keenable-only ruling). Both `pins.check` (the build fails) and `trace_w45.py` reject any other value (`W45Results.test_live_not_held_pinned_to_keenable_only`).
 - Prior-run label: `#run` and `#details` (the older weekly tables from the `data` pin) open with "Prior run: <latest.json run_date>", currently "Prior run: Oct 23, 2026" (`W45Results.test_prior_run_label_on_old_tables`).
 - `tools/trace_w45.py [dist/index.html] [--evidence tables-regrade.json] [--json OUT]` uses its own column map and its own formatters. It checks every cell against the regrade file, plus the row set, the run-log links and that Apify has no row. It also fails on any number in the section that is not in a traced cell, the copy or a column header. `run_tests.sh` runs it, and `tests.test_dist.W45Results` adds mutants (a changed number, a hidden fail, a dropped row, a wrong field, a stray number, a wrong log link, an Apify row) plus the build failing on an edited regrade file. `Polish.test_no_number_added_or_changed` skips this section, because the trace covers it.
-- The weekly tables, charts and the `data` pin (303efdf4) are unchanged. `latest.json` is not re-vendored.
+- The weekly tables, charts are unchanged at Week 45; the `data` pin has since moved to c352ff12 (charts still embed 303efdf).
 
 ## Run locally
 ```
@@ -107,7 +107,7 @@ Page polish (AWI-PAGE-POLISH-001):
 - Lindsay's final copy-cuts.md is recorded by `pins.json` `copy_cuts_sha256` (not vendored: it quotes the retired Prices label);
   `content/copy.md` carries the strings. Methodology limits: the Firecrawl sentence is Lindsay's AC-10 ruling (it differs from copy-cuts item 9).
 - Guards in `test_dist.Polish`: numbers on each page are a subset of `tests/numbers_baseline.json` (built from main 385a6e3, chart SVGs
-  excluded), unranked Results rows equal to what the data pin produces, in main's order (`tests/results_rows_baseline.json`; at 303efdf4: run summary 3 rows (Exa, Tavily, Browserless) and the full Every row table 11 rows / 4 providers, Apify 2 rows), no raw hex in button rules (`--on-acc` token), the held provider's name (AC-4; the test assembles its pattern so the repo itself stays clean) in no tracked file and no `dist/` file. AC-4 is lifted for Keenable only, by Lucille 2's Nov 2 2026 ruling: "AC-4 predates Fred's Oct 26 publish approval for Keenable." (`test_ac4_lifted_for_keenable_only`), the Tavily claim once
+  excluded), unranked Results rows equal to what the data pin produces, in main's order (`tests/results_rows_baseline.json`; at c352ff12: run summary 3 rows (Exa, Tavily, Browserless) and the full Every row table 18 rows / 5 providers, Apify 2 rows), no raw hex in button rules (`--on-acc` token), the held provider's name (AC-4; the test assembles its pattern so the repo itself stays clean) in no tracked file and no `dist/` file. AC-4 is lifted for Keenable only, by Lucille 2's Nov 2 2026 ruling: "AC-4 predates Fred's Oct 26 publish approval for Keenable." (`test_ac4_lifted_for_keenable_only`), the Tavily claim once
   (in `#run`) and "No provider pays us" once (Disclosures), chart `<h3>` == every SVG root `aria-label`, no trailing period.
   `browser_check.check_layout`: header <=88px with 8px padding at 390, run-row values Plex Mono 13px <=2 lines, Methodology paragraphs >=480px (1440) / >=300px (390), hero CTA top <=420px (1440) / <=560px (390).
   Every visible `main p` except `.headline` is capped at 68ch of its own font (AC-20; also `test_prose_max_width_68ch`), and every rendered

@@ -1,6 +1,6 @@
 # AWI-PAGE-REDO-001 copy (DRAFT, not for publishing)
 
-Data: hazeydata/agentwebindex @ 6b8bd87d778b3fe0fe049f9274796ab498928cc5 (data/benchmarks/latest.json, generated 2026-10-23T17:33:47+00:00, which is 1:33 PM EDT Oct 23; data/prices; bench/runs/2026-10-23, merge #23). Site read: hazeydata/agentwebindex-site @ 60a8f4bcfd8206389968e9e584ad7713c8d740c2. llms.txt and JSON untouched.
+Data: hazeydata/agentwebindex @ c352ff12d4dbc691b4ff0fd10d7c52550752768d (data/benchmarks/latest.json, generated 2026-10-23T17:33:47+00:00, which is 1:33 PM EDT Oct 23; data/prices; bench/runs/2026-10-23, merge #23). Site read: hazeydata/agentwebindex-site @ 60a8f4bcfd8206389968e9e584ad7713c8d740c2. llms.txt and JSON untouched.
 Every number below is PENDING FACT CHECK by Lucille. Display rule (owner ruling): whole percents (half up), money to $0.01, under $0.01 at 2 significant figures. Stored values are in the chart briefs' source fields.
 
 ## Page title and nav
@@ -57,20 +57,19 @@ Weekly news sets, before the frozen sets, plus Apify and Browserless browser run
 Apify suggested a fairer setup, so on Oct 26 we reran their tools on that week's 21 news items. Their RAG Web Browser search got a longer timeout (240 seconds per request), and we added their Web Fetch tool for reading pages. In one run, Web Fetch passed 19 of 21 and RAG search passed 16 of 21, with no timeouts. That set is short, below our usual minimum of 25 items, so treat these numbers as preliminary. Thanks to Apify for the nudge. My bots and I run this benchmark, and feedback like this makes it better.
 **Caption:** Preliminary: one run per setup on a short 21-item set. No earlier Apify run used these items, so there is no before-and-after comparison.
 
-## Week 45 results
-<!-- Source: AWI-W45-PUBLISH-001 (stage only). No numbers here: every number in this section is computed from content/w45-tables-regrade.json, the tables.py regrade of the Nov 2, 2026 run. -->
-**Title:** Week 45 results
-**Ran:** Ran this week:
+## Week 46 results
+<!-- Source: AWI-W46-PUBLISH-001 (stage only). No numbers here except the TinyFish fetch note: every table number is computed from the tables.py regrade of the Nov 9, 2026 run (agentwebindex c352ff12). -->
+**Title:** Week 46 results
+**Ran:** Ran Nov 9, 2026:
 **Not run:** not run this week
 **Prior run:** Prior run:
-**Coverage:** Coverage is partial this week. Only the providers in this table ran. For everyone else, the latest results are the older runs further down the page.
-**Apify:** Apify did not run this week. It hit its monthly spending cap and stays out until its billing resets on Nov 16.
-**Comparison:** Week 45 and the Oct 23 run below tested different providers, so compare rows only within a run.
-**Sample:** {provider}'s evergreen run used {n} of the {total} evergreen questions
+**Coverage:** Below our minimum: this week's news set has 24 items, under the 25 we want, so treat every row here as early. Only the providers in this table have Week 46 results. For everyone else, the latest results are the older runs further down the page.
+**Apify:** Apify did not run this week. It stays out until its billing resets on Nov 16.
+**Comparison:** Week 46 used this week's news items. The rankings further down are still from our Oct 23, 2026 run, on different questions and URLs, so compare rows only within a run.
 **Source:** Source: tables.py regrade of the {date} run logs (agentwebindex {sha})
 **Failed:** Failed checks stay failed. We do not rerun or drop them, and every pass rate counts every check we attempted.
 **Skipped:** Skipped (terms) means URLs we never called because the provider's terms are unclear for them. They count as neither passed nor failed.
-**TinyFish fetch note:** 7 misses come from errors in our test set (Hacker News titles that don't appear on the article page); 4 BBC pages likely lost their headline in TinyFish's output (unconfirmed); 1 returned a server error.
+**TinyFish fetch note:** TinyFish passed 7 of 17 fetch checks. The fetch test uses 17 of the week's 24 items: when we froze the set, 7 pages wouldn't load for us (6 NPR pages timed out, 1 blog returned a rate-limit error), so no provider was tested on them. All 10 TinyFish misses returned a page without the headline text we check for. We haven't confirmed why. Browserless passed 16 of the same 17.
 
 ## Chart briefs
 ### Chart 1: Pass rate on our test set
@@ -116,8 +115,8 @@ Apify suggested a fairer setup, so on Oct 26 we reran their tools on that week's
 **Latency (p50), Oct 23, 2026 run:** Exa search 1,262 ms, Tavily search 1,632 ms, Browserless scrape 1,618 ms. Yours will differ.
 
 **Limits, plainly.**
-- One run, Oct 23, 2026. The plan is three runs a week, averaged. We're not there yet.
-- Four providers have rows: Exa, Tavily, Browserless, Apify. Firecrawl wasn't run this time (no API key), so it has no row. Of the other ten: eight aren't on our month-one free-tier list, Brave's terms forbid benchmarking, Bright Data's collector hasn't run.
+- The rankings are one run, Oct 23, 2026. Weekly news runs since then sit in their own sections. The plan is three runs a week, averaged. We're not there yet.
+- Five providers have published rows: Exa, Tavily, Browserless, Apify and TinyFish. Twelve more are priced with no published results yet. Brave's terms forbid benchmarking, and Bright Data's collector hasn't run.
 - A pass means the result passed our check. It says nothing about the quality of the rest of the results.
 
 Results trace to our run logs; prices to providers' published pricing pages. If one is wrong, that's on us, and we'll say so here.
@@ -140,7 +139,7 @@ Get updates. Sign up below.
 List prices are read from each provider's pricing page, with the date we last checked shown. Free credits never lower a cost.
 
 ## Prices page: also priced
-Priced, not yet tested: Brave Search API, Linkup, Parallel, Serper, Firecrawl, Jina Reader, Bright Data Web Unlocker, Hyperbrowser, ScrapingBee, Browserbase, Steel.
+Priced, no published results yet: Brave Search API, Bright Data Web Unlocker, Browserbase, Firecrawl, Hyperbrowser, Jina Reader, Linkup, Parallel, ScrapingBee, Serper, Steel.
 
 ## Layout slot: methodology lede (optional, 200 chars max)
 Same frozen sets for every provider. A pass means the result passed our check. Results trace to our run logs; prices to providers' pricing pages. Limits below.
