@@ -108,12 +108,10 @@ for f in sorted(S.glob("*.html")):
     page=layout.replace("{{title}}",html.escape(title)).replace("{{head}}",page_head(title,desc,path)).replace("{{nav}}",render.nav_html(path)).replace("{{footer}}",FOOTER).replace("{{body}}",body)
     dups=render.duplicate_ids(page)
     if dups: sys.exit(f"build failed: duplicate id attributes on {path}: {dups[:10]}")   # R9.3
-    apify=render.w45_apify_mentions(page)
-    if apify: sys.exit(f"build failed: Apify named in the week-45 section outside its 'did not run' line on {path}: {apify[:3]}")   # Kitty t2 K04b
     allow=render.apify_outside_allowlist(page,path)
     if allow: sys.exit(f"build failed: Apify allowlist on {path}: {allow[:3]}")   # Kitty t4
     claims=render.outside_w45_claims(page)
-    if claims: sys.exit(f"build failed: 'this week' outside the week-45 section on {path}: {claims[:3]}")   # Kitty t3 G6
+    if claims: sys.exit(f"build failed: 'this week' outside the week-47 section on {path}: {claims[:3]}")   # Kitty t3 G6
     out.write_text(page)
 pages.sort(key=lambda p:(p!="/",p))
 (D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")
@@ -133,7 +131,7 @@ thanks_pages()
 shutil.copytree(S/"fonts",D/"assets"/"fonts")
 shutil.copytree(S/"retest",D/"assets"/"retest")   # Apify retest chart, byte-identical (pinned by content/retest-apify-2026-10-26.json)
 shutil.copytree(S/"charts",D/"assets"/"charts")   # byte-identical copies of the 8 pinned chart SVGs only (fonts live in assets/fonts)
-if (R/"data").exists(): shutil.copytree(R/"data",D/"data",ignore=lambda d,n:[x for x in n if x in ("cache","_upstream")],dirs_exist_ok=True)
+if (R/"data").exists(): shutil.copytree(R/"data",D/"data",ignore=lambda d,n:[x for x in n if x in ("cache","_upstream") or (x=="staged" and d.endswith("benchmarks"))],dirs_exist_ok=True)
 def public_bench():
     """Published latest.json: exclusions reduced to EXCLUSION_PUBLIC; the vendored data/ copy is left unchanged."""
     p=D/"data/benchmarks/latest.json"

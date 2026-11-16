@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-09T09:23:20+00:00",
+ "generated_at": "2026-11-16T09:28:04+00:00",
  "providers": [
   {
    "provider": "exa",
@@ -37,7 +37,7 @@
    "provider": "parallel",
    "status": "ok",
    "http": 200,
-   "n_prices": 18,
+   "n_prices": 19,
    "error": null,
    "changed": false
   },
@@ -71,7 +71,7 @@
    "http": 200,
    "n_prices": 16,
    "error": null,
-   "changed": false
+   "changed": true
   },
   {
    "provider": "apify",
@@ -125,7 +125,7 @@
    "provider": "tinyfish",
    "status": "ok",
    "http": 200,
-   "n_prices": 8,
+   "n_prices": 11,
    "error": null,
    "changed": false
   }

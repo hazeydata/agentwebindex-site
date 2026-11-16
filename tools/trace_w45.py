@@ -8,8 +8,10 @@ Checks (exit 1 on any failure):
   3. every cell carries data-src naming the regrade fields of ITS column (fixed map below, not read from render.py),
      and its text equals that field formatted here (own half-up formatters, independent of prices.py);
   4. the Passed link points to the row's own run log at the manifest run_logs_commit;
-  5. no number appears in the section outside a traced cell unless it is in the copy.md "Week 46 results" text;
-  6. Apify has no week-45 row (cap reached, out until its Nov 16 cycle);
+  5. no number appears in the section outside a traced cell unless it is in the copy.md "Week 47 results" text;
+  6. Apify ran in week 47, so it may have rows; if it has a manifest-date row the "Apify did not run this week." line must NOT appear;
+     Bright Data (manifest extra_rows, Nov 2) shows its own Run date, a row note, and is not in the "Ran Nov 16, 2026:" list;
+     the Coverage copy states the news-set size and Apify's n from the rows' "below minimum (n=N)" flags, and the TinyFish fetch note states its row's counts;
   7. each live provider in the manifest's live_not_held with no week-45 regrade row has exactly one '<Name>: not run this week' line, and no other.
 """
 import hashlib, html, json, re, sys
@@ -36,7 +38,7 @@ COLUMNS = {
     "Provider": (["provider"], None),   # display name from data/_upstream/providers.json
     "Category": ([""], None),           # the regrade table key
     "Set": (["set"], lambda r: r["set"]),
-    "Run date": (["run_date"], lambda r: r["run_date"]),
+    "Run date": (["run_date"], lambda r: day(r["run_date"])),
     "Passed / checks": (["passed.v", "attempted.v"], lambda r: f'{r["passed"]["v"]} of {r["attempted"]["v"]}'),
     "Failed / checks": (["failed.v"], lambda r: str(r["failed"]["v"])),
     "Pass rate": (["success_rate.v"], lambda r: pct(r["success_rate"]["v"])),
@@ -122,10 +124,10 @@ class Outside(HTMLParser):
 # Kitty t4: the trace's own copy of the Apify allowlist (render.APIFY_ALLOW is the build's). Each entry is
 # (page, tag, required attributes, inside (tag, id) or None, pinned "apify" count inside the container).
 APIFY_ALLOW = (
-    ("/", "p", {"class": "lcopy", "data-copy": "apify"}, ("section", "latest-week"), 2),
+    ("/", "section", {"id": "latest-week"}, None, 11),   # Apify ran in W47: whole section, incl. TinyFish note
     ("/", "section", {"id": "apify-retest"}, None, 9),
-    ("/", "figure", {"id": "chart-pass-rate"}, None, 8),
-    ("/", "figure", {"id": "chart-cost"}, None, 4),
+    ("/", "figure", {"id": "chart-pass-rate"}, None, 12),
+    ("/", "figure", {"id": "chart-cost"}, None, 8),
     ("/", "details", {"id": "notes"}, None, 1),
     ("/", "details", {"id": "earlier-runs"}, None, 3),
     ("/", "details", {"id": "every-row"}, None, 4),
@@ -237,13 +239,9 @@ def trace(index_html, evidence=None):
     extra = man.get("extra_rows") or {}   # {provider: run_date}: rows shown with their own Run date (AWI-TINYFISH-001)
     want = {f"tables.{c}.{i}": (c, r) for c, rows in doc["tables"].items() for i, r in enumerate(rows)
             if r.get("run_date") == man["run_date"] or extra.get(r.get("provider")) == r.get("run_date")}
-    if any(r["provider"] == "apify" for _, r in want.values()):
-        errs.append("regrade has an Apify week-45 row; Apify should be out until its Nov 16 cycle")
     sec = Section(); sec.feed(Path(index_html).read_text())
     if not sec.text:
         return ["section#latest-week not found"], ok, 0
-    if "apify" in sec.rows:
-        errs.append("table shows an Apify week-45 row")
     by_row = {}
     for c in sec.cells:
         if c["label"] is None:
@@ -284,6 +282,8 @@ def trace(index_html, evidence=None):
         ok.append(f"run_date = {heads['run_date']}")
     ran = []
     for _, r in want.values():
+        if extra.get(r["provider"]) == r["run_date"] and r["run_date"] != man["run_date"]:
+            continue   # extra_rows (Bright Data, Nov 2) are not "Ran <manifest date>"
         nm = names.get(r["provider"], r["provider"])
         ran += [nm] if nm not in ran else []
     if heads.get("provider") != ", ".join(ran):
@@ -339,17 +339,38 @@ def trace(index_html, evidence=None):
         errs.append("source line not worded as copy")
     else:
         ok.append(f"source = agentwebindex {sha[:7]}, {heads['source_date']}")
-    # Apify did not run in week 45: outside its own "did not run" copy paragraph, the section must not name it (text, attributes, links)
-    page = Path(index_html).read_text()
-    i = page.find('<section id="latest-week">'); j = page.find("</section>", i)
-    blk = page[i:j]
-    own = re.findall(r'<p class="lcopy" data-copy="apify">[^<]*</p>', blk)
-    if len(own) != 1 or not re.match(r"Apify did not run this week\.", html.unescape(re.sub(r"<[^>]+>", "", own[0]))):
-        errs.append(f"Apify 'did not run' line: expected exactly one, found {len(own)}")
-    elif re.search(r"(?i)apify", blk.replace(own[0], "", 1)):
-        errs.append("Apify is named in section#latest-week outside its 'did not run' line (it has no week-45 data)")
-    else:
-        ok.append("apify named only in its 'did not run' line")
+    # Apify ran in week 47: no "did not run" line is allowed when it has a manifest-date row (and a false claim fails)
+    apify_ran = any(r["provider"] == "apify" and r["run_date"] == man["run_date"] for _, r in want.values())
+    if apify_ran and re.search(r"Apify did not run this week", full_text):
+        errs.append("section says 'Apify did not run this week.' but Apify has a week-47 row")
+    elif apify_ran:
+        ok.append("Apify has week-47 rows and no 'did not run' line")
+    # Bright Data (extra_rows): row-note right after its row, wording from the copy, dated Nov 2 (not the week's run date)
+    for pid, rd in extra.items():
+        rows_pid = [k for k, (c, r) in want.items() if r["provider"] == pid and r["run_date"] == rd]
+        if not rows_pid:
+            errs.append(f"extra_rows provider {pid} has no regrade row on {rd}"); continue
+        if rd == man["run_date"]:
+            errs.append(f"extra_rows {pid} is dated the week's run date {rd}")
+        if f"This row is the {day(rd)} run." not in full_text:
+            errs.append(f"{pid}: row note with its {day(rd)} date is missing")
+        else:
+            ok.append(f"{pid} dated {day(rd)} with a row note")
+    # coverage and TinyFish note facts, derived from the regrade rows
+    ns = lambda r: {int(x) for f in r.get("flags") or [] for x in re.findall(r"below minimum \(n=(\d+)\)", f)}
+    news_n = max((n for _, r in want.values() if r["provider"] != "apify" for n in ns(r)), default=None)
+    ap_n = {n for c, r in want.values() if r["provider"] == "apify" and c == "search" for n in ns(r)}
+    if news_n is None or f"this week's news set has {news_n} items, under the 25 we want" not in full_text:
+        errs.append(f"coverage does not state the news set has {news_n} items, under the 25 minimum")
+    for an in ap_n:
+        if f"Apify search ran {an} of those {news_n} items, also below minimum" not in full_text:
+            errs.append(f"coverage does not name Apify search n={an} as below minimum")
+    for k, (c, r) in want.items():
+        if r["provider"] == "tinyfish" and c == "browser":
+            if f"TinyFish passed {r['passed']['v']} of {r['attempted']['v']} fetch checks." not in full_text:
+                errs.append(f"TinyFish fetch note does not state {r['passed']['v']} of {r['attempted']['v']}")
+            else:
+                ok.append(f"TinyFish note = {r['passed']['v']} of {r['attempted']['v']}")
     # Kitty t3 G6: every built page, outside section#latest-week, must not say "this week" or tie Apify to the current run.
     # Independent of render: an HTMLParser over every built page. "this week" may not appear outside section#latest-week
     # (text, alt/title/aria-label), and "Apify" may appear only in the allowlisted containers above (Kitty t3 G6, t4).
@@ -377,7 +398,7 @@ def _copy_section():
     out, on = [], False
     for line in (R / "content/copy.md").read_text().splitlines():
         if line.startswith("## "):
-            on = line[3:].strip() == "Week 46 results"
+            on = line[3:].strip() == "Week 47 results"
         elif on and not line.startswith("<!--"):
             out.append(line)
     return out

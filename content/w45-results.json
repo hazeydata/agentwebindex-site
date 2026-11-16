@@ -1,20 +1,22 @@
 {
- "_doc": "AgentWebIndex week 46 (news_2026-46, run Nov 9, 2026). content/w45-tables-regrade.json is tables.py output filtered to run_date 2026-11-09 excluding firecrawl (Lucille 2: Firecrawl gets no row). Rerun at agentwebindex regrade_commit reproduces except generated_at. Every number in #latest-week comes from that file. Never hand-edit.",
- "ticket": "AWI-W46-PUBLISH-001",
- "week": "2026-46",
- "run_date": "2026-11-09",
+ "_doc": "AgentWebIndex week 47 (news_2026-47, run Nov 16, 2026). content/w45-tables-regrade.json is the full unfiltered tables.py output at regrade_commit (only generated_at differs from the evidence file). The site shows rows with run_date 2026-11-16 plus the extra_rows entry (Bright Data, Nov 2 scrape run, dated on its own row). Every number in #latest-week comes from that file. Never hand-edit.",
+ "ticket": "AWI-W47-BASE-RUN-001",
+ "week": "2026-47",
+ "run_date": "2026-11-16",
  "regrade_file": "content/w45-tables-regrade.json",
- "regrade_sha256": "acf97d805f7ce884d4ed5bddac4ecd5019c6dd877d561556cec2604ee6c7b601",
- "regrade_source": "AWI-W46-PUBLISH-001: python -m awibench.tables at agentwebindex c352ff12d4dbc691b4ff0fd10d7c52550752768d (agentwebindex#55); filtered to run_date 2026-11-09, provider!=firecrawl.",
- "regrade_commit": "c352ff12d4dbc691b4ff0fd10d7c52550752768d",
- "run_logs_commit": "c352ff12d4dbc691b4ff0fd10d7c52550752768d",
- "run_logs_pr": "https://github.com/hazeydata/agentwebindex/pull/55",
+ "regrade_sha256": "8e7aa1ddbf43b59e4f979961b742eb6db5833c4cee99d2a27c6103821ce5df62",
+ "regrade_source": "AWI-W47-BASE-RUN-001: python -m awibench.tables at agentwebindex 7fdefab3c4ef141bf38e7b150a0d854c9aa479cb (agentwebindex#57); unfiltered.",
+ "regrade_commit": "7fdefab3c4ef141bf38e7b150a0d854c9aa479cb",
+ "run_logs_commit": "7fdefab3c4ef141bf38e7b150a0d854c9aa479cb",
+ "run_logs_pr": "https://github.com/hazeydata/agentwebindex/pull/57",
  "live_not_held": {
   "keenable": "Keenable"
  },
- "live_not_held_note": "Providers that are live (not publish_hold) and must be accounted for in week 46: a provider here with no week-46 regrade row gets the copy line '<Name>: not run this week'. Lucille 2 ruling, Nov 2 2026: Keenable is live; AC-4 lifted for Keenable only. Firecrawl ran Nov 9 but is omitted from the table (Lucille 2 / writing: no row) and is NOT listed as not-run.",
- "extra_rows": {},
- "extra_rows_note": "No extra_rows for W46: TinyFish ran on the manifest run_date 2026-11-09.",
+ "live_not_held_note": "Providers that are live (not publish_hold) and must be accounted for in week 47: a provider here with no week-47 regrade row gets the copy line '<Name>: not run this week'. Lucille 2 ruling, Nov 2 2026: Keenable is live; AC-4 lifted for Keenable only. Firecrawl ran Nov 16 and has a row (the W46-only omission does not apply).",
+ "extra_rows": {
+  "brightdata": "2026-11-02"
+ },
+ "extra_rows_note": "Bright Data was not rerun in W47. Its Nov 2, 2026 scrape_urls run (69/120) is shown with its own Run date and a row-note; it is not in the 'Ran Nov 16, 2026:' list and not in the heading/source date.",
  "extra_names": {
   "tinyfish": "TinyFish"
  },

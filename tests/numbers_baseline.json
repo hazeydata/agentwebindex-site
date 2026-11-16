@@ -1,5 +1,5 @@
 {
- "_doc": "Numbers visible on each page at data pin c352ff12 (chart SVGs and #latest-week excluded, same as Polish.test_no_number_added_or_changed). Regenerate when the data pin moves.",
+ "_doc": "Numbers visible on each page at data pin 7fdefab3 (chart SVGs and #latest-week excluded, same as Polish.test_no_number_added_or_changed). Regenerate when the data pin moves. Added for W47: '2,' (Nov 2, 2026) and '47' (week 47) on / and /methodology/.",
  "pages": {
   "/": [
    "$0",
@@ -37,6 +37,7 @@
    "19",
    "19,",
    "2",
+   "2,",
    "20",
    "20,",
    "2026",
@@ -63,6 +64,7 @@
    "43%",
    "45",
    "46",
+   "47",
    "48%",
    "66%",
    "69",
@@ -109,6 +111,7 @@
    "15",
    "150",
    "16",
+   "2,",
    "20",
    "2026",
    "23,",
@@ -117,6 +120,7 @@
    "42",
    "429",
    "43",
+   "47",
    "5",
    "50",
    "72",
