@@ -437,10 +437,10 @@ def outside_w45_claims(page):
 # `mentions` pins how many times "apify" occurs in it, so new text inside an allowed container also fails.
 # Anything else, in text, attributes, <meta>, comments, <noscript> or scripts, fails the build. trace_w45.py keeps its own copy.
 APIFY_ALLOW = (
-    ("/", "section", r'<section id="latest-week"[^>]*>', None, 10),   # Apify ran in W47: the whole section is allowlisted
+    ("/", "section", r'<section id="latest-week"[^>]*>', None, 11),   # Apify ran in W47: whole section, incl. TinyFish note
     ("/", "section", r'<section id="apify-retest"[^>]*>', None, 9),         # Oct 26 prior-run retest
-    ("/", "figure", r'<figure[^>]* id="chart-pass-rate"[^>]*>', None, 8),   # legacy chart, old data pin 303efdf4
-    ("/", "figure", r'<figure[^>]* id="chart-cost"[^>]*>', None, 4),        # legacy chart, old data pin 303efdf4
+    ("/", "figure", r'<figure[^>]* id="chart-pass-rate"[^>]*>', None, 12),  # W47 charts; Lucille 2 accepted DEFAULTS.md footnotes
+    ("/", "figure", r'<figure[^>]* id="chart-cost"[^>]*>', None, 8),        # W47 charts; Lucille 2 accepted DEFAULTS.md footnotes
     ("/", "details", r'<details id="notes"[^>]*>', None, 1),                 # "Apify skipped Oct 23"
     ("/", "details", r'<details id="earlier-runs"[^>]*>', None, 3),       # Oct 19/20 runs
     ("/", "details", r'<details id="every-row"[^>]*>', None, 4),          # Oct 19/20 rows

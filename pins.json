@@ -2,8 +2,8 @@
  "_doc": "Single source of truth for pinned inputs. To move a pin, edit ONE line here and re-vendor (see README 'Pins').",
  "data": "7fdefab3c4ef141bf38e7b150a0d854c9aa479cb",
  "phase0_date": "2026-10-24",
- "copy": "AWI-PAGE-POLISH-001 copy-cuts.md + AWI-W43-REVIEW-NOTE grading sentence + AWI Apify retest section (voice draft 2026-10-26) + AWI-W45-PUBLISH-001 Week 45 results section + W45 not-run and prior-run labels (Lucille 2 ruling 2026-11-02) + W45 review edits (Lindsay voice: Coverage, Apify; Ann: Comparison, Sample, Source) + Apify retest dated Oct 26 (Kitty t1 X2) + AWI-TINYFISH-001 TinyFish fetch note (approved final, Fred via chief, Nov 3 2026) + AWI-W46-PUBLISH-001 Week 46 Limits eleven also-priced (Lucille 2; held provider excluded from also-priced and downloadable prices) + AWI-W47-BASE-RUN-001 Week 47 results section (n=20 coverage, Apify n=9, Bright Data Nov 2 note, TinyFish 4/14 note) and the Bright Data / Firecrawl sentences in Not tested and Limits",
- "copy_sha256": "fa50070e9e30d6fbfec1f882f4278085d2831857093c609ec33b956f9ce6b1ab",
+ "copy": "AWI-PAGE-POLISH-001 copy-cuts.md + AWI-W43-REVIEW-NOTE grading sentence + AWI Apify retest section (voice draft 2026-10-26) + AWI-W45-PUBLISH-001 Week 45 results section + W45 not-run and prior-run labels (Lucille 2 ruling 2026-11-02) + W45 review edits (Lindsay voice: Coverage, Apify; Ann: Comparison, Sample, Source) + Apify retest dated Oct 26 (Kitty t1 X2) + AWI-TINYFISH-001 TinyFish fetch note (approved final, Fred via chief, Nov 3 2026) + AWI-W46-PUBLISH-001 Week 46 Limits eleven also-priced (Lucille 2; held provider excluded from also-priced and downloadable prices) + AWI-W47-BASE-RUN-001 Week 47 results section (n=20 coverage, Apify n=9, Bright Data Nov 2 note, TinyFish 4/14 note) and the Bright Data / Firecrawl sentences in Not tested and Limits + AWI-W47-PUBLISH-001 writing (Lucille 2 accepted): Bright Data 'no complete Week 47 run' / Nov 2 wording, TinyFish 4/14 note with Apify and Browserless 14/14 comparison, also-priced 'not yet in the evergreen rankings'; dataviz charts (Lucille 2 accepted DEFAULTS.md: Bright Data 'Not tested' label, cost-chart bottom margin); no visible title re-export (aria-label retained, matplotlib dc:title only); 350 font-size floor 8.75px re-export (AC-25/39, >=12px at 390)",
+ "copy_sha256": "518c125b4475e727dba5ca66d071ad634e5cd2f4c558e26fee12aa358c5fde9d",
  "copy_cuts": "Lindsay's final copy-cuts.md (hero card lead-ins; item 9 AFTER per Lindsay AC-10 ruling, kept by spec R-9), recorded only: not vendored, because it quotes the retired Prices label that AC-29 bans from the repo; content/copy.md carries its strings",
  "copy_cuts_sha256": "a1ef334c02c27251dcb5633004cfa0de67a0bf491ce5d70ed4156d7cb0d30946",
  "queries": "agentwebindex-meta 2c28c0a cycles/2026-10-24-page-redo/her/QUERIES.md",
@@ -12,35 +12,35 @@
  "charts": "b748147",
  "charts_sha256": {
   "awi-cost-per-success-350-dark.svg": {
-   "sha256": "232643820d7397bc8532a9923e7e16868b1736426e93772c7a4e98e62153219b",
+   "sha256": "9af8ffc22a9c74eb73a86c329b3c637d193cd17472e01293252a90f1d0f7568a",
    "her_original": "her/her-cost-per-success-350-dark.svg"
   },
   "awi-cost-per-success-350-light.svg": {
-   "sha256": "38a761a3d895121b86f6504ed49710922256c1529a3b48ba6d8e2c11edaa9c05",
+   "sha256": "e0df5539cc6f700a8322bdc24e0de7acaf5bf87451951c496833555e43e1f3a9",
    "her_original": "her/her-cost-per-success-350-light.svg"
   },
   "awi-cost-per-success-720-dark.svg": {
-   "sha256": "09d0ca75377d2c68bfbadfb1aefaa4c895ac3bab7eb8a9be0a5ee22e028cae2e",
+   "sha256": "b0f21c19d05804a79d0526ea19659f2ebe4579b028e6db003438df174727791d",
    "her_original": "her/her-cost-per-success-720-dark.svg"
   },
   "awi-cost-per-success-720-light.svg": {
-   "sha256": "c74e46c2c06fa6cb53831f1172e806694a146b831788462628b2bd0487f9e872",
+   "sha256": "83880274c2ffb36a0b1397b5a8264c20d2c973f61d745fd2d031ce24887f4744",
    "her_original": "her/her-cost-per-success-720-light.svg"
   },
   "awi-pass-rate-350-dark.svg": {
-   "sha256": "28177cf53b03aa929532a9221a43a0596791e7e879cdf8be723ec1706d418eab",
+   "sha256": "c7e3452f68201f20ed8df325da3335f187e54273ff137bf90ebedbf9c0d34b0e",
    "her_original": "her/her-pass-rate-350-dark.svg"
   },
   "awi-pass-rate-350-light.svg": {
-   "sha256": "177d4870bc3e99f45b4edc30f1bae986aa8bcc4f07720911115cf8a9f6fd8090",
+   "sha256": "22ac5b05d0d58cda2ea13e519005840f5be6213d9015b49bcabf5633222e668e",
    "her_original": "her/her-pass-rate-350-light.svg"
   },
   "awi-pass-rate-720-dark.svg": {
-   "sha256": "2ddb563c28632fcc32652ceb3f139a892d1edcec10b7be7ea4097962ef28e961",
+   "sha256": "7b7d00aea84e19fdf8e95b16b53ea0afe19c895748437236e9ad180881971da1",
    "her_original": "her/her-pass-rate-720-dark.svg"
   },
   "awi-pass-rate-720-light.svg": {
-   "sha256": "c07b8d85bba4e6d54605e1877313e05bb94dd51facc0602411c37bda6889bef3",
+   "sha256": "ef9d86b2b4bda543594a627160730cd71d549a4a4c77f9368a41c300716f8641",
    "her_original": "her/her-pass-rate-720-light.svg"
   }
  },

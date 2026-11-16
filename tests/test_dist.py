@@ -850,7 +850,7 @@ class OtherPages(unittest.TestCase):
         s = page("/prices/")
         line = text_of(re.search(r'<p class="lcopy" id="also-priced">(.*?)</p>', s, re.S).group(1))
         self.assertEqual(s.count('id="also-priced"'), 1)
-        want = ("Priced, no published results yet: Brave Search API, Bright Data Web Unlocker, Browserbase, "
+        want = ("Priced, not yet in the evergreen rankings: Brave Search API, Bright Data Web Unlocker, Browserbase, "
                 "Firecrawl, Hyperbrowser, Jina Reader, Linkup, Parallel, ScrapingBee, Serper, Steel.")
         self.assertEqual(line, want)   # exact 11-name rendered line; held name absent
         self.assertIsNone(re.compile(("context" + r"\.?" + "dev"), re.I).search(line))
@@ -1468,7 +1468,7 @@ class W45Results(unittest.TestCase):
         after = sec[sec.index(rows[1]) + len(rows[1]):]
         self.assertTrue(after.startswith('<tr class="row-note">'), after[:80])
         self.assertIn(html.escape(copydoc.load().field("Week 47 results", "TinyFish fetch note")), after[:600])
-        self.assertEqual(copydoc.load().field("Week 47 results", "TinyFish fetch note"), "TinyFish passed 4 of 14 fetch checks. Follow-up: https://github.com/hazeydata/agentwebindex-meta/issues/71.")
+        self.assertEqual(copydoc.load().field("Week 47 results", "TinyFish fetch note"), "TinyFish passed 4 of 14 fetch checks. Apify and Browserless passed all 14 of the same pages. We haven't confirmed why. Follow-up: https://github.com/hazeydata/agentwebindex-meta/issues/71.")
         self.assertIn("Ran Nov 16, 2026: Apify, Exa, Firecrawl, Tavily, TinyFish, Browserless.", norm(html.unescape(text_of(sec))))
         self._check_bright_data()
 
@@ -1510,9 +1510,9 @@ class W45Results(unittest.TestCase):
 
     def test_review_copy_and_headers(self):  # Lindsay (voice) and Ann (dataviz) review edits
         t = norm(html.unescape(text_of(self._sec())))
-        for want in ("Below our minimum: this week's news set has 20 items, under the 25 we want, so treat every row here as early. Apify search ran 9 of those 20 items, also below minimum. Bright Data was not rerun this week; its row is the Nov 2, 2026 run. Only the providers in this table have Week 47 results. For everyone else, the latest results are the older runs further down the page.",
+        for want in ("Below our minimum: this week's news set has 20 items, under the 25 we want, so treat every row here as early. Apify search ran 9 of those 20 items, also below minimum. Bright Data has no complete Week 47 run, so its row is the Nov 2, 2026 run. Only the providers in this table have Week 47 results. For everyone else, the latest results are the older runs further down the page.",
                      "Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early.",
-                     "Bright Data was not rerun in week 47. This row is the Nov 2, 2026 run.",
+                     "Bright Data has no complete Week 47 run. This row is the Nov 2, 2026 run.",
                      "Week 47 used this week's news items. The rankings further down are still from our Oct 23, 2026 run, on different questions and URLs, so compare rows only within a run.",
                      "Source: tables.py regrade of the Nov 16, 2026 run logs (agentwebindex 7fdefab)"):
             self.assertIn(want, t)
@@ -1590,9 +1590,9 @@ class W45Results(unittest.TestCase):
         sec = self._sec()
         self.assertFalse(hasattr(render, "w45_apify_mentions"))   # the "no Apify in #latest-week" guard is retired
         self.assertEqual(self._guard(self.s, "/"), [])
-        self.assertEqual(len(re.findall(r"(?i)apify", sec)), 10)   # pinned count, same rule as the allowlist
-        self.assertEqual(render.APIFY_ALLOW[0][1:], ("section", r'<section id="latest-week"[^>]*>', None, 10))
-        self.assertEqual(self.tr.APIFY_ALLOW[0][1:], ("section", {"id": "latest-week"}, None, 10))
+        self.assertEqual(len(re.findall(r"(?i)apify", sec)), 11)   # pinned count, same rule as the allowlist
+        self.assertEqual(render.APIFY_ALLOW[0][1:], ("section", r'<section id="latest-week"[^>]*>', None, 11))
+        self.assertEqual(self.tr.APIFY_ALLOW[0][1:], ("section", {"id": "latest-week"}, None, 11))
         self.assertNotIn("Apify did not run this week", sec)
         self.assertEqual(re.findall(r'<tr data-provider="apify">', sec).__len__(), 2)
         mutants = {
@@ -1620,7 +1620,7 @@ class W45Results(unittest.TestCase):
             pins["copy_sha256"] = hashlib.sha256(c.read_bytes()).hexdigest(); pj.write_text(json.dumps(pins, indent=1) + "\n")
             self.assertEqual(pinmod.check(root), [])
             r = subprocess.run([sys.executable, "build.py"], cwd=root, capture_output=True, text=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
-            self.assertNotEqual(r.returncode, 0)   # one more "Apify" than the pinned 10
+            self.assertNotEqual(r.returncode, 0)   # one more "Apify" than the pinned 11
             self.assertIn("Apify allowlist on /", r.stdout + r.stderr)
 
     def _trace_dist(self, edits):   # trace a copy of dist/ with {relpath: (old, new)} applied

@@ -124,10 +124,10 @@ class Outside(HTMLParser):
 # Kitty t4: the trace's own copy of the Apify allowlist (render.APIFY_ALLOW is the build's). Each entry is
 # (page, tag, required attributes, inside (tag, id) or None, pinned "apify" count inside the container).
 APIFY_ALLOW = (
-    ("/", "section", {"id": "latest-week"}, None, 10),   # Apify ran in W47: the whole section is allowlisted
+    ("/", "section", {"id": "latest-week"}, None, 11),   # Apify ran in W47: whole section, incl. TinyFish note
     ("/", "section", {"id": "apify-retest"}, None, 9),
-    ("/", "figure", {"id": "chart-pass-rate"}, None, 8),
-    ("/", "figure", {"id": "chart-cost"}, None, 4),
+    ("/", "figure", {"id": "chart-pass-rate"}, None, 12),
+    ("/", "figure", {"id": "chart-cost"}, None, 8),
     ("/", "details", {"id": "notes"}, None, 1),
     ("/", "details", {"id": "earlier-runs"}, None, 3),
     ("/", "details", {"id": "every-row"}, None, 4),
