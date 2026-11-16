@@ -11,7 +11,7 @@ Checks (exit 1 on any failure):
   5. no number appears in the section outside a traced cell unless it is in the copy.md "Week 47 results" text;
   6. Apify ran in week 47, so it may have rows; if it has a manifest-date row the "Apify did not run this week." line must NOT appear;
      Bright Data (manifest extra_rows, Nov 2) shows its own Run date, a row note, and is not in the "Ran Nov 16, 2026:" list;
-     the Coverage copy states the news-set size and Apify's n from the rows' "below minimum (n=N)" flags, and the TinyFish fetch note states its row's counts;
+     the Coverage copy states the news-set size and the Apify field states Apify's n from the rows' "below minimum (n=N)" flags, and the TinyFish fetch note states its row's counts;
   7. each live provider in the manifest's live_not_held with no week-45 regrade row has exactly one '<Name>: not run this week' line, and no other.
 """
 import hashlib, html, json, re, sys
@@ -45,8 +45,21 @@ COLUMNS = {
     "Per 1,000 passed checks": (["entry_tier_cost_per_successful_1k.display"], lambda r: r["entry_tier_cost_per_successful_1k"]["display"] or "n/a"),
     "List price per 1,000 calls": (["entry_tier_cost_per_1k.display"], lambda r: r["entry_tier_cost_per_1k"]["display"] or "n/a"),
     "Skipped (terms)": (["skipped_tos.count"], lambda r: "n/a" if (r.get("skipped_tos") or {}).get("count") is None else str(r["skipped_tos"]["count"])),
-    "Flags": (["flags"], lambda r: ", ".join(r["flags"]) or "none"),
+    "Flags": (["flags"], lambda r: display_flags(r)),
 }
+
+SHORT_WEEK_FLAG = re.compile(r"^short week \(n=(\d+)\)$")
+
+
+def display_flags(r):
+    """Own copy of render.display_flags: Week 47 #latest-week maps 'short week (n=N)' to 'short news set (n=N)'."""
+    week47 = isinstance(r.get("set"), str) and r["set"].endswith("2026-47")
+    out = []
+    for f in r.get("flags") or []:
+        m = SHORT_WEEK_FLAG.fullmatch(f) if week47 else None
+        out.append(f"short news set (n={m.group(1)})" if m else f)
+    return ", ".join(out) or "none"
+
 
 
 class Section(HTMLParser):
@@ -124,7 +137,7 @@ class Outside(HTMLParser):
 # Kitty t4: the trace's own copy of the Apify allowlist (render.APIFY_ALLOW is the build's). Each entry is
 # (page, tag, required attributes, inside (tag, id) or None, pinned "apify" count inside the container).
 APIFY_ALLOW = (
-    ("/", "section", {"id": "latest-week"}, None, 11),   # Apify ran in W47: whole section, incl. TinyFish note
+    ("/", "section", {"id": "latest-week"}, None, 10),   # Apify ran in W47: whole section, incl. TinyFish note
     ("/", "section", {"id": "apify-retest"}, None, 9),
     ("/", "figure", {"id": "chart-pass-rate"}, None, 12),
     ("/", "figure", {"id": "chart-cost"}, None, 8),
@@ -363,8 +376,8 @@ def trace(index_html, evidence=None):
     if news_n is None or f"this week's news set has {news_n} items, under the 25 we want" not in full_text:
         errs.append(f"coverage does not state the news set has {news_n} items, under the 25 minimum")
     for an in ap_n:
-        if f"Apify search ran {an} of those {news_n} items, also below minimum" not in full_text:
-            errs.append(f"coverage does not name Apify search n={an} as below minimum")
+        if f"Apify search ran {an} of this week's {news_n} news items, below our minimum of 25" not in full_text:
+            errs.append(f"Apify field does not name Apify search n={an} as below minimum")
     for k, (c, r) in want.items():
         if r["provider"] == "tinyfish" and c == "browser":
             if f"TinyFish passed {r['passed']['v']} of {r['attempted']['v']} fetch checks." not in full_text:

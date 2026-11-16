@@ -355,6 +355,20 @@ def w45_samples(ctx):
     return out
 
 
+SHORT_WEEK_FLAG = re.compile(r"^short week \(n=(\d+)\)$")
+
+
+def display_flags(r):
+    """Flags cell text for #latest-week. On Week 47 rows only, show 'short week (n=N)' as 'short news set (n=N)'.
+    Data files, the CSV download, and the Every row table keep the raw strings."""
+    week47 = isinstance(r.get("set"), str) and r["set"].endswith("2026-47")
+    out = []
+    for f in r.get("flags") or []:
+        m = SHORT_WEEK_FLAG.fullmatch(f) if week47 else None
+        out.append(f"short news set (n={m.group(1)})" if m else f)
+    return ", ".join(out) or "none"
+
+
 def w45_cells(ctx, cat, i, r):
     """[(column, data-src, html)] for one row. data-src names the regrade fields the cell is computed from (tools/trace_w45.py checks it)."""
     meta, _ = w45_doc(ctx)
@@ -362,7 +376,7 @@ def w45_cells(ctx, cat, i, r):
     src = (r.get("passed") or {}).get("src") or []
     log = f"{DATA_REPO}/blob/{meta['run_logs_commit']}/bench/{src[0]['file']}" if src and src[0].get("file") else ""
     p = f"tables.{cat}.{i}"
-    flags = ", ".join(r.get("flags") or []) or "none"
+    flags = display_flags(r)
     return [("Provider", f"{p}.provider", e(nm.get(r["provider"], r["provider"]))),
             ("Category", f"{p}", e(cat)),
             ("Set", f"{p}.set", e(r["set"])),
@@ -437,7 +451,7 @@ def outside_w45_claims(page):
 # `mentions` pins how many times "apify" occurs in it, so new text inside an allowed container also fails.
 # Anything else, in text, attributes, <meta>, comments, <noscript> or scripts, fails the build. trace_w45.py keeps its own copy.
 APIFY_ALLOW = (
-    ("/", "section", r'<section id="latest-week"[^>]*>', None, 11),   # Apify ran in W47: whole section, incl. TinyFish note
+    ("/", "section", r'<section id="latest-week"[^>]*>', None, 10),   # Apify ran in W47: whole section, incl. TinyFish note
     ("/", "section", r'<section id="apify-retest"[^>]*>', None, 9),         # Oct 26 prior-run retest
     ("/", "figure", r'<figure[^>]* id="chart-pass-rate"[^>]*>', None, 12),  # W47 charts; Lucille 2 accepted DEFAULTS.md footnotes
     ("/", "figure", r'<figure[^>]* id="chart-cost"[^>]*>', None, 8),        # W47 charts; Lucille 2 accepted DEFAULTS.md footnotes
