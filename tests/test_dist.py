@@ -1439,7 +1439,7 @@ class W45Results(unittest.TestCase):
             "bright data note dropped": re.sub(r'<tr class="row-note"><td[^>]*><p class="lcopy" data-copy="brightdata-note">.*?</tr>', "", sec, count=1, flags=re.S),
             "bright data in ran list": sec.replace('data-src="provider">Apify,', 'data-src="provider">Bright Data, Apify,', 1),
             "coverage drops n=20": sec.replace("this week's news set has 20 items, under the 25 we want", "this week's news set is short", 1),
-            "coverage drops apify n=9": sec.replace("Apify search ran 9 of those 20 items, also below minimum. ", "", 1),
+            "coverage drops apify n=9": sec.replace("Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early.", "", 1),
             "tinyfish 4/14 note dropped": re.sub(r'<tr class="row-note"><td[^>]*><p class="lcopy" data-copy="tinyfish-fetch-note">.*?</tr>', "", sec, count=1, flags=re.S),
             "tinyfish note wrong count": sec.replace("TinyFish passed 4 of 14", "TinyFish passed 5 of 14", 1),
         }
@@ -1510,12 +1510,23 @@ class W45Results(unittest.TestCase):
 
     def test_review_copy_and_headers(self):  # Lindsay (voice) and Ann (dataviz) review edits
         t = norm(html.unescape(text_of(self._sec())))
-        for want in ("Below our minimum: this week's news set has 20 items, under the 25 we want, so treat every row here as early. Apify search ran 9 of those 20 items, also below minimum. Bright Data has no complete Week 47 run, so its row is the Nov 2, 2026 run. Only the providers in this table have Week 47 results. For everyone else, the latest results are the older runs further down the page.",
+        for want in ("Below our minimum: this week's news set has 20 items, under the 25 we want, so treat every row here as early. Bright Data has no complete Week 47 run, so its row is the Nov 2, 2026 run. Only the providers in this table have Week 47 results. For everyone else, the latest results are the older runs further down the page.",
                      "Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early.",
                      "Bright Data has no complete Week 47 run. This row is the Nov 2, 2026 run.",
                      "Week 47 used this week's news items. The rankings further down are still from our Oct 23, 2026 run, on different questions and URLs, so compare rows only within a run.",
                      "Source: tables.py regrade of the Nov 16, 2026 run logs (agentwebindex 7fdefab)"):
             self.assertIn(want, t)
+        self.assertNotIn("short week", t)
+        self.assertIn("short news set (n=20)", t)
+        self.assertIn("short news set (n=9)", t)
+        self.assertEqual(t.count("Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early."), 1)
+        self.assertNotIn("Apify search ran 9 of those 20 items, also below minimum.", t)
+        w47 = {"set": "news_2026-47", "flags": ["short week (n=20)", "below minimum (n=20)"]}
+        w43 = {"set": "news_2026-43", "flags": ["short week (n=40)"]}
+        self.assertEqual(render.display_flags(w47), self.tr.display_flags(w47))
+        self.assertEqual(render.display_flags(w47), "short news set (n=20), below minimum (n=20)")
+        self.assertEqual(render.display_flags(w43), "short week (n=40)")
+        self.assertEqual(self.tr.display_flags(w43), "short week (n=40)")
         heads = re.findall(r'<th scope="col"[^>]*>([^<]*)</th>', self._sec())
         self.assertEqual(heads[4:6], ["Passed / checks", "Failed / checks"])
         self.assertEqual(list(render.W45_COLS), list(self.tr.COLUMNS))
@@ -1590,9 +1601,9 @@ class W45Results(unittest.TestCase):
         sec = self._sec()
         self.assertFalse(hasattr(render, "w45_apify_mentions"))   # the "no Apify in #latest-week" guard is retired
         self.assertEqual(self._guard(self.s, "/"), [])
-        self.assertEqual(len(re.findall(r"(?i)apify", sec)), 11)   # pinned count, same rule as the allowlist
-        self.assertEqual(render.APIFY_ALLOW[0][1:], ("section", r'<section id="latest-week"[^>]*>', None, 11))
-        self.assertEqual(self.tr.APIFY_ALLOW[0][1:], ("section", {"id": "latest-week"}, None, 11))
+        self.assertEqual(len(re.findall(r"(?i)apify", sec)), 10)   # pinned count, same rule as the allowlist
+        self.assertEqual(render.APIFY_ALLOW[0][1:], ("section", r'<section id="latest-week"[^>]*>', None, 10))
+        self.assertEqual(self.tr.APIFY_ALLOW[0][1:], ("section", {"id": "latest-week"}, None, 10))
         self.assertNotIn("Apify did not run this week", sec)
         self.assertEqual(re.findall(r'<tr data-provider="apify">', sec).__len__(), 2)
         mutants = {

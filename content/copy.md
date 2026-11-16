@@ -63,7 +63,7 @@ Apify suggested a fairer setup, so on Oct 26 we reran their tools on that week's
 **Ran:** Ran Nov 16, 2026:
 **Not run:** not run this week
 **Prior run:** Prior run:
-**Coverage:** Below our minimum: this week's news set has 20 items, under the 25 we want, so treat every row here as early. Apify search ran 9 of those 20 items, also below minimum. Bright Data has no complete Week 47 run, so its row is the Nov 2, 2026 run. Only the providers in this table have Week 47 results. For everyone else, the latest results are the older runs further down the page.
+**Coverage:** Below our minimum: this week's news set has 20 items, under the 25 we want, so treat every row here as early. Bright Data has no complete Week 47 run, so its row is the Nov 2, 2026 run. Only the providers in this table have Week 47 results. For everyone else, the latest results are the older runs further down the page.
 **Apify:** Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early.
 **Comparison:** Week 47 used this week's news items. The rankings further down are still from our Oct 23, 2026 run, on different questions and URLs, so compare rows only within a run.
 **Source:** Source: tables.py regrade of the {date} run logs (agentwebindex {sha})
