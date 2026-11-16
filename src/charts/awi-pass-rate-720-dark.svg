@@ -239,7 +239,7 @@ L 414.72 247.455
    <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 456.312706)">(news weeks only; paid-tier price not captured) and Browserless browser (no Oct 23, 2026 browser-task run).</text>
    <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 469.818041)">TinyFish is a priced provider (TinySearch/TinyFetch free, $0.00 per request) with no Oct 23, 2026 rows, so it</text>
    <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 482.707457)">is not plotted.</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 495.935253)">Source: hazeydata/agentwebindex data/benchmarks/latest.json @ c352ff1</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(20.736 495.935253)">Source: hazeydata/agentwebindex data/benchmarks/latest.json @ 7fdefab</text>
   </g>
  </g>
  <defs>

@@ -247,7 +247,7 @@ z
    <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 698.125812)">23, 2026 rows, so it is not plotted;</text>
    <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 711.670111)">its $0 is not a missing value.</text>
    <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 724.587555)">Source: hazeydata/agentwebindex</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 737.872772)">data/benchmarks/latest.json @ c352ff1</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 737.872772)">data/benchmarks/latest.json @ 7fdefab</text>
   </g>
  </g>
  <defs>

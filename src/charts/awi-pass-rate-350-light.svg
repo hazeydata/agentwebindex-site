@@ -241,7 +241,7 @@ L 176.4 344.64375
    <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(10.08 1032.386046)">request) with no Oct 23, 2026 rows, so</text>
    <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(10.08 1045.52976)">it is not plotted.</text>
    <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(10.08 1058.757555)">Source: hazeydata/agentwebindex</text>
-   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(10.08 1072.042772)">data/benchmarks/latest.json @ c352ff1</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #999999" transform="translate(10.08 1072.042772)">data/benchmarks/latest.json @ 7fdefab</text>
   </g>
  </g>
  <defs>

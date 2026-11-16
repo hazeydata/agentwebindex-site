@@ -224,7 +224,7 @@ def section_run(ctx):
     rows = "".join(results_row(ctx, r) for r in run_rows(ctx))
     bullets = "".join(f"<li><b>{e(a)}</b>{' ' + e(b) if b else ''}</li>" for a, b in findings(ctx))
     return ('<section id="run"><div class="wrap"><div class="col">'
-            f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 46 results", "Prior run"))} {e(day_label(ctx.latest["run_date"]))}</p>'
+            f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 47 results", "Prior run"))} {e(day_label(ctx.latest["run_date"]))}</p>'
             f'<h2>Results, {e(day_label(ctx.latest["run_date"]))} run</h2>'
             f'<p class="lcopy">{e(intro_sentence(ctx))}</p><p class="lcopy strong">{e(headline_sentence(ctx))}.</p></div>'
             f'<div class="rows" role="list">{rows}</div>'
@@ -366,7 +366,7 @@ def w45_cells(ctx, cat, i, r):
     return [("Provider", f"{p}.provider", e(nm.get(r["provider"], r["provider"]))),
             ("Category", f"{p}", e(cat)),
             ("Set", f"{p}.set", e(r["set"])),
-            ("Run date", f"{p}.run_date", e(r["run_date"])),
+            ("Run date", f"{p}.run_date", e(day_label(r["run_date"]))),
             ("Passed / checks", f"{p}.passed.v,{p}.attempted.v", link(log, f"{v(r['passed'])} of {v(r['attempted'])}")),
             ("Failed / checks", f"{p}.failed.v", e(str(v(r["failed"])))),
             ("Pass rate", f"{p}.success_rate.v", e(P.fmt_pct(v(r["success_rate"])))),
@@ -382,6 +382,8 @@ def section_w45(ctx):
     rows = w45_rows(ctx)
     ran = []
     for _, _, r in rows:
+        if r["run_date"] != w45_doc(ctx)[0]["run_date"]:
+            continue   # extra_rows (Bright Data, Nov 2) are dated on their own row, not listed as ran on the week's run date
         n = (names(ctx) | (w45_doc(ctx)[0].get("extra_names") or {})).get(r["provider"], r["provider"])
         if n not in ran:
             ran.append(n)
@@ -395,14 +397,16 @@ def section_w45(ctx):
         tds = "".join(f'<td data-label="{e(c)}" data-src="{e(s)}"{' class="mono num"' if c in W45_NUM else "" if c in ("Category", "Flags") else mono}>{h}</td>' for c, s, h in cells[1:])
         body.append(f'<tr data-provider="{e(r["provider"])}"><th scope="row" data-label="{first[0]}" data-src="{e(first[1])}">{first[2]}</th>{tds}</tr>')
         if r["provider"] == "tinyfish" and cat == "browser":   # AWI-TINYFISH-001: misses note next to the TinyFish fetch row (copy.md)
-            body.append(f'<tr class="row-note"><td colspan="{len(W45_COLS)}"><p class="lcopy" data-copy="tinyfish-fetch-note">{e(d.field("Week 46 results", "TinyFish fetch note"))}</p></td></tr>')
+            body.append(f'<tr class="row-note"><td colspan="{len(W45_COLS)}"><p class="lcopy" data-copy="tinyfish-fetch-note">{e(d.field("Week 47 results", "TinyFish fetch note"))}</p></td></tr>')
+        if r["provider"] == "brightdata" and cat == "scrape":   # W47: the Nov 2 run, dated on its own row (copy.md "Bright Data note")
+            body.append(f'<tr class="row-note"><td colspan="{len(W45_COLS)}"><p class="lcopy" data-copy="brightdata-note">{e(d.field("Week 47 results", "Bright Data note"))}</p></td></tr>')
     head = "".join(f'<th scope="col"{' class="num"' if c in W45_COLS and c in W45_NUM else ""}>{e(c)}</th>' for c in W45_COLS)
     meta, _ = w45_doc(ctx)
     ran_ids = {r["provider"] for _, _, r in rows}
-    not_run = "".join(f'<p class="lcopy" data-copy="not-run"><span data-src="not_run">{e(nm)}</span>: {e(d.field("Week 46 results", "Not run"))}</p>'
+    not_run = "".join(f'<p class="lcopy" data-copy="not-run"><span data-src="not_run">{e(nm)}</span>: {e(d.field("Week 47 results", "Not run"))}</p>'
                       for pid, nm in (meta.get("live_not_held") or {}).items() if pid not in ran_ids)   # derived from the regrade rows, never typed
-    paras = not_run + "".join(f'<p class="lcopy" data-copy="{k.lower()}">{inline(d.field("Week 46 results", k))}</p>' for k in ("Coverage", "Apify", "Failed", "Skipped"))
-    f = lambda k: d.field("Week 46 results", k)
+    paras = not_run + "".join(f'<p class="lcopy" data-copy="{k.lower()}">{inline(d.field("Week 47 results", k))}</p>' for k in ("Coverage", "Apify", "Failed", "Skipped"))
+    f = lambda k: d.field("Week 47 results", k)
     samples = "".join(" " + e(f("Sample")).replace("{provider}", f'<span data-src="sample_provider:{k}">{e(nm)}</span>')
                       .replace("{n}", f'<span data-src="sample_n:{k}">{n}</span>').replace("{total}", f'<span data-src="sample_total:{k}">{t}</span>') + "."
                       for k, nm, n, t in w45_samples(ctx))
@@ -411,20 +415,10 @@ def section_w45(ctx):
     source = (f'<p class="lcopy" data-copy="source">' + e(f("Source")).replace("{date}", f'<span data-src="source_date">{e(day_label(day)) if day else ""}</span>')
               .replace("{sha}", f'<a data-src="run_logs_commit" href="{DATA_REPO}/commit/{e(sha)}">{e(sha[:7])}</a>') + '</p>')
     return ('<section id="latest-week"><div class="wrap"><div class="col">'
-            f'<h2>{e(d.field("Week 46 results", "Title"))}, <span data-src="run_date">{e(day_label(day)) if day else ""}</span> run</h2>'
-            f'<p class="lcopy" data-copy="ran">{e(d.field("Week 46 results", "Ran"))} <span data-src="provider">{e(", ".join(ran))}</span>.</p>{paras}</div>'
+            f'<h2>{e(d.field("Week 47 results", "Title"))}, <span data-src="run_date">{e(day_label(day)) if day else ""}</span> run</h2>'
+            f'<p class="lcopy" data-copy="ran">{e(d.field("Week 47 results", "Ran"))} <span data-src="provider">{e(", ".join(ran))}</span>.</p>{paras}</div>'
             f'<div class="tablewrap"><table class="dt" id="w45-table"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
             f'<div class="col">{source}</div></div></section>')
-
-
-def w45_apify_mentions(page):
-    """Apify is out for week 45 (cap reached, back Nov 16), so the #latest-week section may name it only in its own
-    "did not run" copy paragraph (data-copy="apify"). Returns every other mention (in text, attributes or links), so the build can fail."""
-    m = re.search(r'<section id="latest-week">.*?</section>', page, re.S)
-    if not m:
-        return []
-    rest = re.sub(r'<p class="lcopy" data-copy="apify">[^<]*</p>', "", m.group(0), count=1)
-    return [rest[max(0, x.start() - 40):x.end() + 40] for x in re.finditer(r"(?i)apify", rest)]
 
 
 def outside_w45_claims(page):
@@ -437,13 +431,13 @@ def outside_w45_claims(page):
     return [m.group(0) for m in re.finditer(r"(?i)\bthis week\b.{0,40}|.{0,40}\bthis week\b", text)]
 
 
-# Kitty t4: where "Apify" may appear in the built site. Apify has no week-45 rows (out until Nov 16), so every mention
-# must sit in one of these containers, which hold the "did not run" line or prior-run (Oct 19-26) data. Each entry is
+# Kitty t4: where "Apify" may appear in the built site. Apify ran in week 47, so the whole #latest-week section is allowed;
+# every other mention must sit in one of these containers, which hold prior-run (Oct 19-26) data or prices. Each entry is
 # (page, tag, opening-tag regex, inside, mentions): `inside` is the (tag, id) of the container it must sit in (or None) and
 # `mentions` pins how many times "apify" occurs in it, so new text inside an allowed container also fails.
 # Anything else, in text, attributes, <meta>, comments, <noscript> or scripts, fails the build. trace_w45.py keeps its own copy.
 APIFY_ALLOW = (
-    ("/", "p", r'<p class="lcopy" data-copy="apify">', ("section", "latest-week"), 2),   # "Apify did not run this week."
+    ("/", "section", r'<section id="latest-week"[^>]*>', None, 10),   # Apify ran in W47: the whole section is allowlisted
     ("/", "section", r'<section id="apify-retest"[^>]*>', None, 9),         # Oct 26 prior-run retest
     ("/", "figure", r'<figure[^>]* id="chart-pass-rate"[^>]*>', None, 8),   # legacy chart, old data pin 303efdf4
     ("/", "figure", r'<figure[^>]* id="chart-cost"[^>]*>', None, 4),        # legacy chart, old data pin 303efdf4
@@ -516,7 +510,7 @@ def section_retest(ctx):
     src = "/assets/retest/" + Path(meta["chart"]).name
     src350 = "/assets/retest/" + Path(meta["chart_350"]).name   # 350px variant like the weekly charts (252-unit viewBox shown at 350px)
     y, mo, dd = (int(t) for t in RETEST.rsplit("-", 3)[1:])   # the retest's run date is in its pinned content name
-    prior = f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 46 results", "Prior run"))} {MONTHS[mo - 1]} {dd}, {y}</p>'
+    prior = f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 47 results", "Prior run"))} {MONTHS[mo - 1]} {dd}, {y}</p>'
     return (f'<section id="apify-retest" class="retest"><div class="wrap"><div class="col">{prior}<h3>{e(title)} <span class="pill">Preliminary</span></h3>'
             f'<p>{inline(para)}</p></div><figure class="retest-fig"><picture><source media="(max-width: 959.98px)" srcset="{src350}">'
             f'<img src="{src}" alt="{e(meta["alt"], quote=True)}" width="768" height="432" loading="lazy"></picture>'
@@ -569,7 +563,7 @@ def every_row(ctx):
 
 
 def section_details(ctx):
-    prior = f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 46 results", "Prior run"))} {e(day_label(ctx.latest["run_date"]))}</p>'
+    prior = f'<p class="prior-run pill" data-prior-run>{e(ctx.doc.field("Week 47 results", "Prior run"))} {e(day_label(ctx.latest["run_date"]))}</p>'
     return f'<section id="details"><div class="wrap"><div class="col">{prior}<h2>Details</h2></div>{earlier_runs(ctx)}{every_row(ctx)}</div></section>'
 
 
