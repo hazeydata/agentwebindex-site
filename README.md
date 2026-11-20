@@ -12,6 +12,9 @@ Sponsors, Newsletter, Tell us and the "For agents" links (latest.json, prices, l
   (720/350 wide x light/dark); CSS shows one (>=768px the 720 file, below it the 350 file; dark default, light under
   `prefers-color-scheme: light` or the theme toggle). Never edit these files.
 - Brand tokens (cyan `#5FC4D6`, olive `#616512`/`#8B901A`, Space Grotesk / Inter / IBM Plex Mono) are CSS variables at the top of `src/style.css`.
+- `/results/` is the home page under its own URL (the Pages SPA fallback served `/results` as `/`, so shared links showed `og:url` `/`). `og:url` is `/results/`, canonical stays `/` (it duplicates home); it is not in the nav, `sitemap.xml` or `robots.txt`.
+- Link preview card: every page (also the newsletter thanks pages) carries `og:image`, `og:image:width/height` (1200x630), `og:image:alt`, `twitter:card` `summary_large_image` and `twitter:image`, all pointing at `SITE_URL/og-card.png`. `build.py` copies the committed `src/og-card.png`; the build and tests do not need Chrome.
+  Card text is the site name plus the tagline "Same frozen questions and URLs for every search, scrape and browser API." (a verbatim fragment of the Home: hero lede in `content/copy.md`); `OG_ALT` in `build.py` repeats it. To re-render: `python3 tools/render_og_card.py` (needs google-chrome; Pillow optional, shrinks the PNG); commit `src/og-card.png`.
 - Agent surfaces (`llms.txt`, `/data/*`, CSV) are unchanged; `llms.txt` additionally lists `/tell-us/`.
 - Run-log links point to `hazeydata/agentwebindex` at the pinned data sha.
 
@@ -146,7 +149,7 @@ Store-first, same-origin signup. Copied and adapted from hazeydata/hazeydata.ai 
 - `migrations/0001_signups.sql`: D1 table `signups` (idempotent). `ip_hash` = SHA-256 of `IP_SALT` + IP; the raw IP is never stored.
 - Bindings and secrets (names only; chief creates them at deploy): D1 `SIGNUPS`, optional KV `SIGNUP_RL`, secrets `BEEHIIV_API_KEY`, `BEEHIIV_PUB_ID`,
   `IP_SALT`, `EXPORT_TOKEN`. The Beehiiv `source` custom field (string) was created on the publication on 2026-10-26 (asserted by implement; not independently verified by Test), so the AWI tag should be stored.
-- Tests (in `run_tests.sh`): `node --test tests/signup/` (mocked D1/KV/fetch/clock; no network), `tests/signup/sql_check.py` (every statement against
+- Tests (in `run_tests.sh`): `node --test 'tests/signup/*.test.mjs'` (mocked D1/KV/fetch/clock; no network), `tests/signup/sql_check.py` (every statement against
   the migration in real SQLite), `tests/signup/secret_scan.sh`, `tests/signup/mutants.py` (defects injected into the save order and fallback logic must
   all be caught), plus `test_dist` (`test_signup_*`) and `browser_check.check_signup` (first screenful at 1280x800 and 390x844, label, "Subscribe",
   honeypot off-screen, contrast >= 4.5:1, keyboard order, aria-live error) and `browser_check.check_signup_goatcounter` (R3, AC 13: against

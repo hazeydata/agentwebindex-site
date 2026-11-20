@@ -44,10 +44,15 @@ def signup_js():
     """dist/signup.js: src/signup.js with the status copy from site.config.json "signup" (same copy as signup/config.js; AC 7 drift test)."""
     return (S/"signup.js").read_text().replace("/*MESSAGES*/{}", json.dumps(SIGNUP.get("messages") or {}, ensure_ascii=False))
 
-def page_head(title, desc, path):
-    u = html.escape(SITE_URL + path); t = html.escape(f"{title} · AgentWebIndex"); d = html.escape(desc)
-    return (f'<meta name="description" content="{d}"><link rel="canonical" href="{u}"><link rel="icon" href="/favicon.svg" type="image/svg+xml">'
-            f'<meta property="og:title" content="{t}"><meta property="og:description" content="{d}"><meta property="og:url" content="{u}"><meta property="og:type" content="website">')
+OG_IMAGE=f"{SITE_URL}/og-card.png"   # src/og-card.png, 1200x630, made by tools/render_og_card.py
+OG_ALT="AgentWebIndex. Same frozen questions and URLs for every search, scrape and browser API."   # the card's own text
+
+def page_head(title, desc, path, canonical=None):
+    u = html.escape(SITE_URL + path); c = html.escape(SITE_URL + (canonical or path)); t = html.escape(f"{title} · AgentWebIndex"); d = html.escape(desc)
+    return (f'<meta name="description" content="{d}"><link rel="canonical" href="{c}"><link rel="icon" href="/favicon.svg" type="image/svg+xml">'
+            f'<meta property="og:title" content="{t}"><meta property="og:description" content="{d}"><meta property="og:url" content="{u}"><meta property="og:type" content="website">'
+            f'<meta property="og:image" content="{OG_IMAGE}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
+            f'<meta property="og:image:alt" content="{html.escape(OG_ALT)}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="{OG_IMAGE}">')
 
 def price_exports():
     rows=[]; provs={p["id"]:p for p in json.loads(PROVIDERS.read_text())["providers"]}
@@ -104,19 +109,21 @@ for f in sorted(S.glob("*.html")):
     assert "{{" not in body, f"unfilled slot in {f.name}"
     title,desc=META[f.stem]
     path="/" if f.stem=="index" else f"/{f.stem}/"; pages.append(path)
-    out=D/"index.html" if f.stem=="index" else D/f.stem/"index.html"; out.parent.mkdir(exist_ok=True)
-    page=layout.replace("{{title}}",html.escape(title)).replace("{{head}}",page_head(title,desc,path)).replace("{{nav}}",render.nav_html(path)).replace("{{footer}}",FOOTER).replace("{{body}}",body)
-    dups=render.duplicate_ids(page)
-    if dups: sys.exit(f"build failed: duplicate id attributes on {path}: {dups[:10]}")   # R9.3
-    allow=render.apify_outside_allowlist(page,path)
-    if allow: sys.exit(f"build failed: Apify allowlist on {path}: {allow[:3]}")   # Kitty t4
-    claims=render.outside_w45_claims(page)
-    if claims: sys.exit(f"build failed: 'this week' outside the week-47 section on {path}: {claims[:3]}")   # Kitty t3 G6
-    out.write_text(page)
+    # /results/ (linked on X) is the home page under its own URL: og:url is /results/, canonical stays / (a duplicate of home); not in nav, sitemap or robots
+    for url,rel,canon in [(path,"index.html" if f.stem=="index" else f"{f.stem}/index.html",None)]+([("/results/","results/index.html","/")] if f.stem=="index" else []):
+        out=D/rel; out.parent.mkdir(exist_ok=True)
+        page=layout.replace("{{title}}",html.escape(title)).replace("{{head}}",page_head(title,desc,url,canon)).replace("{{nav}}",render.nav_html(path)).replace("{{footer}}",FOOTER).replace("{{body}}",body)
+        dups=render.duplicate_ids(page)
+        if dups: sys.exit(f"build failed: duplicate id attributes on {url}: {dups[:10]}")   # R9.3
+        allow=render.apify_outside_allowlist(page,path)
+        if allow: sys.exit(f"build failed: Apify allowlist on {url}: {allow[:3]}")   # Kitty t4
+        claims=render.outside_w45_claims(page)
+        if claims: sys.exit(f"build failed: 'this week' outside the week-47 section on {url}: {claims[:3]}")   # Kitty t3 G6
+        out.write_text(page)
 pages.sort(key=lambda p:(p!="/",p))
 (D/"robots.txt").write_text("User-agent: *\nAllow: /\n"+"".join(f"Allow: {p}\n" for p in pages if p!="/")+f"Sitemap: {SITE_URL}/sitemap.xml\n")
 (D/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+"".join(f"<url><loc>{SITE_URL}{p}</loc></url>\n" for p in pages)+"</urlset>\n")
-for a in ("style.css","app.js","favicon.svg"): shutil.copy(S/a,D/a)
+for a in ("style.css","app.js","favicon.svg","og-card.png"): shutil.copy(S/a,D/a)
 (D/"signup.js").write_text(signup_js())
 def thanks_pages():
     """dist/newsletter/thanks/<status>/: the no-JS landing page per /api/subscribe status (noindex, not in the sitemap)."""
@@ -142,7 +149,7 @@ public_bench()
 n=price_exports(); nb=bench_csv()
 (D/"llms.txt").write_text("# AgentWebIndex\nMachine-readable data: /data/benchmarks/latest.json, /data/benchmarks/latest.csv (CC BY 4.0), /data/prices.json, /data/prices.csv, /data/prices/<provider>.json\nPages: /, /prices/, /methodology/, /data/, /sponsors/, /disclosures/, /newsletter/, /tell-us/\n")
 for f in sorted(D.rglob("*.html")):   # Kitty t4: every built page, including ones made outside the page loop
-    rel=f.parent.relative_to(D).as_posix(); path="/" if rel=="." else f"/{rel}/"; page=f.read_text()
+    rel=f.parent.relative_to(D).as_posix(); path="/" if rel in (".","results") else f"/{rel}/"; page=f.read_text()   # /results/ is home content
     bad=render.apify_outside_allowlist(page,path)+render.outside_w45_claims(page)
     if bad: sys.exit(f"build failed: Apify allowlist / 'this week' on {path}: {bad[:3]}")
 print("built",D,"price rows:",n,"benchmark csv rows:",nb)

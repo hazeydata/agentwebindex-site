@@ -390,7 +390,7 @@ def trace(index_html, evidence=None):
     root = Path(index_html).parent
     nbad = 0
     for f in sorted(root.rglob("*.html")):
-        rel = f.parent.relative_to(root).as_posix(); path = "/" if rel == "." else f"/{rel}/"
+        rel = f.parent.relative_to(root).as_posix(); path = "/" if rel in (".", "results") else f"/{rel}/"   # /results/ is home content
         page = f.read_text()
         bad = [f"'this week' outside section#latest-week: {m.group(0)!r}" for m in re.finditer(r"(?i).{0,30}this week.{0,30}", _clean(_outside_text(page)))]
         bad += apify_errors(page, path)

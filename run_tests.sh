@@ -10,7 +10,7 @@ nice -n 19 python3 -m unittest -q tests.test_deploy_smoke tests.test_refresh_dis
 # AWI-W45-PUBLISH-001: every week-45 cell on / traced back to content/w45-tables-regrade.json (exit 1 on any untraced or wrong cell)
 nice -n 19 python3 tools/trace_w45.py
 # signup (AWI-SIGNUP-FORM-001): endpoint/retry/export on mocks, SQL vs SQLite, secret scan, mutants on save-order + fallback
-nice -n 19 node --test tests/signup/
+nice -n 19 node --test 'tests/signup/*.test.mjs'
 nice -n 19 python3 tests/signup/sql_check.py
 nice -n 19 bash tests/signup/secret_scan.sh
 nice -n 19 python3 tests/signup/mutants.py
