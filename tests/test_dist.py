@@ -536,6 +536,36 @@ class Shell(unittest.TestCase):
         self.assertTrue(robots.startswith("User-agent: *\nAllow: /\n"))
         self.assertTrue(robots.endswith(f"Sitemap: {site}/sitemap.xml\n"))
 
+    def test_link_preview_card_tags_on_every_page(self):   # og:image / twitter:card on every built page; og:url = own URL; /results/ = home under its own URL
+        site = CFG["site_url"].rstrip("/")
+        htmls = sorted(D.rglob("index.html"))
+        self.assertIn(D / "results/index.html", htmls)
+        self.assertGreaterEqual(len(htmls), 15)
+        one = lambda s, a, v, rel: self.assertEqual(len(re.findall(r'<meta %s="%s" content="([^"]*)">' % (a, re.escape(v)), s)), 1, f"{rel}: {v}")
+        get = lambda s, a, v: re.search(r'<meta %s="%s" content="([^"]*)">' % (a, re.escape(v)), s).group(1)
+        for f in htmls:
+            rel = f.relative_to(D).as_posix(); s = f.read_text()
+            path = "/" if rel == "index.html" else "/" + rel[:-len("index.html")]
+            for a, v in (("property", "og:image"), ("property", "og:image:width"), ("property", "og:image:height"), ("property", "og:image:alt"),
+                         ("name", "twitter:card"), ("name", "twitter:image"), ("property", "og:url")):
+                one(s, a, v, rel)
+            self.assertEqual(get(s, "property", "og:image:width"), "1200", rel)
+            self.assertEqual(get(s, "property", "og:image:height"), "630", rel)
+            self.assertTrue(get(s, "property", "og:image:alt").strip(), rel)
+            self.assertEqual(get(s, "name", "twitter:card"), "summary_large_image", rel)
+            img = get(s, "property", "og:image")
+            self.assertEqual(img, get(s, "name", "twitter:image"), rel)
+            self.assertTrue(img.startswith(site + "/") and img.startswith("https://"), rel)
+            self.assertEqual(get(s, "property", "og:url"), site + path, rel)
+        png = (D / "og-card.png").read_bytes()   # the referenced image is served and is a 1200x630 PNG (IHDR)
+        self.assertEqual(img, site + "/og-card.png")
+        self.assertEqual(png[:8], b"\x89PNG\r\n\x1a\n"); self.assertEqual(png[12:16], b"IHDR")
+        self.assertEqual((int.from_bytes(png[16:20], "big"), int.from_bytes(png[20:24], "big")), (1200, 630))
+        self.assertLess(len(png), 300 * 1024)
+        res = (D / "results/index.html").read_text()   # /results/: home content, canonical stays /, not listed for crawlers
+        self.assertIn(f'<link rel="canonical" href="{site}/">', res)
+        self.assertNotIn("/results/", (D / "sitemap.xml").read_text() + (D / "robots.txt").read_text())
+
     def test_signup_form_markup(self):  # AWI-SIGNUP-FORM-001 AC 4, 14, 16 (static part): first-party form on / (hero + end) and /newsletter/
         for p, n in (("/", 2), ("/newsletter/", 1)):
             s = page(p)
@@ -1650,7 +1680,7 @@ class W45Results(unittest.TestCase):
         self.assertGreaterEqual(len(pages), 14)   # includes newsletter/thanks/*
         for f in pages:
             rel = f.parent.relative_to(D).as_posix()
-            self.assertEqual(self._guard(f.read_text(), "/" if rel == "." else f"/{rel}/"), [], f)
+            self.assertEqual(self._guard(f.read_text(), "/" if rel in (".", "results") else f"/{rel}/"), [], f)
         self.assertEqual(self._trace_dist({}), [])
         # the two allowlists (build and trace) name the same containers and counts
         self.assertEqual([(r[0], r[1], r[4]) for r in render.APIFY_ALLOW], [(r[0], r[1], r[4]) for r in self.tr.APIFY_ALLOW])

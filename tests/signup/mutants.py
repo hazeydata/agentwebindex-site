@@ -67,7 +67,7 @@ MUTANTS = {
     "honeypot_trimmed": (C, "String(fields.website || '') === ''", "String(fields.website || '').trim() === ''"),
 }
 COPY = ["signup", "functions", "workers", "migrations", "tests/signup", "site.config.json", "wrangler.pages.toml", "dist/newsletter/thanks", "dist/index.html", "dist/newsletter/index.html"]
-CMDS = [["node", "--test", "tests/signup/"], [sys.executable, "tests/signup/sql_check.py"]]
+CMDS = [["node", "--test", "tests/signup/*.test.mjs"], [sys.executable, "tests/signup/sql_check.py"]]
 
 def run(cmd, cwd, timeout=60):
     p = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
