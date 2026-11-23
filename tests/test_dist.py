@@ -1198,7 +1198,7 @@ class Polish(unittest.TestCase):
     def test_methodology_steps_grid(self):  # P0: a bare text node in .steps li became its own grid item in the 48px number column
         s = page("/methodology/")
         steps = re.findall(r'<li id="m-[^"]+">(.*?)</li>', s[s.index('<ol class="steps">'):s.index("</ol>")], re.S)
-        self.assertEqual(len(steps), 8)
+        self.assertEqual(len(steps), 9)  # 8 + AWI-ISSUE-60 'Grading change' note
         for li in steps:
             self.assertRegex(li, r"^<h2>.*?</h2>\s*<p>.*</p>$")   # only element children: h2 then p
         css = (D / "style.css").read_text()
