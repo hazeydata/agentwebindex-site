@@ -737,6 +737,25 @@ def check_w48_pass_rate_chart(cdp, base, errs):
     return n
 
 
+def check_row_note_colon(cdp, base, errs):
+    """At 390px, light and dark, no row-note cell (tr.row-note td) paints a stray ':' from the stacked-table ::before rule."""
+    js = ("JSON.stringify([...document.querySelectorAll('tr.row-note td')].map(td => getComputedStyle(td, '::before').content))")
+    n = 0
+    for scheme in ("light", "dark"):
+        open_page(cdp, base, "/", 390, 900, scheme)
+        contents = json.loads(cdp.js(js))
+        tag = f"#latest-week @390 {scheme}"
+        if not contents:
+            errs.append(f"{tag}: row-note stray colon check found no tr.row-note td")
+            continue
+        bad = [c for c in contents if c not in ("none", "normal", "", '""')]
+        if bad:
+            errs.append(f"{tag}: row-note stray colon (::before content {bad[:3]})")
+        n += len(contents)
+    print(f"browser_check: row-note cells have no stray ':' at 390px light and dark (OK, {n} cells)")
+    return n
+
+
 def main():
     if not Path(CHROME).exists():
         print("browser_check: SKIP (google-chrome not installed)")
@@ -773,6 +792,7 @@ def main():
         cdp.call("Runtime.enable")
         n = check_charts(cdp, base, errs)
         nw48 = check_w48_pass_rate_chart(cdp, base, errs)
+        check_row_note_colon(cdp, base, errs)
         nf = check_fonts(cdp, base, errs)
         ng = check_rename_geometry(cdp, base, errs)
         check_readability(cdp, base, shots, errs)

@@ -202,6 +202,7 @@ details > p, details > ul, details > h4 { max-width: 68ch; }
   .dt tr { border-top: 1px solid var(--line); padding: var(--s0) 0; }
   .dt th, .dt td { border: 0; padding: 10px var(--s0) 10px 0; }
   .dt td::before, .dt th[data-label]::before { content: attr(data-label) ": "; color: var(--muted); }
+  .dt td:not([data-label])::before { content: none; }
   #w45-table td.num, #w45-table th.num { text-align: left; }
 }
 

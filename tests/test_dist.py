@@ -1506,7 +1506,7 @@ class W45Results(unittest.TestCase):
         after = sec[sec.index(rows[1]) + len(rows[1]):]
         self.assertTrue(after.startswith('<tr class="row-note">'), after[:80])
         self.assertIn(html.escape(copydoc.load().field("Week 48 results", "TinyFish fetch note")), after[:600])
-        self.assertEqual(copydoc.load().field("Week 48 results", "TinyFish fetch note"), "TinyFish passed 8 of 12 fetch checks, up from 4 of 14 last week. Apify and Browserless passed all 12 of the same pages. We haven't confirmed why. Follow-up: https://github.com/hazeydata/agentwebindex-meta/issues/71.")
+        self.assertEqual(copydoc.load().field("Week 48 results", "TinyFish fetch note"), "TinyFish passed 8 of 12 fetch checks, up from 4 of 14 last week. Apify and Browserless passed all 12 of the same pages. We haven't confirmed why.")
         self.assertIn("Ran Nov 24, 2026: Apify, Exa, Firecrawl, Tavily, TinyFish, Browserless.", norm(html.unescape(text_of(sec))))
         self._check_bright_data()
 

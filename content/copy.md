@@ -71,7 +71,7 @@ Apify suggested a fairer setup, so on Oct 26 we reran their tools on that week's
 **Source:** Source: tables.py regrade of the {date} run logs (agentwebindex {sha})
 **Failed:** Failed checks stay failed. We do not rerun or drop them, and every pass rate counts every check we attempted.
 **Skipped:** Skipped (terms) means URLs we never called because the provider's terms are unclear for them. They count as neither passed nor failed.
-**TinyFish fetch note:** TinyFish passed 8 of 12 fetch checks, up from 4 of 14 last week. Apify and Browserless passed all 12 of the same pages. We haven't confirmed why. Follow-up: https://github.com/hazeydata/agentwebindex-meta/issues/71.
+**TinyFish fetch note:** TinyFish passed 8 of 12 fetch checks, up from 4 of 14 last week. Apify and Browserless passed all 12 of the same pages. We haven't confirmed why.
 **Browserless scrape note:** Browserless's scrape row is from the Oct 23, 2026 run, not this week. Its fetch row above is from the Nov 24, 2026 run.
 **Bright Data note:** Bright Data has no run this week. Its last complete scrape run is Nov 2, 2026.
 
