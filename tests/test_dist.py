@@ -1589,6 +1589,19 @@ class W45Results(unittest.TestCase):
         self.assertLess(sec.index('data-copy="brightdata-note"'), sec.index('id="chart-week48-pass-rate"'))
         self.assertLess(sec.index('id="chart-week48-pass-rate"'), sec.index('data-copy="source"'))   # chart, then the source line, after the table
 
+
+    def test_w48_chart_switches_at_12px_breakpoint(self):
+        """#chart-week48-pass-rate only: keep the 350 variant until 848px so the 720 SVG's 8.5/518.4 text is >=12px."""
+        css = (R / "src/style.css").read_text()
+        self.assertIn("@media (min-width: 768px) { .ch-720.ch-dark { display: block; } }", css)  # other figures unchanged
+        self.assertIn("@media (min-width: 768px) and (max-width: 847.98px)", css)
+        self.assertIn("@media (min-width: 848px)", css)
+        self.assertIn("#chart-week48-pass-rate .ch-350", css)
+        self.assertIn("#chart-week48-pass-rate .ch-720 { max-width: 100%; }", css)
+        # math in the comment: 12*518.4/8.5=731.86, 15px scrollbar + 80px pad, 848 -> 753px -> 12.35px
+        self.assertIn("12*518.4/8.5=731.86px", css)
+        self.assertIn("8.5*753/518.4=12.35px", css)
+
     def test_numeric_columns_right_aligned(self):
         css = (R / "src/style.css").read_text()
         rule = "#w45-table td.num, #w45-table th.num { text-align: right; font-variant-numeric: tabular-nums; }"

@@ -130,18 +130,50 @@ main section h2 { margin-bottom: var(--s2); }
 @media (min-width: 768px) { :root[data-theme=light] .ch-720.ch-light { display: block; } }
 @media (max-width: 767.98px) { :root[data-theme=light] .ch-350.ch-light { display: block; } }
 
-/* AWI-W48-BASE-RUN-001: the 350 W48 pass-rate SVG has 8.25 user-unit labels.
-   At the usual .ch-350 cap (350px) those render at 8.25*(350/252)=11.46px, under the 12px
-   AC-25/39 floor (browser_check at 390). Ranking 350 charts only use 8.75 and clear 12px.
-   From 390px up to the 720-variant breakpoint, this 350 variant uses the full viewport
-   minus 8px inset so 8.25*(374/252)=12.24px at the 390 check (content is 350px with --pad 20px).
-   Source SVG bytes stay pinned. */
+/* AWI-W48-BASE-RUN-001: 12px floor for #chart-week48-pass-rate only (pinned SVG bytes unchanged).
+   350 SVG: smallest font 8.25, viewBox width 252. At the usual 350px cap that is 8.25*(350/252)=11.46px.
+   From 390px to 767.98px the 350 variant uses the viewport minus 8px inset (374px at 390: 8.25*(374/252)=12.24px).
+   720 SVG: smallest font 8.5, viewBox width 518.4. Min display width for 12px is 12*518.4/8.5=731.86px.
+   .ch-720's 720px cap would only yield 8.5*(720/518.4)=11.81px, so this figure's 720 variant fills the container.
+   At >=768, --pad is 40px and a classic 15px scrollbar makes the container (viewport - 95)px. At 768 that is 673px
+   (labels 11.68px, footnotes 11.36/11.03). Keep the 350 variant at full container width until 848px: then the
+   container is 753px with a 15px scrollbar (8.5*753/518.4=12.35px) or 768px without (12.59px). Other figures stay on 768. */
 @media (min-width: 390px) and (max-width: 767.98px) {
   #chart-week48-pass-rate .ch-350 {
     max-width: none;
     width: calc(100% + 2 * var(--pad) - 16px);
     margin-left: calc(8px - var(--pad));
   }
+}
+@media (min-width: 768px) and (max-width: 847.98px) {
+  #chart-week48-pass-rate .ch-350 { max-width: none; width: 100%; }
+  #chart-week48-pass-rate .ch-720 { display: none !important; }
+  #chart-week48-pass-rate .ch-350.ch-dark { display: block; }
+}
+@media (prefers-color-scheme: light) {
+  @media (min-width: 768px) and (max-width: 847.98px) {
+    :root:not([data-theme=dark]) #chart-week48-pass-rate .ch-350.ch-dark { display: none !important; }
+    :root:not([data-theme=dark]) #chart-week48-pass-rate .ch-350.ch-light { display: block; }
+  }
+}
+@media (min-width: 768px) and (max-width: 847.98px) {
+  :root[data-theme=light] #chart-week48-pass-rate .ch-350.ch-dark { display: none !important; }
+  :root[data-theme=light] #chart-week48-pass-rate .ch-350.ch-light { display: block; }
+}
+@media (min-width: 848px) {
+  #chart-week48-pass-rate .ch-350 { display: none !important; }
+  #chart-week48-pass-rate .ch-720 { max-width: 100%; }
+  #chart-week48-pass-rate .ch-720.ch-dark { display: block; }
+}
+@media (prefers-color-scheme: light) {
+  @media (min-width: 848px) {
+    :root:not([data-theme=dark]) #chart-week48-pass-rate .ch-720.ch-dark { display: none !important; }
+    :root:not([data-theme=dark]) #chart-week48-pass-rate .ch-720.ch-light { display: block; }
+  }
+}
+@media (min-width: 848px) {
+  :root[data-theme=light] #chart-week48-pass-rate .ch-720.ch-dark { display: none !important; }
+  :root[data-theme=light] #chart-week48-pass-rate .ch-720.ch-light { display: block; }
 }
 
 /* Apify retest (layout.md: 64px top margin, 48px padding, 1px rule; 16px h3->p; 24px p->figure; 8px caption) */

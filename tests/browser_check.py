@@ -22,6 +22,11 @@ sys.path.insert(0, str(R))
 import copydoc  # noqa: E402
 ALTS = copydoc.alt_texts()
 VIEWPORTS = [(390, 844), (720, 900), (1440, 900)]
+# #chart-week48-pass-rate only. 720 SVG smallest font 8.5, viewBox 518.4; min display width for 12px is 12*518.4/8.5=731.86px.
+# At >=768, container = viewport - 80 (--pad 40) - 15 (classic scrollbar) = viewport - 95. Switch at 848: 753px with
+# a 15px scrollbar (8.5*753/518.4=12.35px). Keep the 350 variant (full container width) below that. Other figures stay on 768.
+W48_CHART_ID = "chart-week48-pass-rate"
+W48_CHART_720_MIN_VIEWPORT = 848
 
 
 class WS:
@@ -692,6 +697,46 @@ def report(errs):
     return 1 if errs else 0
 
 
+def check_w48_pass_rate_chart(cdp, base, errs):
+    """AWI-W48-BASE-RUN-001: #chart-week48-pass-rate keeps the 350 variant (full container width) until
+    W48_CHART_720_MIN_VIEWPORT, then shows the 720 variant. Every visible text element is >=12px at 768 and at
+    the breakpoint +/-1px, light and dark. Other figures are not checked here."""
+    js = (
+        "(() => { const fig = document.getElementById(%s);"
+        " const chs = [...fig.querySelectorAll('.ch')].map(i => {"
+        "  const cs = getComputedStyle(i), r = i.getBoundingClientRect(), svg = i.querySelector('svg');"
+        "  const texts = (cs.display === 'none') ? [] : [...i.querySelectorAll('svg text')].filter(t => t.getClientRects().length)"
+        "    .map(t => parseFloat(getComputedStyle(t).fontSize) * t.getScreenCTM().a);"
+        "  return {file: i.dataset.file, display: cs.display, visible: cs.display !== 'none' && r.width > 0 && r.height > 0,"
+        "          svgw: svg ? svg.getBoundingClientRect().width : 0, texts};"
+        " }); return JSON.stringify(chs); })()"
+    ) % json.dumps(W48_CHART_ID)
+    n = 0
+    widths = (768, W48_CHART_720_MIN_VIEWPORT - 1, W48_CHART_720_MIN_VIEWPORT, W48_CHART_720_MIN_VIEWPORT + 1)
+    for w in widths:
+        for scheme in ("dark", "light"):
+            open_page(cdp, base, "/", w, 900, scheme)
+            chs = json.loads(cdp.js(js))
+            tag = f"{W48_CHART_ID} @{w} {scheme}"
+            vis = [i for i in chs if i["visible"]]
+            if len(chs) != 4 or any(i["display"] != "none" for i in chs if not i["visible"]):
+                errs.append(f"{tag}: expected 4 variants with hidden ones display:none, got {[(i['file'], i['display']) for i in chs]}")
+            if len(vis) != 1:
+                errs.append(f"{tag}: {len(vis)} visible variants, expected 1")
+                continue
+            size = 720 if w >= W48_CHART_720_MIN_VIEWPORT else 350
+            want = f"awi-week48-pass-rate-{size}-{scheme}.svg"
+            if vis[0]["file"] != want:
+                errs.append(f"{tag}: visible {vis[0]['file']}, expected {want}")
+            small = [round(x, 2) for x in vis[0]["texts"] if x < 11.995]
+            if not vis[0]["texts"] or small:
+                errs.append(f"{tag}: chart text below 12px: {small[:5]} ({len(small)} of {len(vis[0]['texts'])}); svgw={vis[0]['svgw']:.1f}")
+            smallest = min(vis[0]["texts"]) if vis[0]["texts"] else float("nan")
+            print(f"browser_check: {tag}: {vis[0]['file']} rendered {vis[0]['svgw']:.1f}px wide, smallest text {smallest:.2f}px")
+            n += 1
+    return n
+
+
 def main():
     if not Path(CHROME).exists():
         print("browser_check: SKIP (google-chrome not installed)")
@@ -727,6 +772,7 @@ def main():
         cdp.call("Page.enable")
         cdp.call("Runtime.enable")
         n = check_charts(cdp, base, errs)
+        nw48 = check_w48_pass_rate_chart(cdp, base, errs)
         nf = check_fonts(cdp, base, errs)
         ng = check_rename_geometry(cdp, base, errs)
         check_readability(cdp, base, shots, errs)
@@ -734,6 +780,7 @@ def main():
         nsu = check_signup(cdp, base, errs)
         check_signup_goatcounter(cdp, errs)
         print(f"browser_check: {n} chart/viewport/scheme combinations checked; readability checked on {len(PAGES)} pages x 2 schemes at 390px")
+        print(f"browser_check: W48 pass-rate figure checked at 768 and {W48_CHART_720_MIN_VIEWPORT}-1/{W48_CHART_720_MIN_VIEWPORT}/{W48_CHART_720_MIN_VIEWPORT}+1, light and dark ({nw48} cases)")
         print(f"browser_check: one non-title Inter chart text element rendered with Inter (no fallback) in {nf} chart/viewport/scheme cases; id-rename text+geometry equal in {ng}")
         print(f"browser_check: layout (header <= 88px at 390, Methodology grid, hero CTA fold) checked on {nl} page/viewport cases")
         print(f"browser_check: signup form (first screenful, label, Subscribe, honeypot off-screen, contrast, keyboard, aria-live error) checked in {nsu} cases")
