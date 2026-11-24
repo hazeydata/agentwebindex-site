@@ -195,8 +195,9 @@ details > p, details > ul, details > h4 { max-width: 68ch; }
 .dt { width: 100%; border-collapse: collapse; font-size: var(--fs-1); }
 .dt th, .dt td { text-align: left; padding: 12px var(--s1) 12px 0; border-top: 1px solid var(--line); vertical-align: top; }
 .dt thead th { color: var(--muted); font-weight: 600; border-top: 0; }
+@media (min-width: 928px) { .dt th, .dt td { overflow-wrap: normal; word-break: normal; } }   /* body's overflow-wrap:anywhere split headers/names mid-word. #w45-table min-content is 831px; at >=768, --pad 40px and a 15px classic scrollbar make the container (viewport-95)px, so 831+95=926px is the first fit, with 2px margin at 928 (container 833px). Stacked cards run through 927.98px; from 928px cells use overflow-wrap/word-break normal (no mid-word breaks). */
 #w45-table td.num, #w45-table th.num { text-align: right; font-variant-numeric: tabular-nums; }   /* Ann: numeric columns right-aligned */
-@media (max-width: 767.98px) {
+@media (max-width: 927.98px) {
   .dt thead { display: none; }
   .dt, .dt tbody, .dt tr, .dt th, .dt td { display: block; width: 100%; }
   .dt tr { border-top: 1px solid var(--line); padding: var(--s0) 0; }
