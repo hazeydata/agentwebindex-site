@@ -756,6 +756,54 @@ def check_row_note_colon(cdp, base, errs):
     return n
 
 
+MIDWORD_JS = r"""(() => {
+  const out = [];
+  const tables = [...document.querySelectorAll('.dt')];
+  for (const cell of tables.flatMap(t => [...t.querySelectorAll('th, td')])) {
+    const w = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = w.nextNode())) {
+      const t = node.nodeValue;
+      const ok = ch => ch !== undefined && !/[\s\-\u2010-\u2015]/.test(ch);
+      for (let i = 0; i + 1 < t.length; i++) {
+        if (!ok(t[i]) || !ok(t[i + 1])) continue;
+        const r1 = document.createRange(); r1.setStart(node, i); r1.setEnd(node, i + 1);
+        const r2 = document.createRange(); r2.setStart(node, i + 1); r2.setEnd(node, i + 2);
+        const a = r1.getBoundingClientRect(), b = r2.getBoundingClientRect();
+        if (!a.height || !b.height) continue;
+        if (b.top > a.top + a.height / 2) {
+          let s = i, e = i + 2;
+          while (s > 0 && ok(t[s - 1])) s--;
+          while (e < t.length && ok(t[e])) e++;
+          const id = (cell.closest('table') || {}).id || (cell.closest('section') || {}).id || 'table';
+          out.push({id, word: t.slice(s, i + 1) + ' ' + t.slice(i + 1, e)});
+          break;
+        }
+      }
+    }
+  }
+  return JSON.stringify({cells: tables.reduce((n, t) => n + t.querySelectorAll('th, td').length, 0), out});
+})()"""
+
+
+def check_midword_wrap(cdp, base, errs):
+    """On /, no .dt th/td splits a word mid-word at 768/1000/1280 (table layout) or 390 (stacked cards), light and dark."""
+    n = 0
+    for width in (390, 768, 1000, 1280):
+        for scheme in ("light", "dark"):
+            open_page(cdp, base, "/", width, 900, scheme)
+            res = json.loads(cdp.js(MIDWORD_JS))
+            tag = f"@{width} {scheme}"
+            if not res["cells"]:
+                errs.append(f"#w45-table {tag}: mid-word wrap check found no .dt cells")
+                continue
+            for hit in res["out"][:5]:
+                errs.append(f'#{hit["id"].lstrip("#")} {tag}: mid-word wrap "{hit["word"]}"')
+            n += res["cells"]
+    print(f"browser_check: no mid-word wrap in .dt tables at 390, 768, 1000, 1280, light and dark (OK, {n} cell checks)")
+    return n
+
+
 def main():
     if not Path(CHROME).exists():
         print("browser_check: SKIP (google-chrome not installed)")
@@ -793,6 +841,7 @@ def main():
         n = check_charts(cdp, base, errs)
         nw48 = check_w48_pass_rate_chart(cdp, base, errs)
         check_row_note_colon(cdp, base, errs)
+        check_midword_wrap(cdp, base, errs)
         nf = check_fonts(cdp, base, errs)
         ng = check_rename_geometry(cdp, base, errs)
         check_readability(cdp, base, shots, errs)
