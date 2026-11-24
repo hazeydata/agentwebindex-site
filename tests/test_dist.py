@@ -1606,7 +1606,7 @@ class W45Results(unittest.TestCase):
         css = (R / "src/style.css").read_text()
         rule = "#w45-table td.num, #w45-table th.num { text-align: right; font-variant-numeric: tabular-nums; }"
         self.assertIn(rule, css)
-        m = re.search(r"@media \(max-width: 767\.98px\) \{\n  \.dt thead \{ display: none; \}.*?\n\}", css, re.S)
+        m = re.search(r"@media \(max-width: 927\.98px\) \{\n  \.dt thead \{ display: none; \}.*?\n\}", css, re.S)
         self.assertIn("#w45-table td.num, #w45-table th.num { text-align: left; }", m.group(0))
         self.assertLess(css.index(rule), m.start())
         cells = re.findall(r'<td data-label="([^"]+)" data-src="[^"]+"( class="[^"]*")?>', self._sec())

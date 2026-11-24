@@ -787,9 +787,9 @@ MIDWORD_JS = r"""(() => {
 
 
 def check_midword_wrap(cdp, base, errs):
-    """On /, no .dt th/td splits a word mid-word at 768/1000/1280 (table layout) or 390 (stacked cards), light and dark."""
+    """On /, no .dt th/td splits a word mid-word at 928/1000/1280 (table layout) or 390/768/848/912 (stacked cards), light and dark."""
     n = 0
-    for width in (390, 768, 1000, 1280):
+    for width in (390, 768, 848, 912, 928, 1000, 1280):
         for scheme in ("light", "dark"):
             open_page(cdp, base, "/", width, 900, scheme)
             res = json.loads(cdp.js(MIDWORD_JS))
@@ -800,7 +800,31 @@ def check_midword_wrap(cdp, base, errs):
             for hit in res["out"][:5]:
                 errs.append(f'#{hit["id"].lstrip("#")} {tag}: mid-word wrap "{hit["word"]}"')
             n += res["cells"]
-    print(f"browser_check: no mid-word wrap in .dt tables at 390, 768, 1000, 1280, light and dark (OK, {n} cell checks)")
+    print(f"browser_check: no mid-word wrap in .dt tables at 390, 768, 848, 912, 928, 1000, 1280, light and dark (OK, {n} cell checks)")
+    return n
+
+
+TABLEWRAP_JS = r"""(() => JSON.stringify([...document.querySelectorAll('.tablewrap')].map(w => {
+  const t = w.querySelector('table');
+  return {id: (t && t.id) || (w.closest('section') || {}).id || 'table', sw: w.scrollWidth, cw: w.clientWidth};
+})))()"""
+
+
+def check_tablewrap_fit(cdp, base, errs):
+    """On /, no .tablewrap scrolls sideways (scrollWidth <= clientWidth) at 768/848/912/928/1000/1280, light and dark."""
+    n = 0
+    for width in (768, 848, 912, 928, 1000, 1280):
+        for scheme in ("light", "dark"):
+            open_page(cdp, base, "/", width, 900, scheme)
+            wraps = json.loads(cdp.js(TABLEWRAP_JS))
+            tag = f"@{width} {scheme}"
+            if not any(w["id"] == "w45-table" for w in wraps):
+                errs.append(f"#w45-table .tablewrap {tag}: tablewrap fit check found no #w45-table .tablewrap")
+            for w in wraps:
+                if w["sw"] > w["cw"]:
+                    errs.append(f'#{w["id"]} .tablewrap {tag}: scrollWidth {w["sw"]} > clientWidth {w["cw"]}')
+            n += len(wraps)
+    print(f"browser_check: no sideways scroll in .tablewrap at 768, 848, 912, 928, 1000, 1280, light and dark (OK, {n} checks)")
     return n
 
 
@@ -842,6 +866,7 @@ def main():
         nw48 = check_w48_pass_rate_chart(cdp, base, errs)
         check_row_note_colon(cdp, base, errs)
         check_midword_wrap(cdp, base, errs)
+        check_tablewrap_fit(cdp, base, errs)
         nf = check_fonts(cdp, base, errs)
         ng = check_rename_geometry(cdp, base, errs)
         check_readability(cdp, base, shots, errs)
