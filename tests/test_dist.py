@@ -171,7 +171,7 @@ def copy_strings():
                     chart = l[4:]
                 elif chart and chart.startswith(("Chart 1", "Chart 2")) and re.match(r"\*\*(Title|Caption):\*\*", l):
                     add("/", body(l))
-        elif title == "Week 47 results":
+        elif title == "Week 48 results":
             for l in lines:
                 if not l.startswith("<!--") and "{" not in body(l):   # templated fields (Sample, Source) are checked filled-in by W45Results
                     add("/", body(l))
@@ -412,8 +412,8 @@ class Pins(unittest.TestCase):
         self.assertEqual(missing, [])
         self.assertIn(f"tests/test_dist.py:{proof_map.defs('tests/test_dist.py')['test_nav_top_exactly_four_links']}", text)
 
-    def test_real_repo_at_7fdefab3_builds_and_check_is_ok(self):  # R8 pass case
-        self.assertEqual(PINS["data"], "7fdefab3c4ef141bf38e7b150a0d854c9aa479cb")
+    def test_real_repo_at_1c360650_builds_and_check_is_ok(self):  # R8 pass case
+        self.assertEqual(PINS["data"], "1c360650060509af01265e3dcb9b5aff758acc02")
         self.assertEqual(pinmod.source_sha(R), PINS["data"])
         self.assertEqual(pinmod.check(R), [])
         with tempfile.TemporaryDirectory(prefix="awi-pin.") as t:
@@ -442,19 +442,19 @@ class Pins(unittest.TestCase):
         self.assertTrue(rest.startswith("## Alt text"))
         self.assertEqual([l for l in rest.splitlines() if l.startswith("#")], [rest.splitlines()[0]])   # a single section
         self.assertRegex(PINS["queries_sha256"], r"^[0-9a-f]{64}$")   # sha256 of the full original QUERIES.md at 2c28c0a
-        self.assertEqual(set(copydoc.alt_texts()), {"pass-rate", "cost-per-success"})
+        self.assertEqual(set(copydoc.alt_texts()), {"pass-rate", "cost-per-success", "week48-pass-rate"})
         self.assertFalse((R / "content/QUERIES.md").exists())
 
-    def test_charts_byte_identical_to_pin(self):  # AC14 (R8): the 8 chart SVGs only; fonts are not byte-checked
+    def test_charts_byte_identical_to_pin(self):  # AC14 (R8): the 8 Oct 23 ranking SVGs plus the 4 W48 pass-rate SVGs; fonts are not byte-checked
         want = PINS["charts_sha256"]
-        self.assertEqual(len(want), 8)
+        self.assertEqual(len(want), 12)
         self.assertTrue(all(n.endswith(".svg") and "/" not in n for n in want), sorted(want))
         for name, meta in want.items():
             for base in (R / "src/charts", D / "assets/charts"):
                 self.assertEqual(hashlib.sha256((base / name).read_bytes()).hexdigest(), meta["sha256"], f"{base.name}/{name}")
         self.assertEqual(hashlib.sha256((R / "content/copy.md").read_bytes()).hexdigest(), PINS["copy_sha256"])
 
-    def test_no_font_over_100kb_and_charts_dir_is_exactly_the_8_svgs(self):  # R8
+    def test_no_font_over_100kb_and_charts_dir_is_exactly_the_12_svgs(self):  # R8
         names = set(PINS["charts_sha256"])
         for base in (R / "src/charts", D / "assets/charts"):
             self.assertEqual({p.name for p in base.iterdir()}, names, base)
@@ -782,7 +782,7 @@ class Results(unittest.TestCase):
             self.assertEqual(render.unprefix_ids(m.group(1), pre), body, f)   # only ids/refs differ ...
             self.assertEqual(re.sub(r'(\bid="|href="#|url\(#)[^"\)]*', "", m.group(1)), re.sub(r'(\bid="|href="#|url\(#)[^"\)]*', "", body))   # ... nothing else
             n += 1
-        self.assertEqual(n, 8)
+        self.assertEqual(n, 12)   # 8 ranking SVGs + 4 W48 pass-rate SVGs
 
     def test_no_duplicate_ids_on_any_page_and_build_fails_on_one(self):  # R9.3
         for p in PAGES:
@@ -1106,7 +1106,8 @@ class Polish(unittest.TestCase):
         self.assertEqual(got_t, base["table"])
         self.assertEqual((len(got_t), len({r[0] for r in got_t}), sum(r[0] == "Apify" for r in got_t)), (18, 5, 2))   # R-9 at 7fdefab3
         for p in PAGES:
-            self.assertNotRegex(text_of(page(p)), r"(?i)\b(rank(ed|ing)?|winner|best|top pick|#1|1st place|leader)\b", p)
+            # the W48 chart's own text says "not a ranking: no winner this week" (a negation, pinned by sha256), so it is cut out of this check
+            self.assertNotRegex(text_of(re.sub(r'<figure class="chart" id="chart-week48-pass-rate">.*?</figure>', " ", page(p), flags=re.S)), r"(?i)\b(rank(ed|ing)?|winner|best|top pick|#1|1st place|leader)\b", p)
         self.assertNotRegex(run, r'(?i)class="[^"]*\b(badge|rank|winner|highlight)\b')
         self.assertNotRegex((R / "render.py").read_text().split("def run_rows")[1].split("\ndef ")[0], r"success_rate|cost")
 
@@ -1232,13 +1233,16 @@ class Polish(unittest.TestCase):
             self.assertTrue(doc.field("CTA boxes", k), k)
 
     def test_chart_source_line_names_data_pin(self):  # AC-10: Her?'s source line must name the pinned data sha, not a stale one
+        RANKING_PIN = "7fdefab3c4ef141bf38e7b150a0d854c9aa479cb"   # the 8 Oct 23 ranking SVGs read latest.json, byte-identical since 7fdefab3 (sha pinned in W43GradingNote)
         for f in sorted((R / "src/charts").glob("*.svg")):
-            s = f.read_text()
-            shas = re.findall(r"latest\.json @ ([0-9a-f]{7,40})", s)
+            s = re.sub(r"\s+", " ", re.sub(r"</?(?:tspan|text)[^>]*>", "", f.read_text()))   # the 350px source line wraps across tspans
+            w48 = "week48" in f.name   # W48 SVGs cite the staged file at the current data pin
+            shas = re.findall(r"latest-2026-48\.json @ ([0-9a-f]{7,40})" if w48 else r"latest\.json @ ([0-9a-f]{7,40})", s)
             self.assertEqual(len(shas), 1, f.name)
-            self.assertTrue(PINS["data"].startswith(shas[0]), (f.name, shas[0]))
+            want = PINS["data"] if w48 else RANKING_PIN
+            self.assertTrue(want.startswith(shas[0]), (f.name, shas[0]))
             for other in re.findall(r"@ ([0-9a-f]{7,40})\b", s):
-                self.assertTrue(PINS["data"].startswith(other), (f.name, other))
+                self.assertTrue(want.startswith(other), (f.name, other))
 
     def test_notes_hold_footnotes(self):  # AC-22: footnotes + Not tested in one Notes <details>, none outside
         s = page("/")
@@ -1456,22 +1460,25 @@ class W45Results(unittest.TestCase):
         sec = self.s[self.s.index('<section id="latest-week">'):]
         sec = sec[:sec.index("</section>") + 10]
         mutants = {
-            "number changed": sec.replace(">17 of 20<", ">18 of 20<", 1),
-            "failed hidden": sec.replace('data-src="tables.search.3.failed.v" class="mono num">6<', 'data-src="tables.search.3.failed.v" class="mono num">0<', 1),
+            "number changed": sec.replace(">15 of 16<", ">14 of 16<", 1),
+            "failed hidden": sec.replace('data-src="tables.search.4.failed.v" class="mono num">8<', 'data-src="tables.search.4.failed.v" class="mono num">0<', 1),
             "row dropped": re.sub(r'<tr data-provider="tavily">.*?</tr>', "", sec, count=1, flags=re.S),
             "apify row dropped": re.sub(r'<tr data-provider="apify">.*?</tr>', "", sec, count=1, flags=re.S),
-            "wrong field": sec.replace('data-src="tables.search.3.entry_tier_cost_per_successful_1k.display"', 'data-src="tables.search.3.volume_tier_cost_per_successful_1k.display"', 1),
+            "wrong field": sec.replace('data-src="tables.search.9.entry_tier_cost_per_successful_1k.display"', 'data-src="tables.search.9.volume_tier_cost_per_successful_1k.display"', 1),
             "stray number": sec.replace("Below our minimum:", "Below our minimum, 99%:", 1),
             "wrong run log": sec.replace("/blob/" + self.MAN["run_logs_commit"], "/blob/main", 1),
-            "false apify did-not-run claim": sec.replace("Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early.", "Apify did not run this week.", 1),
-            "bright data dated as W47": sec.replace(">Nov 2, 2026<", ">Nov 16, 2026<", 1),
-            "bright data Nov 2 missing": sec.replace(">Nov 2, 2026<", ">n/a<", 1),
-            "bright data note dropped": re.sub(r'<tr class="row-note"><td[^>]*><p class="lcopy" data-copy="brightdata-note">.*?</tr>', "", sec, count=1, flags=re.S),
+            "false apify did-not-run claim": sec.replace("Apify search ran the first 9 of this week's 16 news items, to stay inside its monthly cap, and passed 1. That's below our minimum of 25 and not directly comparable with the full-set rows, so treat it as early.", "Apify did not run this week.", 1),
+            "browserless scrape dated as W48": sec.replace(">Oct 23, 2026<", ">Nov 24, 2026<", 1),
+            "browserless Oct 23 missing": sec.replace(">Oct 23, 2026<", ">n/a<", 1),
+            "browserless scrape note dropped": re.sub(r'<tr class="row-note"><td[^>]*><p class="lcopy" data-copy="browserless-scrape-note">.*?</tr>', "", sec, count=1, flags=re.S),
+            "bright data table row added": sec.replace("</tbody>", '<tr data-provider="brightdata"><th scope="row">Bright Data</th></tr></tbody>', 1),
+            "bright data score on the page": sec.replace('data-copy="brightdata-note">', 'data-copy="brightdata-note">69 of 120. ', 1),
+            "bright data note dropped": re.sub(r'<p class="lcopy" data-copy="brightdata-note">.*?</p>', "", sec, count=1),
             "bright data in ran list": sec.replace('data-src="provider">Apify,', 'data-src="provider">Bright Data, Apify,', 1),
-            "coverage drops n=20": sec.replace("this week's news set has 20 items, under the 25 we want", "this week's news set is short", 1),
-            "coverage drops apify n=9": sec.replace("Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early.", "", 1),
-            "tinyfish 4/14 note dropped": re.sub(r'<tr class="row-note"><td[^>]*><p class="lcopy" data-copy="tinyfish-fetch-note">.*?</tr>', "", sec, count=1, flags=re.S),
-            "tinyfish note wrong count": sec.replace("TinyFish passed 4 of 14", "TinyFish passed 5 of 14", 1),
+            "coverage drops n=16": sec.replace("this week's news set has 16 items, under the 25 we want", "this week's news set is short", 1),
+            "coverage drops apify n=9": sec.replace("Apify search ran the first 9 of this week's 16 news items, to stay inside its monthly cap, and passed 1. That's below our minimum of 25 and not directly comparable with the full-set rows, so treat it as early.", "", 1),
+            "tinyfish 8/12 note dropped": re.sub(r'<tr class="row-note"><td[^>]*><p class="lcopy" data-copy="tinyfish-fetch-note">.*?</tr>', "", sec, count=1, flags=re.S),
+            "tinyfish note wrong count": sec.replace("TinyFish passed 8 of 12", "TinyFish passed 9 of 12", 1),
         }
         for name, m in mutants.items():
             self.assertNotEqual(m, sec, name)
@@ -1482,39 +1489,49 @@ class W45Results(unittest.TestCase):
         sec = self.s[self.s.index('<section id="latest-week">'):]
         sec = sec[:sec.index("</section>")]
         d = copydoc.load()
-        for k in ("Coverage", "Apify", "Comparison", "Failed", "Skipped"):
-            self.assertIn(norm(d.field("Week 47 results", k)), norm(html.unescape(text_of(sec))), k)
+        for k in ("Story", "Coverage", "Apify", "Comparison", "Failed", "Skipped", "Bright Data note", "Browserless scrape note"):
+            self.assertIn(norm(d.field("Week 48 results", k)), norm(html.unescape(text_of(sec))), k)
         self.assertEqual(re.findall(r'<tr data-provider="([a-z]+)"', sec),
-                         ["apify", "exa", "firecrawl", "tavily", "tinyfish", "brightdata", "apify", "browserless", "tinyfish"])
+                         ["apify", "exa", "firecrawl", "tavily", "tinyfish", "browserless", "apify", "browserless", "tinyfish"])
+        self.assertIn('<p class="lcopy" data-copy="grading">We changed how one kind of news check is graded. The details are on the <a href="https://agentwebindex.com/methodology/">methodology page</a>.</p>', sec)
         fails = re.findall(r'data-src="tables\.[a-z]+\.\d+\.failed\.v" class="mono num">(\d+)<', sec)
-        self.assertEqual(fails, ["6", "3", "4", "4", "4", "51", "0", "0", "10"])   # failed rows stay failed (values traced in test_every_cell_traces_to_regrade)
+        self.assertEqual(fails, ["8", "1", "3", "1", "3", "41", "0", "0", "4"])   # failed rows stay failed (values traced in test_every_cell_traces_to_regrade)
 
     def test_tinyfish_rows_and_fetch_note(self):   # AWI-TINYFISH-001 publish: hold lifted, both TinyFish rows shown, misses note right after the fetch row
         sec = self.s[self.s.index('<section id="latest-week">'):]
         sec = sec[:sec.index("</section>")]
         rows = re.findall(r'<tr data-provider="tinyfish">.*?</tr>', sec, flags=re.S)
         self.assertEqual(len(rows), 2)
-        self.assertIn(">16 of 20<", rows[0]); self.assertIn(">4 of 14<", rows[1]); self.assertIn(">Nov 16, 2026<", rows[1])
+        self.assertIn(">13 of 16<", rows[0]); self.assertIn(">8 of 12<", rows[1]); self.assertIn(">Nov 24, 2026<", rows[1])
         after = sec[sec.index(rows[1]) + len(rows[1]):]
         self.assertTrue(after.startswith('<tr class="row-note">'), after[:80])
-        self.assertIn(html.escape(copydoc.load().field("Week 47 results", "TinyFish fetch note")), after[:600])
-        self.assertEqual(copydoc.load().field("Week 47 results", "TinyFish fetch note"), "TinyFish passed 4 of 14 fetch checks. Apify and Browserless passed all 14 of the same pages. We haven't confirmed why. Follow-up: https://github.com/hazeydata/agentwebindex-meta/issues/71.")
-        self.assertIn("Ran Nov 16, 2026: Apify, Exa, Firecrawl, Tavily, TinyFish, Browserless.", norm(html.unescape(text_of(sec))))
+        self.assertIn(html.escape(copydoc.load().field("Week 48 results", "TinyFish fetch note")), after[:600])
+        self.assertEqual(copydoc.load().field("Week 48 results", "TinyFish fetch note"), "TinyFish passed 8 of 12 fetch checks, up from 4 of 14 last week. Apify and Browserless passed all 12 of the same pages. We haven't confirmed why.")
+        self.assertIn("Ran Nov 24, 2026: Apify, Exa, Firecrawl, Tavily, TinyFish, Browserless.", norm(html.unescape(text_of(sec))))
         self._check_bright_data()
 
-    def _check_bright_data(self):   # AWI-W47-BASE-RUN-001: the Nov 2 run is dated on its own row, never as a W47 result
+    def _check_bright_data(self):   # AWI-W48-BASE-RUN-001: the Browserless scrape row is dated Oct 23 on its own row; Bright Data is a note, never a scored row
         sec = self._sec()
-        self.assertEqual(self.MAN["extra_rows"], {"brightdata": "2026-11-02"})
-        row = re.search(r'<tr data-provider="brightdata">.*?</tr>', sec, flags=re.S).group(0)
-        self.assertIn('data-label="Run date" data-src="tables.scrape.0.run_date" class="mono">Nov 2, 2026<', row)
-        self.assertIn(">69 of 120<", row); self.assertIn(">51<", row); self.assertIn(">30<", row)
+        self.assertEqual(self.MAN["extra_rows"], {"browserless": "2026-10-23"})
+        row = re.search(r'<tr data-provider="browserless">(?:(?!</tr>).)*?>Oct 23, 2026<.*?</tr>', sec, flags=re.S).group(0)
+        self.assertIn('data-label="Run date" data-src="tables.scrape.1.run_date" class="mono">Oct 23, 2026<', row)
+        self.assertIn(">79 of 120<", row); self.assertIn(">41<", row); self.assertIn(">30<", row)
+        self.assertNotIn("Week 48", row)
         after = sec[sec.index(row) + len(row):]
         self.assertTrue(after.startswith('<tr class="row-note">'), after[:80])
-        self.assertIn(html.escape(copydoc.load().field("Week 47 results", "Bright Data note")), after[:400])
+        self.assertIn(html.escape(copydoc.load().field("Week 48 results", "Browserless scrape note")), after[:500])
         t = norm(html.unescape(text_of(sec)))
-        self.assertNotIn("Bright Data", t[t.index("Ran Nov 16, 2026:"):t.index("Ran Nov 16, 2026:") + 90])   # not in the ran list
-        self.assertRegex(sec, r'data-src="run_date">Nov 16, 2026</span> run')   # heading stays the manifest date
-        self.assertEqual(len(re.findall(r">Nov 16, 2026<", sec)), 10)   # 8 W47 rows + heading + source date; Bright Data's cell is Nov 2
+        self.assertIn("Ran Nov 24, 2026: Apify, Exa, Firecrawl, Tavily, TinyFish, Browserless.", t)
+        self.assertRegex(sec, r'data-src="run_date">Nov 24, 2026</span> run')   # heading stays the manifest date
+        self.assertEqual(len(re.findall(r">Nov 24, 2026<", sec)), 10)   # 8 W48 rows + heading + source date; the Browserless scrape cell is Oct 23
+        # Bright Data: a dated paragraph after the table, no table row, no score, never labelled Week 48
+        self.assertNotIn('data-provider="brightdata"', sec)
+        self.assertNotRegex(sec, r"69\s*(of|/)\s*120")
+        note = re.search(r'<p class="lcopy" data-copy="brightdata-note">(.*?)</p>', sec).group(1)
+        self.assertEqual(note, html.escape(copydoc.load().field("Week 48 results", "Bright Data note")))
+        self.assertGreater(sec.index('data-copy="brightdata-note"'), sec.index("</table>"))
+        self.assertNotIn("Week 48", note)
+        self.assertIn("Nov 2, 2026", note)
 
     def test_keenable_not_run_line_derived_from_regrade(self):
         sec = self.s[self.s.index('<section id="latest-week">'):]
@@ -1540,28 +1557,50 @@ class W45Results(unittest.TestCase):
 
     def test_review_copy_and_headers(self):  # Lindsay (voice) and Ann (dataviz) review edits
         t = norm(html.unescape(text_of(self._sec())))
-        for want in ("Below our minimum: this week's news set has 20 items, under the 25 we want, so treat every row here as early. Bright Data has no complete Week 47 run, so its row is the Nov 2, 2026 run. Only the providers in this table have Week 47 results. For everyone else, the latest results are the older runs further down the page.",
-                     "Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early.",
-                     "Bright Data has no complete Week 47 run. This row is the Nov 2, 2026 run.",
-                     "Week 47 used this week's news items. The rankings further down are still from our Oct 23, 2026 run, on different questions and URLs, so compare rows only within a run.",
-                     "Source: tables.py regrade of the Nov 16, 2026 run logs (agentwebindex 7fdefab)"):
+        for want in ("Below our minimum: this week's news set has 16 items, under the 25 we want, so treat every row here as early. With so few items, rows a check or two apart are ties, not rankings. Only the providers in this table have results from the Nov 24 run. For everyone else, the latest results are the older runs further down the page.",
+                     "Apify search ran the first 9 of this week's 16 news items, to stay inside its monthly cap, and passed 1. That's below our minimum of 25 and not directly comparable with the full-set rows, so treat it as early.",
+                     "Bright Data has no run this week. Its last complete scrape run is Nov 2, 2026.",
+                     "Browserless's scrape row is from the Oct 23, 2026 run, not this week. Its fetch row above is from the Nov 24, 2026 run.",
+                     "Small week, close race.",
+                     "We changed how one kind of news check is graded. The details are on the methodology page.",
+                     "This week's rows use this week's news items. The rankings further down are still from our Oct 23, 2026 run, on different questions and URLs, so compare rows only within a run.",
+                     "Source: tables.py regrade of the Nov 24, 2026 run logs (agentwebindex 1c36065)"):
             self.assertIn(want, t)
         self.assertNotIn("short week", t)
-        self.assertIn("short news set (n=20)", t)
+        self.assertIn("short news set (n=16)", t)
         self.assertIn("short news set (n=9)", t)
-        self.assertEqual(t.count("Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early."), 1)
-        self.assertNotIn("Apify search ran 9 of those 20 items, also below minimum.", t)
-        w47 = {"set": "news_2026-47", "flags": ["short week (n=20)", "below minimum (n=20)"]}
+        self.assertEqual(t.count("Apify search ran the first 9 of this week's 16 news items, to stay inside its monthly cap, and passed 1. That's below our minimum of 25 and not directly comparable with the full-set rows, so treat it as early."), 1)
+        self.assertNotRegex(t, r"69\s*(of|/)\s*120")
+        w48 = {"set": "news_2026-48", "flags": ["short week (n=16)", "below minimum (n=16)"]}
+        w47 = {"set": "news_2026-47", "flags": ["short week (n=20)", "below minimum (n=20)"]}   # W47 rows are no longer remapped
         w43 = {"set": "news_2026-43", "flags": ["short week (n=40)"]}
-        self.assertEqual(render.display_flags(w47), self.tr.display_flags(w47))
-        self.assertEqual(render.display_flags(w47), "short news set (n=20), below minimum (n=20)")
+        self.assertEqual(render.display_flags(w48), self.tr.display_flags(w48))
+        self.assertEqual(render.display_flags(w48), "short news set (n=16), below minimum (n=16)")
+        self.assertEqual(render.display_flags(w47), "short week (n=20), below minimum (n=20)")
+        self.assertEqual(self.tr.display_flags(w47), "short week (n=20), below minimum (n=20)")
         self.assertEqual(render.display_flags(w43), "short week (n=40)")
         self.assertEqual(self.tr.display_flags(w43), "short week (n=40)")
         heads = re.findall(r'<th scope="col"[^>]*>([^<]*)</th>', self._sec())
         self.assertEqual(heads[4:6], ["Passed / checks", "Failed / checks"])
         self.assertEqual(list(render.W45_COLS), list(self.tr.COLUMNS))
         self.assertIn('<th scope="col" class="num">Pass rate</th>', self._sec())
-        self.assertLess(self._sec().index("</table>"), self._sec().index('data-copy="source"'))   # source line after the table
+        sec = self._sec()
+        self.assertLess(sec.index("</table>"), sec.index('data-copy="brightdata-note"'))
+        self.assertLess(sec.index('data-copy="brightdata-note"'), sec.index('id="chart-week48-pass-rate"'))
+        self.assertLess(sec.index('id="chart-week48-pass-rate"'), sec.index('data-copy="source"'))   # chart, then the source line, after the table
+
+
+    def test_w48_chart_switches_at_12px_breakpoint(self):
+        """#chart-week48-pass-rate only: keep the 350 variant until 848px so the 720 SVG's 8.5/518.4 text is >=12px."""
+        css = (R / "src/style.css").read_text()
+        self.assertIn("@media (min-width: 768px) { .ch-720.ch-dark { display: block; } }", css)  # other figures unchanged
+        self.assertIn("@media (min-width: 768px) and (max-width: 847.98px)", css)
+        self.assertIn("@media (min-width: 848px)", css)
+        self.assertIn("#chart-week48-pass-rate .ch-350", css)
+        self.assertIn("#chart-week48-pass-rate .ch-720 { max-width: 100%; }", css)
+        # math in the comment: 12*518.4/8.5=731.86, 15px scrollbar + 80px pad, 848 -> 753px -> 12.35px
+        self.assertIn("12*518.4/8.5=731.86px", css)
+        self.assertIn("8.5*753/518.4=12.35px", css)
 
     def test_numeric_columns_right_aligned(self):
         css = (R / "src/style.css").read_text()
@@ -1584,14 +1623,14 @@ class W45Results(unittest.TestCase):
         sec = self._sec()
         sha = self.MAN["run_logs_commit"]
         mutants = {
-            "passed count changed": sec.replace(">16 of 20<", ">15 of 20<", 1),
-            "browser passed changed": sec.replace(">14 of 14<", ">13 of 14<", 1),
+            "passed count changed": sec.replace(">13 of 16<", ">12 of 16<", 1),
+            "browser passed changed": sec.replace(">12 of 12<", ">11 of 12<", 1),
             "comparison dropped": re.sub(r'<p class="lcopy" data-copy="comparison">.*?</p>', "", sec, count=1),
             "source sha wrong": sec.replace(f'>{sha[:7]}</a>', ">7fdefaa</a>", 1),
             "source link wrong": sec.replace(f"/commit/{sha}", "/commit/main", 1),
             "source dropped": re.sub(r'<p class="lcopy" data-copy="source">.*?</p>', "", sec, count=1),
             "old header": sec.replace('data-label="Passed / checks"', 'data-label="Passed"'),
-            "skipped 0 for n/a": sec.replace('data-src="tables.search.3.skipped_tos.count" class="mono num">0<', 'data-src="tables.search.3.skipped_tos.count" class="mono num">n/a<', 1),
+            "skipped 0 for n/a": sec.replace('data-src="tables.search.9.skipped_tos.count" class="mono num">0<', 'data-src="tables.search.9.skipped_tos.count" class="mono num">n/a<', 1),
         }
         for name, m in mutants.items():
             self.assertNotEqual(m, sec, name)
@@ -1627,17 +1666,17 @@ class W45Results(unittest.TestCase):
             errs, _, _ = self.tr.trace(D / "index.html")
         self.assertTrue(any("Keenable-only" in x for x in errs), errs)   # trace fails too, independently
 
-    def test_w47_apify_rows_and_false_claims(self):  # Apify ran in W47: rows allowed, the whole #latest-week section is its allowlisted container
+    def test_w48_apify_rows_and_false_claims(self):  # Apify ran in W48: rows allowed, the whole #latest-week section is its allowlisted container
         sec = self._sec()
         self.assertFalse(hasattr(render, "w45_apify_mentions"))   # the "no Apify in #latest-week" guard is retired
         self.assertEqual(self._guard(self.s, "/"), [])
-        self.assertEqual(len(re.findall(r"(?i)apify", sec)), 10)   # pinned count, same rule as the allowlist
-        self.assertEqual(render.APIFY_ALLOW[0][1:], ("section", r'<section id="latest-week"[^>]*>', None, 10))
-        self.assertEqual(self.tr.APIFY_ALLOW[0][1:], ("section", {"id": "latest-week"}, None, 10))
+        self.assertEqual(len(re.findall(r"(?i)apify", sec)), 23)   # pinned count, same rule as the allowlist
+        self.assertEqual(render.APIFY_ALLOW[0][1:], ("section", r'<section id="latest-week"[^>]*>', None, 23))
+        self.assertEqual(self.tr.APIFY_ALLOW[0][1:], ("section", {"id": "latest-week"}, None, 23))
         self.assertNotIn("Apify did not run this week", sec)
         self.assertEqual(re.findall(r'<tr data-provider="apify">', sec).__len__(), 2)
         mutants = {
-            "apify did not run claim": sec.replace("Apify search ran 9 of this week's 20 news items", "Apify did not run this week. Apify search ran 9 of this week's 20 news items", 1),
+            "apify did not run claim": sec.replace("Apify search ran the first 9", "Apify did not run this week. Apify search ran the first 9", 1),
             "apify mention over the pin": sec.replace('<p class="lcopy" data-copy="failed">', '<p class="lcopy" data-copy="failed">Apify ', 1),
             "apify attribute over the pin": sec.replace('<tr data-provider="exa">', '<tr data-provider="exa" data-note="apify">', 1),
         }
