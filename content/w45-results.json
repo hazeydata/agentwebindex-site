@@ -1,24 +1,24 @@
 {
- "_doc": "AgentWebIndex week 47 (news_2026-47, run Nov 16, 2026). content/w45-tables-regrade.json is the full unfiltered tables.py output at regrade_commit (only generated_at differs from the evidence file). The site shows rows with run_date 2026-11-16 plus the extra_rows entry (Bright Data, Nov 2 scrape run, dated on its own row). Every number in #latest-week comes from that file. Never hand-edit.",
- "ticket": "AWI-W47-BASE-RUN-001",
- "week": "2026-47",
- "run_date": "2026-11-16",
+ "_doc": "AgentWebIndex week 48 (news_2026-48, run Nov 24, 2026). content/w45-tables-regrade.json is the byte-identical tables.py output at regrade_commit (data/benchmarks/staged/latest-2026-48.json, sha256 8772701b\u2026). The site shows rows with run_date 2026-11-24 plus the extra_rows entry (Browserless scrape_urls, Oct 23, dated on its own row). Bright Data is not in the table (no score on the page); a dated note records its last complete scrape run of Nov 2, 2026. Every number in #latest-week comes from that regrade file. Never hand-edit.",
+ "ticket": "AWI-W48-BASE-RUN-001",
+ "week": "2026-48",
+ "run_date": "2026-11-24",
  "regrade_file": "content/w45-tables-regrade.json",
- "regrade_sha256": "8e7aa1ddbf43b59e4f979961b742eb6db5833c4cee99d2a27c6103821ce5df62",
- "regrade_source": "AWI-W47-BASE-RUN-001: python -m awibench.tables at agentwebindex 7fdefab3c4ef141bf38e7b150a0d854c9aa479cb (agentwebindex#57); unfiltered.",
- "regrade_commit": "7fdefab3c4ef141bf38e7b150a0d854c9aa479cb",
- "run_logs_commit": "7fdefab3c4ef141bf38e7b150a0d854c9aa479cb",
- "run_logs_pr": "https://github.com/hazeydata/agentwebindex/pull/57",
+ "regrade_sha256": "8772701bf09518a6f6038e0851b6550ef8131bd3030a4f7752cf73df43134ad4",
+ "regrade_source": "AWI-W48-BASE-RUN-001: python -m awibench.tables at agentwebindex 1c360650060509af01265e3dcb9b5aff758acc02 (agentwebindex#65 merge); unfiltered staged/latest-2026-48.json, vendored byte-identical.",
+ "regrade_commit": "1c360650060509af01265e3dcb9b5aff758acc02",
+ "run_logs_commit": "1c360650060509af01265e3dcb9b5aff758acc02",
+ "run_logs_pr": "https://github.com/hazeydata/agentwebindex/pull/65",
  "live_not_held": {
   "keenable": "Keenable"
  },
- "live_not_held_note": "Providers that are live (not publish_hold) and must be accounted for in week 47: a provider here with no week-47 regrade row gets the copy line '<Name>: not run this week'. Lucille 2 ruling, Nov 2 2026: Keenable is live; AC-4 lifted for Keenable only. Firecrawl ran Nov 16 and has a row (the W46-only omission does not apply).",
+ "live_not_held_note": "Providers that are live (not publish_hold) and must be accounted for in week 48: a provider here with no week-48 regrade row gets the copy line '<Name>: not run this week'. Lucille 2 ruling, Nov 2 2026: Keenable is live; AC-4 lifted for Keenable only.",
  "extra_rows": {
-  "brightdata": "2026-11-02"
+  "browserless": "2026-10-23"
  },
- "extra_rows_note": "Bright Data was not rerun in W47. Its Nov 2, 2026 scrape_urls run (69/120) is shown with its own Run date and a row-note; it is not in the 'Ran Nov 16, 2026:' list and not in the heading/source date.",
+ "extra_rows_note": "Browserless scrape_urls was not rerun in W48. Its Oct 23, 2026 scrape run (79/120) is shown with its own Run date and a row-note; it is not in the 'Ran Nov 24, 2026:' list and not in the heading/source date. It must never be labelled Week 48. Bright Data is intentionally omitted from extra_rows: no Bright Data score (69/120) appears on the page.",
  "extra_names": {
   "tinyfish": "TinyFish"
  },
- "extra_names_note": "Display name for tinyfish (providers.json name is 'TinyFish Search + Fetch'; W45 used short 'TinyFish')."
+ "extra_names_note": "Display name for tinyfish (providers.json name is 'TinyFish Search + Fetch'; short 'TinyFish' is used)."
 }

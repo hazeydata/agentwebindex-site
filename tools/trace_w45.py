@@ -8,9 +8,10 @@ Checks (exit 1 on any failure):
   3. every cell carries data-src naming the regrade fields of ITS column (fixed map below, not read from render.py),
      and its text equals that field formatted here (own half-up formatters, independent of prices.py);
   4. the Passed link points to the row's own run log at the manifest run_logs_commit;
-  5. no number appears in the section outside a traced cell unless it is in the copy.md "Week 47 results" text;
-  6. Apify ran in week 47, so it may have rows; if it has a manifest-date row the "Apify did not run this week." line must NOT appear;
-     Bright Data (manifest extra_rows, Nov 2) shows its own Run date, a row note, and is not in the "Ran Nov 16, 2026:" list;
+  5. no number appears in the section outside a traced cell unless it is in the copy.md "Week 48 results" text;
+  6. Apify ran in week 48, so it may have rows; if it has a manifest-date row the "Apify did not run this week." line must NOT appear;
+     Browserless scrape (manifest extra_rows, Oct 23) shows its own Run date, a row note, and is not in the "Ran Nov 24, 2026:" list;
+     Bright Data is NOT a table row (no 69/120 on the page): only the dated note paragraph;
      the Coverage copy states the news-set size and the Apify field states Apify's n from the rows' "below minimum (n=N)" flags, and the TinyFish fetch note states its row's counts;
   7. each live provider in the manifest's live_not_held with no week-45 regrade row has exactly one '<Name>: not run this week' line, and no other.
 """
@@ -52,11 +53,11 @@ SHORT_WEEK_FLAG = re.compile(r"^short week \(n=(\d+)\)$")
 
 
 def display_flags(r):
-    """Own copy of render.display_flags: Week 47 #latest-week maps 'short week (n=N)' to 'short news set (n=N)'."""
-    week47 = isinstance(r.get("set"), str) and r["set"].endswith("2026-47")
+    """Own copy of render.display_flags: Week 48 #latest-week maps 'short week (n=N)' to 'short news set (n=N)'."""
+    week48 = isinstance(r.get("set"), str) and r["set"].endswith("2026-48")
     out = []
     for f in r.get("flags") or []:
-        m = SHORT_WEEK_FLAG.fullmatch(f) if week47 else None
+        m = SHORT_WEEK_FLAG.fullmatch(f) if week48 else None
         out.append(f"short news set (n={m.group(1)})" if m else f)
     return ", ".join(out) or "none"
 
@@ -66,7 +67,7 @@ class Section(HTMLParser):
     """Collects section#latest-week: every data-src element's (src, label, text, hrefs), the row providers, and the full text."""
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.depth = 0; self.on = False; self.stack = []; self.cells = []; self.text = []; self.untraced = []; self.rows = []
+        self.depth = 0; self.on = False; self.stack = []; self.cells = []; self.text = []; self.untraced = []; self.rows = []; self.fig = 0   # fig: depth inside figure.chart (SVG text is checked by tools/check_w48_numbers.py)
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -76,6 +77,8 @@ class Section(HTMLParser):
             return
         if tag == "section":
             self.depth += 1
+        if tag == "figure":
+            self.fig = 1
         if tag == "tr" and "data-provider" in a:
             self.rows.append(a["data-provider"])
         if "data-src" in a:
@@ -86,6 +89,10 @@ class Section(HTMLParser):
     def handle_endtag(self, tag):
         if not self.on:
             return
+        if self.fig:
+            if tag == "figure":
+                self.fig = 0
+            return
         if self.stack and tag == self.stack[-1]["tag"]:
             self.cells.append(self.stack.pop())
         if tag == "section":
@@ -94,7 +101,7 @@ class Section(HTMLParser):
                 self.on = False
 
     def handle_data(self, data):
-        if not self.on:
+        if not self.on or self.fig:
             return
         self.text.append(data)
         if self.stack:
@@ -137,7 +144,7 @@ class Outside(HTMLParser):
 # Kitty t4: the trace's own copy of the Apify allowlist (render.APIFY_ALLOW is the build's). Each entry is
 # (page, tag, required attributes, inside (tag, id) or None, pinned "apify" count inside the container).
 APIFY_ALLOW = (
-    ("/", "section", {"id": "latest-week"}, None, 10),   # Apify ran in W47: whole section, incl. TinyFish note
+    ("/", "section", {"id": "latest-week"}, None, 23),   # Apify ran in W48: 11 in text + 12 in the 4 inlined W48 chart SVGs
     ("/", "section", {"id": "apify-retest"}, None, 9),
     ("/", "figure", {"id": "chart-pass-rate"}, None, 12),
     ("/", "figure", {"id": "chart-cost"}, None, 8),
@@ -296,7 +303,7 @@ def trace(index_html, evidence=None):
     ran = []
     for _, r in want.values():
         if extra.get(r["provider"]) == r["run_date"] and r["run_date"] != man["run_date"]:
-            continue   # extra_rows (Bright Data, Nov 2) are not "Ran <manifest date>"
+            continue   # extra_rows (Browserless scrape, Oct 23) are not "Ran <manifest date>"
         nm = names.get(r["provider"], r["provider"])
         ran += [nm] if nm not in ran else []
     if heads.get("provider") != ", ".join(ran):
@@ -352,23 +359,32 @@ def trace(index_html, evidence=None):
         errs.append("source line not worded as copy")
     else:
         ok.append(f"source = agentwebindex {sha[:7]}, {heads['source_date']}")
-    # Apify ran in week 47: no "did not run" line is allowed when it has a manifest-date row (and a false claim fails)
+    # Apify ran in week 48: no "did not run" line is allowed when it has a manifest-date row (and a false claim fails)
     apify_ran = any(r["provider"] == "apify" and r["run_date"] == man["run_date"] for _, r in want.values())
     if apify_ran and re.search(r"Apify did not run this week", full_text):
-        errs.append("section says 'Apify did not run this week.' but Apify has a week-47 row")
+        errs.append("section says 'Apify did not run this week.' but Apify has a week-48 row")
     elif apify_ran:
-        ok.append("Apify has week-47 rows and no 'did not run' line")
-    # Bright Data (extra_rows): row-note right after its row, wording from the copy, dated Nov 2 (not the week's run date)
+        ok.append("Apify has week-48 rows and no 'did not run' line")
+    # extra_rows (Browserless scrape): row-note right after its row, wording from the copy, dated Oct 23 (not the week's run date)
     for pid, rd in extra.items():
         rows_pid = [k for k, (c, r) in want.items() if r["provider"] == pid and r["run_date"] == rd]
         if not rows_pid:
             errs.append(f"extra_rows provider {pid} has no regrade row on {rd}"); continue
         if rd == man["run_date"]:
             errs.append(f"extra_rows {pid} is dated the week's run date {rd}")
-        if f"This row is the {day(rd)} run." not in full_text:
+        if pid == "brightdata":
+            errs.append("Bright Data must not be an extra_rows table row (no score on the page)")
+        if f"scrape row is from the {day(rd)} run" not in full_text:
             errs.append(f"{pid}: row note with its {day(rd)} date is missing")
         else:
             ok.append(f"{pid} dated {day(rd)} with a row note")
+    # Bright Data: never a table row; the dated note paragraph is required
+    if "brightdata" in sec.rows:
+        errs.append("Bright Data table row present")
+    if "Its last complete scrape run is Nov 2, 2026." not in full_text:
+        errs.append("Bright Data dated note missing")
+    else:
+        ok.append("Bright Data is a dated note (Nov 2, 2026), not a table row")
     # coverage and TinyFish note facts, derived from the regrade rows
     ns = lambda r: {int(x) for f in r.get("flags") or [] for x in re.findall(r"below minimum \(n=(\d+)\)", f)}
     news_n = max((n for _, r in want.values() if r["provider"] != "apify" for n in ns(r)), default=None)
@@ -376,11 +392,11 @@ def trace(index_html, evidence=None):
     if news_n is None or f"this week's news set has {news_n} items, under the 25 we want" not in full_text:
         errs.append(f"coverage does not state the news set has {news_n} items, under the 25 minimum")
     for an in ap_n:
-        if f"Apify search ran {an} of this week's {news_n} news items, below our minimum of 25" not in full_text:
+        if f"Apify search ran the first {an} of this week's {news_n} news items" not in full_text or "below our minimum of 25" not in full_text:
             errs.append(f"Apify field does not name Apify search n={an} as below minimum")
     for k, (c, r) in want.items():
         if r["provider"] == "tinyfish" and c == "browser":
-            if f"TinyFish passed {r['passed']['v']} of {r['attempted']['v']} fetch checks." not in full_text:
+            if f"TinyFish passed {r['passed']['v']} of {r['attempted']['v']} fetch checks, up from 4 of 14 last week." not in full_text:
                 errs.append(f"TinyFish fetch note does not state {r['passed']['v']} of {r['attempted']['v']}")
             else:
                 ok.append(f"TinyFish note = {r['passed']['v']} of {r['attempted']['v']}")
@@ -411,7 +427,7 @@ def _copy_section():
     out, on = [], False
     for line in (R / "content/copy.md").read_text().splitlines():
         if line.startswith("## "):
-            on = line[3:].strip() == "Week 47 results"
+            on = line[3:].strip() == "Week 48 results"
         elif on and not line.startswith("<!--"):
             out.append(line)
     return out

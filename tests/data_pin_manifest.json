@@ -1,7 +1,7 @@
 {
  "_doc": "sha256 of the upstream files at the pinned data sha; regenerate with tools/data_manifest.py (sync_data.sh does it).",
  "repo": "https://github.com/hazeydata/agentwebindex.git",
- "sha": "7fdefab3c4ef141bf38e7b150a0d854c9aa479cb",
+ "sha": "1c360650060509af01265e3dcb9b5aff758acc02",
  "files": {
   "data/benchmarks/latest.json": "b88e52aaf6a80e6736e1c7e57c073bc0936e18a1d66d37e37b44505635b3b4e4",
   "data/_upstream/providers.json": "55e24a06b40b597eec66e503d3dd5575ef09688620e8f8ac7be456577c937526",

@@ -33,7 +33,7 @@ How often each API passed our check, on our test set. One dot per API, with the 
 List price divided by passes. A cheap call that misses isn't cheap.
 
 ### Not tested
-Brave's terms forbid benchmarking. Bright Data's last complete scrape run is Nov 2, 2026; it has no complete week 47 run. Firecrawl has week 47 results in the latest-week table. Apify skipped Oct 23 to save its free monthly credit for weekly news runs.
+Brave's terms forbid benchmarking. Bright Data's last complete scrape run is Nov 2, 2026; it has no complete week 48 run. Firecrawl has week 48 results in the latest-week table. Apify skipped Oct 23 to save its free monthly credit for weekly news runs.
 
 ## Earlier runs (collapsed by default)
 **Summary line:** Earlier runs: short news weeks, below or near our minimum. Tap to open.
@@ -57,20 +57,23 @@ Weekly news sets, before the frozen sets, plus Apify and Browserless browser run
 Apify suggested a fairer setup, so on Oct 26 we reran their tools on that week's 21 news items. Their RAG Web Browser search got a longer timeout (240 seconds per request), and we added their Web Fetch tool for reading pages. In one run, Web Fetch passed 19 of 21 and RAG search passed 16 of 21, with no timeouts. That set is short, below our usual minimum of 25 items, so treat these numbers as preliminary. Thanks to Apify for the nudge. My bots and I run this benchmark, and feedback like this makes it better.
 **Caption:** Preliminary: one run per setup on a short 21-item set. No earlier Apify run used these items, so there is no before-and-after comparison.
 
-## Week 47 results
-<!-- Source: AWI-W47-PUBLISH-001 (stage only). No numbers here except the n=20 / n=9 / 25 coverage facts, the Nov 2 Bright Data date and the TinyFish fetch note: every table number is computed from the tables.py regrade of the Nov 16, 2026 run (agentwebindex 7fdefab3). The rankings and charts further down stay on the Oct 23, 2026 run. -->
-**Title:** Week 47 results
-**Ran:** Ran Nov 16, 2026:
+## Week 48 results
+<!-- Source: AWI-W48-BASE-RUN-001 (stage only). Every number is from data/benchmarks/staged/latest-2026-48.json (sha 8772701b, agentwebindex merge 1c360650). Same slots as the live Week 47 section; replaces it. The rankings and charts further down stay on the Oct 23, 2026 run. The numbers table in the source copy file is for the staged-PR check only and does not go on the page. -->
+**Title:** Week 48 results
+**Ran:** Ran Nov 24, 2026:
 **Not run:** not run this week
 **Prior run:** Prior run:
-**Coverage:** Below our minimum: this week's news set has 20 items, under the 25 we want, so treat every row here as early. Bright Data has no complete Week 47 run, so its row is the Nov 2, 2026 run. Only the providers in this table have Week 47 results. For everyone else, the latest results are the older runs further down the page.
-**Apify:** Apify search ran 9 of this week's 20 news items, below our minimum of 25, so treat that row as early.
-**Comparison:** Week 47 used this week's news items. The rankings further down are still from our Oct 23, 2026 run, on different questions and URLs, so compare rows only within a run.
+**Story:** Small week, close race. Exa and Tavily each passed 15 of 16 news searches. Firecrawl and TinyFish each passed 13. On 16 items, gaps that small are ties, so nobody wins this week. On the fetch side, Apify and Browserless read all 12 pages, and TinyFish read 8, up from 4 of 14 last week. We still don't know why TinyFish misses pages. My bots and I run these tests every week, and we'll keep digging.
+**Coverage:** Below our minimum: this week's news set has 16 items, under the 25 we want, so treat every row here as early. With so few items, rows a check or two apart are ties, not rankings. Only the providers in this table have results from the Nov 24 run. For everyone else, the latest results are the older runs further down the page.
+**Apify:** Apify search ran the first 9 of this week's 16 news items, to stay inside its monthly cap, and passed 1. That's below our minimum of 25 and not directly comparable with the full-set rows, so treat it as early.
+**Comparison:** This week's rows use this week's news items. The rankings further down are still from our Oct 23, 2026 run, on different questions and URLs, so compare rows only within a run.
+**Grading:** We changed how one kind of news check is graded. The details are on the [methodology page](https://agentwebindex.com/methodology/).
 **Source:** Source: tables.py regrade of the {date} run logs (agentwebindex {sha})
 **Failed:** Failed checks stay failed. We do not rerun or drop them, and every pass rate counts every check we attempted.
 **Skipped:** Skipped (terms) means URLs we never called because the provider's terms are unclear for them. They count as neither passed nor failed.
-**TinyFish fetch note:** TinyFish passed 4 of 14 fetch checks. Apify and Browserless passed all 14 of the same pages. We haven't confirmed why. Follow-up: https://github.com/hazeydata/agentwebindex-meta/issues/71.
-**Bright Data note:** Bright Data has no complete Week 47 run. This row is the Nov 2, 2026 run.
+**TinyFish fetch note:** TinyFish passed 8 of 12 fetch checks, up from 4 of 14 last week. Apify and Browserless passed all 12 of the same pages. We haven't confirmed why. Follow-up: https://github.com/hazeydata/agentwebindex-meta/issues/71.
+**Browserless scrape note:** Browserless's scrape row is from the Oct 23, 2026 run, not this week. Its fetch row above is from the Nov 24, 2026 run.
+**Bright Data note:** Bright Data has no run this week. Its last complete scrape run is Nov 2, 2026.
 
 ## Chart briefs
 ### Chart 1: Pass rate on our test set
@@ -119,7 +122,7 @@ Apify suggested a fairer setup, so on Oct 26 we reran their tools on that week's
 
 **Limits, plainly.**
 - The rankings are one run, Oct 23, 2026. Weekly news runs since then sit in their own sections. The plan is three runs a week, averaged. We're not there yet.
-- Five providers have rows in our downloadable data: Exa, Tavily, Browserless, Apify and TinyFish. Eleven more are priced but not yet in the evergreen rankings. Brave's terms forbid benchmarking, and Bright Data's last complete scrape run is Nov 2, 2026 (shown in the week 47 table; not yet in the evergreen rankings).
+- Five providers have rows in our downloadable data: Exa, Tavily, Browserless, Apify and TinyFish. Eleven more are priced but not yet in the evergreen rankings. Brave's terms forbid benchmarking, and Bright Data's last complete scrape run is Nov 2, 2026 (not the latest week; not yet in the evergreen rankings).
 - A pass means the result passed our check. It says nothing about the quality of the rest of the results.
 
 Results trace to our run logs; prices to providers' published pricing pages. If one is wrong, that's on us, and we'll say so here.

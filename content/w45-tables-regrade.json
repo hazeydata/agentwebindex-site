@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-16T16:04:33+00:00",
+ "generated_at": "2026-11-24T15:59:52+00:00",
  "source": "run logs only (SPEC-bench \u00a74)",
  "tables": {
   "search": [
@@ -15,7 +15,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 16,
      "src": [
@@ -285,7 +285,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 40,
      "src": [
@@ -706,7 +706,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 21,
      "src": [
@@ -995,7 +995,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 9,
      "src": [
@@ -1189,6 +1189,211 @@
     }
    },
    {
+    "provider": "apify",
+    "set": "news_2026-48",
+    "run_date": "2026-11-24",
+    "set_sha": "cf8de514210d38fddbd567c49cb006d6ec0f7e8ec0e468f59a61f7a1361766ba",
+    "set_rows": 9,
+    "flags": [
+     "short week (n=9)",
+     "below minimum (n=9)"
+    ],
+    "mock": false,
+    "partial": false,
+    "grader_version": "canon-2026-11-23",
+    "attempted": {
+     "v": 9,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+       ]
+      }
+     ]
+    },
+    "passed": {
+     "v": 1,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+       ]
+      }
+     ]
+    },
+    "failed": {
+     "v": 8,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+       ]
+      }
+     ]
+    },
+    "rate_limited": {
+     "v": null,
+     "src": [],
+     "label": "rate-limited (free tier)",
+     "note": null
+    },
+    "timed_out": {
+     "v": null,
+     "src": [],
+     "note": null
+    },
+    "answered_display": "1/9 answered",
+    "skipped_tos": {
+     "count": 0,
+     "src": [],
+     "tos_reason": null
+    },
+    "success_rate": {
+     "v": 0.1111111111111111,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+       ]
+      }
+     ]
+    },
+    "p50_latency_ms": {
+     "v": 36855.368,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+       ]
+      }
+     ]
+    },
+    "free_quota_note": "Apify Free plan: '$5 to spend' monthly, no credit card (apify.com/pricing). RAG Web Browser charges per event plus Apify platform usage: at the Free plan $0.00348 per search, $0.00228 per fetched page and $0.000225 per Actor Start event, 8 events per start at the Actor's published 8192 MB (pricing page and public Actor record, read 2026-10-27). Units here are US cents of that $5.",
+    "cost_units_note": null,
+    "sample_note": "reduced sample: first 9 of 16 items in this set, to keep the provider inside its monthly cap (spec R44.2); not directly comparable with full-set rows",
+    "entry_tier_cost_per_1k": {
+     "v": 10.600000000000001,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "apify",
+       "category": "search"
+      }
+     ],
+     "tier": "Free plan per-event rate (AWI's plan)",
+     "lower_bound": true,
+     "lower_bound_reason": "Apify platform usage (compute units per call) is not published and not counted",
+     "na_reason": null,
+     "display": "\u2265 $10.60 (lower bound)"
+    },
+    "entry_tier_cost_per_successful_1k": {
+     "v": 95.4,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "apify",
+       "category": "search"
+      }
+     ],
+     "tier": "Free plan per-event rate (AWI's plan)",
+     "lower_bound": true,
+     "lower_bound_reason": "Apify platform usage (compute units per call) is not published and not counted",
+     "na_reason": null,
+     "display": "\u2265 $95.40 (lower bound)"
+    },
+    "volume_tier_cost_per_1k": {
+     "v": null,
+     "src": [],
+     "tier": null,
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "n/a"
+    },
+    "volume_tier_cost_per_successful_1k": {
+     "v": null,
+     "src": [],
+     "tier": null,
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "n/a"
+    }
+   },
+   {
     "provider": "exa",
     "set": "news_2026-42",
     "run_date": "2026-10-15",
@@ -1200,7 +1405,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 16,
      "src": [
@@ -1452,7 +1657,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 40,
      "src": [
@@ -1873,7 +2078,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 24,
      "src": [
@@ -2182,7 +2387,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 20,
      "src": [
@@ -2453,6 +2658,259 @@
    },
    {
     "provider": "exa",
+    "set": "news_2026-48",
+    "run_date": "2026-11-24",
+    "set_sha": "cf8de514210d38fddbd567c49cb006d6ec0f7e8ec0e468f59a61f7a1361766ba",
+    "set_rows": 16,
+    "flags": [
+     "short week (n=16)",
+     "below minimum (n=16)"
+    ],
+    "mock": false,
+    "partial": false,
+    "grader_version": "canon-2026-11-23",
+    "attempted": {
+     "v": 16,
+     "src": [
+      {
+       "file": "runs/2026-11-24/exa/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "passed": {
+     "v": 15,
+     "src": [
+      {
+       "file": "runs/2026-11-24/exa/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "failed": {
+     "v": 1,
+     "src": [
+      {
+       "file": "runs/2026-11-24/exa/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "rate_limited": {
+     "v": null,
+     "src": [],
+     "label": "rate-limited (free tier)",
+     "note": null
+    },
+    "timed_out": {
+     "v": null,
+     "src": [],
+     "note": null
+    },
+    "answered_display": "15/16 answered",
+    "skipped_tos": {
+     "count": 0,
+     "src": [],
+     "tos_reason": null
+    },
+    "success_rate": {
+     "v": 0.9375,
+     "src": [
+      {
+       "file": "runs/2026-11-24/exa/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "p50_latency_ms": {
+     "v": 941.7125000000001,
+     "src": [
+      {
+       "file": "runs/2026-11-24/exa/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "free_quota_note": "Starter: 'Free $10 credits every month ... No payment method required'. 1,428 = floor($10 / $7 per 1k Fast/Auto search); shared $10 pool with contents.",
+    "cost_units_note": null,
+    "entry_tier_cost_per_1k": {
+     "v": 7.0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/exa/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "exa",
+       "category": "search"
+      }
+     ],
+     "tier": "Developer pay-as-you-go, Fast/Auto search (<=10 results)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$7.00"
+    },
+    "entry_tier_cost_per_successful_1k": {
+     "v": 7.466666666666667,
+     "src": [
+      {
+       "file": "runs/2026-11-24/exa/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "exa",
+       "category": "search"
+      }
+     ],
+     "tier": "Developer pay-as-you-go, Fast/Auto search (<=10 results)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$7.47"
+    },
+    "volume_tier_cost_per_1k": {
+     "v": null,
+     "src": [],
+     "tier": null,
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "n/a"
+    },
+    "volume_tier_cost_per_successful_1k": {
+     "v": null,
+     "src": [],
+     "tier": null,
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "n/a"
+    }
+   },
+   {
+    "provider": "exa",
     "set": "search_evergreen",
     "run_date": "2026-10-23",
     "set_sha": "6b488a955e0896d91fd0db99b1936c38721f79e68c02cef0589e70664874a527",
@@ -2460,7 +2918,7 @@
     "flags": [],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 100,
      "src": [
@@ -2572,7 +3030,7 @@
      ]
     },
     "passed": {
-     "v": 40,
+     "v": 59,
      "src": [
       {
        "file": "runs/2026-10-23/exa/search_evergreen.jsonl",
@@ -2682,7 +3140,7 @@
      ]
     },
     "failed": {
-     "v": 60,
+     "v": 41,
      "src": [
       {
        "file": "runs/2026-10-23/exa/search_evergreen.jsonl",
@@ -2802,14 +3260,14 @@
      "src": [],
      "note": null
     },
-    "answered_display": "40/100 answered",
+    "answered_display": "59/100 answered",
     "skipped_tos": {
      "count": 0,
      "src": [],
      "tos_reason": null
     },
     "success_rate": {
-     "v": 0.4,
+     "v": 0.59,
      "src": [
       {
        "file": "runs/2026-10-23/exa/search_evergreen.jsonl",
@@ -3151,7 +3609,7 @@
      "display": "$7.00"
     },
     "entry_tier_cost_per_successful_1k": {
-     "v": 17.500000000000004,
+     "v": 11.864406779661019,
      "src": [
       {
        "file": "runs/2026-10-23/exa/search_evergreen.jsonl",
@@ -3268,7 +3726,7 @@
      "lower_bound": false,
      "lower_bound_reason": null,
      "na_reason": null,
-     "display": "$17.50"
+     "display": "$11.86"
     },
     "volume_tier_cost_per_1k": {
      "v": null,
@@ -3301,7 +3759,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 21,
      "src": [
@@ -3653,7 +4111,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 24,
      "src": [
@@ -4032,7 +4490,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 20,
      "src": [
@@ -4365,6 +4823,313 @@
    },
    {
     "provider": "firecrawl",
+    "set": "news_2026-48",
+    "run_date": "2026-11-24",
+    "set_sha": "cf8de514210d38fddbd567c49cb006d6ec0f7e8ec0e468f59a61f7a1361766ba",
+    "set_rows": 16,
+    "flags": [
+     "short week (n=16)",
+     "below minimum (n=16)"
+    ],
+    "mock": false,
+    "partial": false,
+    "grader_version": "canon-2026-11-23",
+    "attempted": {
+     "v": 16,
+     "src": [
+      {
+       "file": "runs/2026-11-24/firecrawl/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "passed": {
+     "v": 13,
+     "src": [
+      {
+       "file": "runs/2026-11-24/firecrawl/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "failed": {
+     "v": 3,
+     "src": [
+      {
+       "file": "runs/2026-11-24/firecrawl/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "rate_limited": {
+     "v": null,
+     "src": [],
+     "label": "rate-limited (free tier)",
+     "note": null
+    },
+    "timed_out": {
+     "v": null,
+     "src": [],
+     "note": null
+    },
+    "answered_display": "13/16 answered",
+    "skipped_tos": {
+     "count": 0,
+     "src": [],
+     "tos_reason": null
+    },
+    "success_rate": {
+     "v": 0.8125,
+     "src": [
+      {
+       "file": "runs/2026-11-24/firecrawl/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "p50_latency_ms": {
+     "v": 3374.0315,
+     "src": [
+      {
+       "file": "runs/2026-11-24/firecrawl/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "free_quota_note": "AWI's own ledger cap: 1,000 units a calendar month (sized on the public Free Plan, '1,000 credits / month ... no card', 500 searches or 1,000 pages); the account itself is on Standard (account_plan below), so this caps AWI's share, not the account",
+    "cost_units_note": null,
+    "entry_tier_cost_per_1k": {
+     "v": 7.6,
+     "src": [
+      {
+       "file": "runs/2026-11-24/firecrawl/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "firecrawl",
+       "category": "search"
+      }
+     ],
+     "tier": "Hobby $19/month billed monthly (5,000 credits)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$7.60"
+    },
+    "entry_tier_cost_per_successful_1k": {
+     "v": 9.353846153846153,
+     "src": [
+      {
+       "file": "runs/2026-11-24/firecrawl/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "firecrawl",
+       "category": "search"
+      }
+     ],
+     "tier": "Hobby $19/month billed monthly (5,000 credits)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$9.35"
+    },
+    "volume_tier_cost_per_1k": {
+     "v": 1.198,
+     "src": [
+      {
+       "file": "runs/2026-11-24/firecrawl/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "firecrawl",
+       "category": "search"
+      }
+     ],
+     "tier": "Scale $599/month billed yearly (1,000,000 credits)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$1.20"
+    },
+    "volume_tier_cost_per_successful_1k": {
+     "v": 1.4744615384615385,
+     "src": [
+      {
+       "file": "runs/2026-11-24/firecrawl/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "firecrawl",
+       "category": "search"
+      }
+     ],
+     "tier": "Scale $599/month billed yearly (1,000,000 credits)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$1.47"
+    }
+   },
+   {
+    "provider": "firecrawl",
     "set": "search_evergreen",
     "run_date": "2026-11-02",
     "set_sha": "6b488a955e0896d91fd0db99b1936c38721f79e68c02cef0589e70664874a527",
@@ -4372,7 +5137,7 @@
     "flags": [],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 40,
      "src": [
@@ -4424,7 +5189,7 @@
      ]
     },
     "passed": {
-     "v": 33,
+     "v": 34,
      "src": [
       {
        "file": "runs/2026-11-02/firecrawl/search_evergreen.jsonl",
@@ -4474,7 +5239,7 @@
      ]
     },
     "failed": {
-     "v": 7,
+     "v": 6,
      "src": [
       {
        "file": "runs/2026-11-02/firecrawl/search_evergreen.jsonl",
@@ -4534,14 +5299,14 @@
      "src": [],
      "note": null
     },
-    "answered_display": "33/40 answered",
+    "answered_display": "34/40 answered",
     "skipped_tos": {
      "count": 0,
      "src": [],
      "tos_reason": null
     },
     "success_rate": {
-     "v": 0.825,
+     "v": 0.85,
      "src": [
       {
        "file": "runs/2026-11-02/firecrawl/search_evergreen.jsonl",
@@ -4704,7 +5469,7 @@
      "display": "$7.60"
     },
     "entry_tier_cost_per_successful_1k": {
-     "v": 9.212121212121213,
+     "v": 8.941176470588236,
      "src": [
       {
        "file": "runs/2026-11-02/firecrawl/search_evergreen.jsonl",
@@ -4761,7 +5526,7 @@
      "lower_bound": false,
      "lower_bound_reason": null,
      "na_reason": null,
-     "display": "$9.21"
+     "display": "$8.94"
     },
     "volume_tier_cost_per_1k": {
      "v": 1.198,
@@ -4824,7 +5589,7 @@
      "display": "$1.20"
     },
     "volume_tier_cost_per_successful_1k": {
-     "v": 1.452121212121212,
+     "v": 1.4094117647058821,
      "src": [
       {
        "file": "runs/2026-11-02/firecrawl/search_evergreen.jsonl",
@@ -4881,7 +5646,7 @@
      "lower_bound": false,
      "lower_bound_reason": null,
      "na_reason": null,
-     "display": "$1.45"
+     "display": "$1.41"
     }
    },
    {
@@ -4896,7 +5661,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 16,
      "src": [
@@ -5202,7 +5967,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 40,
      "src": [
@@ -5725,7 +6490,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 24,
      "src": [
@@ -6104,7 +6869,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 20,
      "src": [
@@ -6437,6 +7202,313 @@
    },
    {
     "provider": "tavily",
+    "set": "news_2026-48",
+    "run_date": "2026-11-24",
+    "set_sha": "cf8de514210d38fddbd567c49cb006d6ec0f7e8ec0e468f59a61f7a1361766ba",
+    "set_rows": 16,
+    "flags": [
+     "short week (n=16)",
+     "below minimum (n=16)"
+    ],
+    "mock": false,
+    "partial": false,
+    "grader_version": "canon-2026-11-23",
+    "attempted": {
+     "v": 16,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tavily/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "passed": {
+     "v": 15,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tavily/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "failed": {
+     "v": 1,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tavily/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "rate_limited": {
+     "v": null,
+     "src": [],
+     "label": "rate-limited (free tier)",
+     "note": null
+    },
+    "timed_out": {
+     "v": null,
+     "src": [],
+     "note": null
+    },
+    "answered_display": "15/16 answered",
+    "skipped_tos": {
+     "count": 0,
+     "src": [],
+     "tos_reason": null
+    },
+    "success_rate": {
+     "v": 0.9375,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tavily/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "p50_latency_ms": {
+     "v": 1165.855,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tavily/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "free_quota_note": "Researcher: '1,000 API credits / month ... No credit card required'; resets the 1st of each month",
+    "cost_units_note": "cost uses 1 credit(s) per call as documented at https://docs.tavily.com/documentation/api-credits (checked 2026-10-24); the run log's billed_units held the runner's unverified guard",
+    "entry_tier_cost_per_1k": {
+     "v": 8.0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tavily/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "tavily",
+       "category": "search"
+      }
+     ],
+     "tier": "Pay As You Go",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$8.00"
+    },
+    "entry_tier_cost_per_successful_1k": {
+     "v": 8.533333333333333,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tavily/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "tavily",
+       "category": "search"
+      }
+     ],
+     "tier": "Pay As You Go",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$8.53"
+    },
+    "volume_tier_cost_per_1k": {
+     "v": 7.5,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tavily/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "tavily",
+       "category": "search"
+      }
+     ],
+     "tier": "Project $30/month (4,000 credits; slider default)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$7.50"
+    },
+    "volume_tier_cost_per_successful_1k": {
+     "v": 8.0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tavily/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "tavily",
+       "category": "search"
+      }
+     ],
+     "tier": "Project $30/month (4,000 credits; slider default)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$8.00"
+    }
+   },
+   {
+    "provider": "tavily",
     "set": "search_evergreen",
     "run_date": "2026-10-23",
     "set_sha": "6b488a955e0896d91fd0db99b1936c38721f79e68c02cef0589e70664874a527",
@@ -6444,7 +7516,7 @@
     "flags": [],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 100,
      "src": [
@@ -6556,7 +7628,7 @@
      ]
     },
     "passed": {
-     "v": 69,
+     "v": 87,
      "src": [
       {
        "file": "runs/2026-10-23/tavily/search_evergreen.jsonl",
@@ -6666,7 +7738,7 @@
      ]
     },
     "failed": {
-     "v": 31,
+     "v": 13,
      "src": [
       {
        "file": "runs/2026-10-23/tavily/search_evergreen.jsonl",
@@ -6786,14 +7858,14 @@
      "src": [],
      "note": null
     },
-    "answered_display": "69/100 answered",
+    "answered_display": "87/100 answered",
     "skipped_tos": {
      "count": 0,
      "src": [],
      "tos_reason": null
     },
     "success_rate": {
-     "v": 0.69,
+     "v": 0.87,
      "src": [
       {
        "file": "runs/2026-10-23/tavily/search_evergreen.jsonl",
@@ -7135,7 +8207,7 @@
      "display": "$8.00"
     },
     "entry_tier_cost_per_successful_1k": {
-     "v": 11.594202898550725,
+     "v": 9.195402298850574,
      "src": [
       {
        "file": "runs/2026-10-23/tavily/search_evergreen.jsonl",
@@ -7252,7 +8324,7 @@
      "lower_bound": false,
      "lower_bound_reason": null,
      "na_reason": null,
-     "display": "$11.59"
+     "display": "$9.20"
     },
     "volume_tier_cost_per_1k": {
      "v": 7.5,
@@ -7375,7 +8447,7 @@
      "display": "$7.50"
     },
     "volume_tier_cost_per_successful_1k": {
-     "v": 10.869565217391305,
+     "v": 8.620689655172415,
      "src": [
       {
        "file": "runs/2026-10-23/tavily/search_evergreen.jsonl",
@@ -7492,7 +8564,7 @@
      "lower_bound": false,
      "lower_bound_reason": null,
      "na_reason": null,
-     "display": "$10.87"
+     "display": "$8.62"
     }
    },
    {
@@ -7507,7 +8579,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 21,
      "src": [
@@ -7795,7 +8867,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 24,
      "src": [
@@ -8104,7 +9176,7 @@
     ],
     "mock": false,
     "partial": false,
-    "grader_version": "canon-2026-10-20",
+    "grader_version": "canon-2026-11-23",
     "attempted": {
      "v": 20,
      "src": [
@@ -8340,6 +9412,259 @@
         18,
         19,
         20
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "tinyfish",
+       "category": "search"
+      }
+     ],
+     "tier": "TinySearch free ($0.00 per request)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$0.00"
+    },
+    "volume_tier_cost_per_1k": {
+     "v": null,
+     "src": [],
+     "tier": null,
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "n/a"
+    },
+    "volume_tier_cost_per_successful_1k": {
+     "v": null,
+     "src": [],
+     "tier": null,
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "n/a"
+    }
+   },
+   {
+    "provider": "tinyfish",
+    "set": "news_2026-48",
+    "run_date": "2026-11-24",
+    "set_sha": "cf8de514210d38fddbd567c49cb006d6ec0f7e8ec0e468f59a61f7a1361766ba",
+    "set_rows": 16,
+    "flags": [
+     "short week (n=16)",
+     "below minimum (n=16)"
+    ],
+    "mock": false,
+    "partial": false,
+    "grader_version": "canon-2026-11-23",
+    "attempted": {
+     "v": 16,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "passed": {
+     "v": 13,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "failed": {
+     "v": 3,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "rate_limited": {
+     "v": null,
+     "src": [],
+     "label": "rate-limited (free tier)",
+     "note": null
+    },
+    "timed_out": {
+     "v": null,
+     "src": [],
+     "note": null
+    },
+    "answered_display": "13/16 answered",
+    "skipped_tos": {
+     "count": 0,
+     "src": [],
+     "tos_reason": null
+    },
+    "success_rate": {
+     "v": 0.8125,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "p50_latency_ms": {
+     "v": 1946.4270000000001,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      }
+     ]
+    },
+    "free_quota_note": "Pricing page 2026-11-03: TinySearch Free, 30 requests/min, 500 requests/hour, $0.00 per request (was 12,000/day on 2026-10-26). units_per_month derived = 500/h x 24 x 28 (AWI convention, D3).",
+    "cost_units_note": null,
+    "entry_tier_cost_per_1k": {
+     "v": 0.0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "tinyfish",
+       "category": "search"
+      }
+     ],
+     "tier": "TinySearch free ($0.00 per request)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$0.00"
+    },
+    "entry_tier_cost_per_successful_1k": {
+     "v": 0.0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/news_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
        ]
       },
       {
@@ -11572,6 +12897,277 @@
     }
    },
    {
+    "provider": "apify",
+    "set": "newsfetch_2026-48",
+    "run_date": "2026-11-24",
+    "set_sha": "e7031a8403e24b5dd76473484f8b83b97fd98beb34db7c6fb31c78d604edb480",
+    "set_rows": 12,
+    "flags": [
+     "short week (n=16)",
+     "below minimum (n=16)"
+    ],
+    "mock": false,
+    "partial": false,
+    "grader_version": "run-log",
+    "attempted": {
+     "v": 12,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "passed": {
+     "v": 12,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "failed": {
+     "v": 0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "rate_limited": {
+     "v": null,
+     "src": [],
+     "label": "rate-limited (free tier)",
+     "note": null
+    },
+    "timed_out": {
+     "v": null,
+     "src": [],
+     "note": null
+    },
+    "answered_display": "12/12 answered",
+    "skipped_tos": {
+     "count": 0,
+     "src": [],
+     "tos_reason": null
+    },
+    "success_rate": {
+     "v": 1.0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "p50_latency_ms": {
+     "v": 1506.1325000000002,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "free_quota_note": "Same Apify Free plan '$5 to spend' pool as RAG Web Browser search (US cents). Web Fetch is pay per event with no platform usage: FREE tier fetch $0.0015 (successful fetches only) plus Actor Start $0.00005 (pricingInfos of the public Actor record, read 2026-10-26). Guard estimate 0.155 cents per call.",
+    "cost_units_note": null,
+    "entry_tier_cost_per_1k": {
+     "v": 1.5499999999999998,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "apify",
+       "category": "browser"
+      }
+     ],
+     "tier": "Starter (Store BRONZE tier) per-event rate",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$1.55"
+    },
+    "entry_tier_cost_per_successful_1k": {
+     "v": 1.5499999999999998,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "apify",
+       "category": "browser"
+      }
+     ],
+     "tier": "Starter (Store BRONZE tier) per-event rate",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$1.55"
+    },
+    "volume_tier_cost_per_1k": {
+     "v": 1.033385,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "apify",
+       "category": "browser"
+      }
+     ],
+     "tier": "Store GOLD+ tier per-event rate",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$1.03"
+    },
+    "volume_tier_cost_per_successful_1k": {
+     "v": 1.033385,
+     "src": [
+      {
+       "file": "runs/2026-11-24/apify/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "apify",
+       "category": "browser"
+      }
+     ],
+     "tier": "Store GOLD+ tier per-event rate",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$1.03"
+    }
+   },
+   {
     "provider": "browserless",
     "set": "newsfetch_2026-42",
     "run_date": "2026-10-19",
@@ -13006,6 +14602,277 @@
     }
    },
    {
+    "provider": "browserless",
+    "set": "newsfetch_2026-48",
+    "run_date": "2026-11-24",
+    "set_sha": "e7031a8403e24b5dd76473484f8b83b97fd98beb34db7c6fb31c78d604edb480",
+    "set_rows": 12,
+    "flags": [
+     "short week (n=16)",
+     "below minimum (n=16)"
+    ],
+    "mock": false,
+    "partial": false,
+    "grader_version": "run-log",
+    "attempted": {
+     "v": 12,
+     "src": [
+      {
+       "file": "runs/2026-11-24/browserless/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "passed": {
+     "v": 12,
+     "src": [
+      {
+       "file": "runs/2026-11-24/browserless/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "failed": {
+     "v": 0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/browserless/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "rate_limited": {
+     "v": null,
+     "src": [],
+     "label": "rate-limited (free tier)",
+     "note": null
+    },
+    "timed_out": {
+     "v": null,
+     "src": [],
+     "note": null
+    },
+    "answered_display": "12/12 answered",
+    "skipped_tos": {
+     "count": 0,
+     "src": [],
+     "tos_reason": null
+    },
+    "success_rate": {
+     "v": 1.0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/browserless/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "p50_latency_ms": {
+     "v": 2276.753,
+     "src": [
+      {
+       "file": "runs/2026-11-24/browserless/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "free_quota_note": "Free: '1k units/month', 'No card required'; unit = up to 30 s per browser connection",
+    "cost_units_note": null,
+    "entry_tier_cost_per_1k": {
+     "v": 1.25,
+     "src": [
+      {
+       "file": "runs/2026-11-24/browserless/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "browserless",
+       "category": "browser"
+      }
+     ],
+     "tier": "Prototyping $25/mo billed annually (20k units)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$1.25"
+    },
+    "entry_tier_cost_per_successful_1k": {
+     "v": 1.25,
+     "src": [
+      {
+       "file": "runs/2026-11-24/browserless/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "browserless",
+       "category": "browser"
+      }
+     ],
+     "tier": "Prototyping $25/mo billed annually (20k units)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$1.25"
+    },
+    "volume_tier_cost_per_1k": {
+     "v": 0.7000000000000001,
+     "src": [
+      {
+       "file": "runs/2026-11-24/browserless/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "browserless",
+       "category": "browser"
+      }
+     ],
+     "tier": "Scale $350/mo billed annually (500k units)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$0.70"
+    },
+    "volume_tier_cost_per_successful_1k": {
+     "v": 0.7000000000000001,
+     "src": [
+      {
+       "file": "runs/2026-11-24/browserless/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "browserless",
+       "category": "browser"
+      }
+     ],
+     "tier": "Scale $350/mo billed annually (500k units)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$0.70"
+    }
+   },
+   {
     "provider": "tinyfish",
     "set": "newsfetch_2026-45",
     "run_date": "2026-11-03",
@@ -13760,6 +15627,231 @@
         12,
         13,
         14
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "tinyfish",
+       "category": "browser"
+      }
+     ],
+     "tier": "TinyFetch free ($0.00 per url)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$0.00"
+    },
+    "volume_tier_cost_per_1k": {
+     "v": null,
+     "src": [],
+     "tier": null,
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "n/a"
+    },
+    "volume_tier_cost_per_successful_1k": {
+     "v": null,
+     "src": [],
+     "tier": null,
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "n/a"
+    }
+   },
+   {
+    "provider": "tinyfish",
+    "set": "newsfetch_2026-48",
+    "run_date": "2026-11-24",
+    "set_sha": "e7031a8403e24b5dd76473484f8b83b97fd98beb34db7c6fb31c78d604edb480",
+    "set_rows": 12,
+    "flags": [
+     "short week (n=16)",
+     "below minimum (n=16)"
+    ],
+    "mock": false,
+    "partial": false,
+    "grader_version": "run-log",
+    "attempted": {
+     "v": 12,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "passed": {
+     "v": 8,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "failed": {
+     "v": 4,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "rate_limited": {
+     "v": null,
+     "src": [],
+     "label": "rate-limited (free tier)",
+     "note": null
+    },
+    "timed_out": {
+     "v": null,
+     "src": [],
+     "note": null
+    },
+    "answered_display": "8/12 answered",
+    "skipped_tos": {
+     "count": 0,
+     "src": [],
+     "tos_reason": null
+    },
+    "success_rate": {
+     "v": 0.6666666666666666,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "p50_latency_ms": {
+     "v": 2498.0420000000004,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      }
+     ]
+    },
+    "free_quota_note": "Pricing page 2026-11-03: TinyFetch Free, 150 urls/min, 1,000 urls/day (counted per successful URL, resets 00:00 UTC per docs), 'No charge, no Wallet draw, and they keep working at a $0 balance'. units_per_month derived = 1,000/day x 28 (AWI convention, meta cycle 2026-10-26-tinyfish-scope D3). scrape and browser share this pool.",
+    "cost_units_note": null,
+    "entry_tier_cost_per_1k": {
+     "v": 0.0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+       ]
+      },
+      {
+       "file": "bench/pricing.yaml",
+       "provider": "tinyfish",
+       "category": "browser"
+      }
+     ],
+     "tier": "TinyFetch free ($0.00 per url)",
+     "lower_bound": false,
+     "lower_bound_reason": null,
+     "na_reason": null,
+     "display": "$0.00"
+    },
+    "entry_tier_cost_per_successful_1k": {
+     "v": 0.0,
+     "src": [
+      {
+       "file": "runs/2026-11-24/tinyfish/newsfetch_2026-48.jsonl",
+       "lines": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
        ]
       },
       {
@@ -15144,10 +17236,28 @@
    "note": "no freshness row: ran 2026-10-20, after the set froze on 2026-10-19, so its lag is not comparable"
   },
   {
+   "provider": "apify",
+   "set": "news_2026-48",
+   "run_date": "2026-11-24",
+   "note": "no freshness row: ran 2026-11-24, after the set froze on 2026-11-23, so its lag is not comparable"
+  },
+  {
    "provider": "exa",
    "set": "news_2026-43",
    "run_date": "2026-10-20",
    "note": "no freshness row: ran 2026-10-20, after the set froze on 2026-10-19, so its lag is not comparable"
+  },
+  {
+   "provider": "exa",
+   "set": "news_2026-48",
+   "run_date": "2026-11-24",
+   "note": "no freshness row: ran 2026-11-24, after the set froze on 2026-11-23, so its lag is not comparable"
+  },
+  {
+   "provider": "firecrawl",
+   "set": "news_2026-48",
+   "run_date": "2026-11-24",
+   "note": "no freshness row: ran 2026-11-24, after the set froze on 2026-11-23, so its lag is not comparable"
   },
   {
    "provider": "tavily",
@@ -15156,12 +17266,24 @@
    "note": "no freshness row: ran 2026-10-20, after the set froze on 2026-10-19, so its lag is not comparable"
   },
   {
+   "provider": "tavily",
+   "set": "news_2026-48",
+   "run_date": "2026-11-24",
+   "note": "no freshness row: ran 2026-11-24, after the set froze on 2026-11-23, so its lag is not comparable"
+  },
+  {
    "provider": "tinyfish",
    "set": "news_2026-45",
    "run_date": "2026-11-03",
    "note": "no freshness row: ran 2026-11-03, after the set froze on 2026-11-02, so its lag is not comparable"
+  },
+  {
+   "provider": "tinyfish",
+   "set": "news_2026-48",
+   "run_date": "2026-11-24",
+   "note": "no freshness row: ran 2026-11-24, after the set froze on 2026-11-23, so its lag is not comparable"
   }
  ],
- "grader_version": "canon-2026-10-20",
+ "grader_version": "canon-2026-11-23",
  "has_results": true
 }

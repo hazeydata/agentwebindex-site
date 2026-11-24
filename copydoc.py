@@ -81,9 +81,9 @@ def load(path=None):
 
 
 def alt_texts(path=None):
-    """{'pass-rate': alt, 'cost-per-success': alt} from content/chart-alt.md ('- her-<name>-*: "alt"' lines)."""
+    """{'pass-rate': alt, 'cost-per-success': alt, 'week48-pass-rate': alt} from content/chart-alt.md ('- her-<name>-*: "alt"' lines)."""
     out = {}
-    for m in re.finditer(r'^- her-([a-z-]+?)-\*: "(.*)"\s*$', Path(path or CONTENT / "chart-alt.md").read_text(), re.M):
+    for m in re.finditer(r'^- her-([a-z0-9-]+?)-\*: "(.*)"\s*$', Path(path or CONTENT / "chart-alt.md").read_text(), re.M):
         out[m.group(1)] = m.group(2)
     return out
 

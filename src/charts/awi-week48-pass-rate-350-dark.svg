@@ -1,0 +1,459 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg role="img" aria-label="Week 48 news search: 4 providers passed 13 to 15 of 16 checks, with overlapping intervals; TinyFish fetch passed 8 of 12, up from 4 of 14 a week earlier" xmlns:xlink="http://www.w3.org/1999/xlink" width="252pt" height="906.775625pt" viewBox="0 0 252 906.775625" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-24T11:51:26.226981</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 906.775625 
+L 252 906.775625 
+L 252 0 
+L 0 0 
+z
+" style="fill: #03070f"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 68.04 358.04 
+L 143.64 358.04 
+L 143.64 214.04 
+L 68.04 214.04 
+z
+" style="fill: #03070f"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <defs>
+       <path id="mcff0be1433" d="M 0 0 
+L 0 2 
+" style="stroke: #8796a8; stroke-width: 0.6"/>
+      </defs>
+      <g>
+       <use xlink:href="#mcff0be1433" x="68.04" y="358.04" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="68.04" y="372.016563" transform="rotate(-0 68.04 372.016563)">0%</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <g>
+       <use xlink:href="#mcff0be1433" x="105.84" y="358.04" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="105.84" y="372.016563" transform="rotate(-0 105.84 372.016563)">50%</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3">
+      <g>
+       <use xlink:href="#mcff0be1433" x="143.64" y="358.04" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_3">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="143.64" y="372.016563" transform="rotate(-0 143.64 372.016563)">100%</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_4"/>
+     <g id="text_4">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="64.54" y="345.662897" transform="rotate(-0 64.54 345.662897)">Apify</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_5"/>
+     <g id="text_5">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="64.54" y="317.970589" transform="rotate(-0 64.54 317.970589)">TinyFish</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_6"/>
+     <g id="text_6">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="64.54" y="290.278281" transform="rotate(-0 64.54 290.278281)">Firecrawl</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_7"/>
+     <g id="text_7">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="64.54" y="262.585974" transform="rotate(-0 64.54 262.585974)">Tavily</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_8"/>
+     <g id="text_8">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="64.54" y="234.893666" transform="rotate(-0 64.54 234.893666)">Exa</text>
+     </g>
+    </g>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 122.223073 230.655385 
+L 142.799399 230.655385 
+" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 122.223073 258.347692 
+L 142.799399 258.347692 
+" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 111.124924 286.04 
+L 138.656842 286.04 
+" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 111.124924 313.732308 
+L 138.656842 313.732308 
+" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 69.543712 341.424615 
+L 100.92647 341.424615 
+" style="fill: none; stroke: #c9d0d8; stroke-width: 1.6"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 68.04 358.04 
+L 143.64 358.04 
+" style="fill: none; stroke: #8796a8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_9">
+    <defs>
+     <path id="m48515c25e6" d="M 0 3 
+C 0.795609 3 1.55874 2.683901 2.12132 2.12132 
+C 2.683901 1.55874 3 0.795609 3 0 
+C 3 -0.795609 2.683901 -1.55874 2.12132 -2.12132 
+C 1.55874 -2.683901 0.795609 -3 0 -3 
+C -0.795609 -3 -1.55874 -2.683901 -2.12132 -2.12132 
+C -2.683901 -1.55874 -3 -0.795609 -3 0 
+C -3 0.795609 -2.683901 1.55874 -2.12132 2.12132 
+C -1.55874 2.683901 -0.795609 3 0 3 
+z
+" style="stroke: #5fc4d6"/>
+    </defs>
+    <g>
+     <use xlink:href="#m48515c25e6" x="138.915" y="230.655385" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #5fc4d6" x="147.42" y="233.656967" transform="rotate(-0 147.42 233.656967)">15 of 16 (94%)</text>
+   </g>
+   <g id="line2d_10">
+    <g>
+     <use xlink:href="#m48515c25e6" x="138.915" y="258.347692" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #5fc4d6" x="147.42" y="261.349274" transform="rotate(-0 147.42 261.349274)">15 of 16 (94%)</text>
+   </g>
+   <g id="line2d_11">
+    <g>
+     <use xlink:href="#m48515c25e6" x="129.465" y="286.04" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #5fc4d6" x="147.42" y="289.041582" transform="rotate(-0 147.42 289.041582)">13 of 16 (81%)</text>
+   </g>
+   <g id="line2d_12">
+    <g>
+     <use xlink:href="#m48515c25e6" x="129.465" y="313.732308" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #5fc4d6" x="147.42" y="316.73389" transform="rotate(-0 147.42 316.73389)">13 of 16 (81%)</text>
+   </g>
+   <g id="line2d_13">
+    <defs>
+     <path id="md07daa326d" d="M 0 3 
+C 0.795609 3 1.55874 2.683901 2.12132 2.12132 
+C 2.683901 1.55874 3 0.795609 3 0 
+C 3 -0.795609 2.683901 -1.55874 2.12132 -2.12132 
+C 1.55874 -2.683901 0.795609 -3 0 -3 
+C -0.795609 -3 -1.55874 -2.683901 -2.12132 -2.12132 
+C -2.683901 -1.55874 -3 -0.795609 -3 0 
+C -3 0.795609 -2.683901 1.55874 -2.12132 2.12132 
+C -1.55874 2.683901 -0.795609 3 0 3 
+z
+" style="stroke: #8796a8"/>
+    </defs>
+    <g>
+     <use xlink:href="#md07daa326d" x="76.44" y="341.424615" style="fill: #8796a8; stroke: #8796a8"/>
+    </g>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(147.42 338.936)">1 of 9 (11%)</text>
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(147.42 349.156493)">9 items only</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_4">
+    <path d="M 68.04 544.64375 
+L 143.64 544.64375 
+L 143.64 458.24375 
+L 68.04 458.24375 
+z
+" style="fill: #03070f"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_4">
+     <g id="line2d_14">
+      <g>
+       <use xlink:href="#mcff0be1433" x="68.04" y="544.64375" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_14">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="68.04" y="558.620312" transform="rotate(-0 68.04 558.620312)">0%</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_15">
+      <g>
+       <use xlink:href="#mcff0be1433" x="105.84" y="544.64375" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_15">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="105.84" y="558.620312" transform="rotate(-0 105.84 558.620312)">50%</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_16">
+      <g>
+       <use xlink:href="#mcff0be1433" x="143.64" y="544.64375" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_16">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="143.64" y="558.620312" transform="rotate(-0 143.64 558.620312)">100%</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_6">
+     <g id="line2d_17"/>
+     <g id="text_17">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="64.54" y="532.682031" transform="rotate(-0 64.54 532.682031)">TinyFish</text>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_18"/>
+     <g id="text_18">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="64.54" y="505.682031" transform="rotate(-0 64.54 505.682031)">Browserless</text>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_19"/>
+     <g id="text_19">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="64.54" y="478.682031" transform="rotate(-0 64.54 478.682031)">Apify</text>
+     </g>
+    </g>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 125.306943 474.44375 
+L 143.64 474.44375 
+" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 125.306943 501.44375 
+L 143.64 501.44375 
+" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 97.57069 528.44375 
+L 133.198291 528.44375 
+" style="fill: none; stroke: #b7e4ed; stroke-width: 1.6"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 68.04 544.64375 
+L 143.64 544.64375 
+" style="fill: none; stroke: #8796a8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_20">
+    <g>
+     <use xlink:href="#m48515c25e6" x="143.64" y="474.44375" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #5fc4d6" x="147.42" y="477.445332" transform="rotate(-0 147.42 477.445332)">12 of 12 (100%)</text>
+   </g>
+   <g id="line2d_21">
+    <g>
+     <use xlink:href="#m48515c25e6" x="143.64" y="501.44375" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; text-anchor: start; fill: #5fc4d6" x="147.42" y="504.445332" transform="rotate(-0 147.42 504.445332)">12 of 12 (100%)</text>
+   </g>
+   <g id="line2d_22">
+    <g>
+     <use xlink:href="#m48515c25e6" x="118.44" y="528.44375" style="fill: #5fc4d6; stroke: #5fc4d6"/>
+    </g>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; fill: #5fc4d6" transform="translate(147.42 525.955134)">8 of 12 (67%)</text>
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; fill: #5fc4d6" transform="translate(147.42 536.93553)">Week 47: 4 of 14 (29%)</text>
+   </g>
+   <g id="line2d_23">
+    <defs>
+     <path id="m99d7d7270b" d="M 0 3 
+C 0.795609 3 1.55874 2.683901 2.12132 2.12132 
+C 2.683901 1.55874 3 0.795609 3 0 
+C 3 -0.795609 2.683901 -1.55874 2.12132 -2.12132 
+C 1.55874 -2.683901 0.795609 -3 0 -3 
+C -0.795609 -3 -1.55874 -2.683901 -2.12132 -2.12132 
+C -2.683901 -1.55874 -3 -0.795609 -3 0 
+C -3 0.795609 -2.683901 1.55874 -2.12132 2.12132 
+C -1.55874 2.683901 -0.795609 3 0 3 
+z
+" style="stroke: #8796a8; stroke-width: 1.2"/>
+    </defs>
+    <g>
+     <use xlink:href="#m99d7d7270b" x="89.64" y="528.44375" style="fill: #03070f; stroke: #8796a8; stroke-width: 1.2"/>
+    </g>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g id="patch_6">
+    <path d="M 68.04 684.869375 
+L 143.64 684.869375 
+L 143.64 656.069375 
+L 68.04 656.069375 
+z
+" style="fill: #03070f"/>
+   </g>
+   <g id="matplotlib.axis_5">
+    <g id="xtick_7">
+     <g id="line2d_24">
+      <g>
+       <use xlink:href="#mcff0be1433" x="68.04" y="684.869375" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_23">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="68.04" y="698.845937" transform="rotate(-0 68.04 698.845937)">0%</text>
+     </g>
+    </g>
+    <g id="xtick_8">
+     <g id="line2d_25">
+      <g>
+       <use xlink:href="#mcff0be1433" x="105.84" y="684.869375" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_24">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="105.84" y="698.845937" transform="rotate(-0 105.84 698.845937)">50%</text>
+     </g>
+    </g>
+    <g id="xtick_9">
+     <g id="line2d_26">
+      <g>
+       <use xlink:href="#mcff0be1433" x="143.64" y="684.869375" style="fill: #8796a8; stroke: #8796a8; stroke-width: 0.6"/>
+      </g>
+     </g>
+     <g id="text_25">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: middle; fill: #e6edf5" x="143.64" y="698.845937" transform="rotate(-0 143.64 698.845937)">100%</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_6">
+    <g id="ytick_9">
+     <g id="line2d_27"/>
+     <g id="text_26">
+      <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; text-anchor: end; fill: #e6edf5" x="64.54" y="674.707656" transform="rotate(-0 64.54 674.707656)">Browserless</text>
+     </g>
+    </g>
+   </g>
+   <g id="wilson-ci">
+    <path d="M 111.112846 670.469375 
+L 123.764528 670.469375 
+" style="fill: none; stroke: #c9d0d8; stroke-width: 1.6"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 68.04 684.869375 
+L 143.64 684.869375 
+" style="fill: none; stroke: #8796a8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_28">
+    <g>
+     <use xlink:href="#md07daa326d" x="117.81" y="670.469375" style="fill: #8796a8; stroke: #8796a8"/>
+    </g>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(147.42 667.980759)">79 of 120 (66%)</text>
+    <text style="font-size: 8.25px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(147.42 678.277952)">Oct 23, 2026 run</text>
+   </g>
+  </g>
+  <g id="text_28">
+   <text style="font-weight: 600; font-size: 10.25px; font-family: 'Space Grotesk'; fill: #e6edf5" transform="translate(10.08 20.954995)">Week 48 news search: 4 providers passed 13</text>
+   <text style="font-weight: 600; font-size: 10.25px; font-family: 'Space Grotesk'; fill: #e6edf5" transform="translate(10.08 35.995845)">to 15 of 16 checks, with overlapping</text>
+   <text style="font-weight: 600; font-size: 10.25px; font-family: 'Space Grotesk'; fill: #e6edf5" transform="translate(10.08 51.036695)">intervals; TinyFish fetch passed 8 of 12,</text>
+   <text style="font-weight: 600; font-size: 10.25px; font-family: 'Space Grotesk'; fill: #e6edf5" transform="translate(10.08 66.04151)">up from 4 of 14 a week earlier</text>
+  </g>
+  <g id="text_29">
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 81.577158)">Pass rate (passed / attempted) with 95% intervals;</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 94.236631)">compare within a panel. Search and fetch: Week 48</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 106.896104)">run, Nov 24, 2026. Scrape had no run this week, so</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 120.438096)">its row carries its own run date.</text>
+  </g>
+  <g id="low-count-flag">
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 136.058604)">Low count: this week's news set has 16 items,</text>
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 148.688682)">below our minimum of 25. The intervals overlap,</text>
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 161.342002)">so these rows are ties, not a ranking: no winner</text>
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 174.941416)">this week.</text>
+  </g>
+  <g id="text_30">
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 198.969404)">Search · Week 48 news set, 16 items · Nov 24, 2026</text>
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 209.556562)">run</text>
+  </g>
+  <g id="text_31">
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 392.734951)">Apify ran 9 items, not the 16-item set, so it is</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 405.411514)">not comparable with the rows above.</text>
+  </g>
+  <g id="text_32">
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 443.173154)">Fetch · Week 48 news pages, 12 pages · Nov 24,</text>
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 453.760312)">2026 run</text>
+  </g>
+  <g id="text_33">
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 579.584795)">Open circle: TinyFish in Week 47 (Nov 16, 2026</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 592.054229)">run, 14 pages), on that week's pages, so the two</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 605.452666)">weeks are not the same test.</text>
+  </g>
+  <g id="text_34">
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 640.998779)">Scrape · no run this week · latest published row,</text>
+   <text style="font-weight: 600; font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #e6edf5" transform="translate(10.08 651.585938)">dated</text>
+  </g>
+  <g id="text_35">
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 719.707197)">Browserless's terms forbid 30 anti-bot URLs, so</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 732.48083)">120 of 150 were tested. Bright Data (Nov 2, 2026</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 745.035713)">scrape run) is not published, so it is not</text>
+   <text style="font-size: 8.75px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 757.545479)">plotted.</text>
+  </g>
+  <g id="text_36">
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 779.765427)">Search graded with canon-2026-11-23; fetch and</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 792.621262)">scrape pass/fail from the run log. No row is mock</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 805.483074)">or partial. Not plotted: earlier weeks' rows</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 818.409963)">(except TinyFish's Week 47 fetch) and the</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 831.144939)">evergreen search rows, which stay in the rankings</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 844.907883)">further down. Brave is excluded: its terms forbid</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 856.856609)">benchmarking.</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 869.756272)">Source: hazeydata/agentwebindex</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 882.612107)">data/benchmarks/staged/latest-2026-48.json @</text>
+   <text style="font-size: 8.5px; font-family: 'Inter', sans-serif; fill: #8796a8" transform="translate(10.08 896.231614)">1c36065</text>
+  </g>
+ </g>
+</svg>
